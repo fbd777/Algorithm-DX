@@ -4,8 +4,9 @@ import { CodeforcesGroupWebFetcher, cfServerTime, parseWebRows, nextPage, CF_GRO
 import { validateCfPageUrl, requireCfReady, CF_LOGIN_STATE } from '../src/fetchers/cf-browser.ts';
 import { parseGroupLinks } from '../src/fetchers/codeforces-group.ts';
 import { createFactory } from '../src/fetchers/registry.ts';
+import { computeContestAutoSeconds } from '../src/dx/rating.ts';
 import { SyncService } from '../src/sync/service.ts';
-import { listProblems, listDxEntries } from '../src/server/queries.ts';
+import { listProblems, listDxEntries, listContestTimeline } from '../src/server/queries.ts';
 import { listPractice, recordPractice } from '../src/dx/practice.ts';
 import { openDatabase, Repository } from '../src/db/database.ts';
 import { FetchError } from '../src/fetchers/base.ts';
@@ -155,4 +156,17 @@ test('one unavailable contest preserves valid records and resumes only unfinishe
  const f=new CodeforcesGroupWebFetcher(cache,http,contests,async url=>{visits.push(url);if(url.includes('/710682/')&&broken)throw new FetchError('page unavailable',false,'GROUP_ACCESS_FAILED');const id=url.match(/contest\/(\d+)/)![1];return page(url,{rows:[{...row(id),problem:root+'/contest/'+id+'/problem/A'}]});});
  const first=await f.fetch_batch('Tester',{mode:'backfill'});assert.equal(first.submissions.length,2);assert.equal(first.complete,false);assert.match(first.note,/群组未完成.*710682/);assert.equal(JSON.parse(first.nextCursor!).groups['710682'],1);
  broken=false;visits.length=0;const next=await f.fetch_batch('Tester',{mode:'backfill',cursor:first.nextCursor});assert.equal(next.complete,true);assert.equal(next.submissions.length,1);assert.equal(visits.length,1);assert.match(visits[0],/710682/);
+});
+
+test('group timing metadata is persisted with submissions and enables existing contest estimates',async()=>{
+ const db=openDatabase(':memory:');try{
+ const repo=new Repository(db),user=repo.createUser('Timing',true),account=repo.addAccount(user,'codeforces','Tester');
+ const f=new CodeforcesGroupWebFetcher(cache,http,parseGroupLinks(root+'/contests'),async url=>url.includes('/contests')?page(url,{viewer:'Tester',contests:[{id:'720850',name:'Group test',time:'Oct/03/2026 08:00',duration:'02:30'}],links:[{href:contest.url,text:'Contest'}]}):page(url,{viewer:'Tester',rows:[row('1')]}));
+ f.fetch_problem_releases=async()=>[];f.fetch_problem_ratings=async()=>[];
+ const result=await new SyncService(db,()=>f,{}).sync(account,{force:true});assert.equal(result[0].status,'success');
+ assert.equal(db.prepare('SELECT duration_seconds FROM contests WHERE contest_id=720850').get()!.duration_seconds,9000);
+ const estimate=computeContestAutoSeconds(listContestTimeline(db,user,'codeforces')).get('720850:A');assert.equal(estimate,720);
+ recordPractice(db,{userId:user,platform:'codeforces',problemId:'720850:A',seconds:estimate!,outcome:'ac',practiceKind:'unknown',timingSource:'contest_estimate',attemptedAt:null});
+ assert.equal(listPractice(db,user)[0].timing_source,'contest_estimate');
+ }finally{db.close();}
 });

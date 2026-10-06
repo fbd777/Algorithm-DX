@@ -130,6 +130,7 @@ export class SyncService {
         assertLock();
         const before=Number(this.db.prepare('SELECT count(*) AS n FROM submissions WHERE account_id=?').get(account.id)!.n);
         this.repo.saveSubmissions(account.id,batch.submissions);
+        if(account.platform==='codeforces'&&batch.groupReleases?.length)this.repo.saveProblemReleases(account.platform,batch.groupReleases);
         if(account.platform==='codeforces')reconcileTimers(this.db,account.id);
         const after=Number(this.db.prepare('SELECT count(*) AS n FROM submissions WHERE account_id=?').get(account.id)!.n);
         inserted=after-before;

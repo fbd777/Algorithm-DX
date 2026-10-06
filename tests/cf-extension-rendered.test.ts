@@ -36,6 +36,9 @@ try{
  const before=requests;await read();assert.equal(requests,before,'DOM read must not issue any HTTP requests');
  const groupFixture='<html><head><title>Contests - Codeforces</title></head><body><div class="datatable"><table><tr><td><a href="/group/abc/contest/720850">Enter</a></td></tr></table></div></body></html>';
  const groupResult=await cdp.call('Runtime.evaluate',{expression:'parseCfHtml('+JSON.stringify(groupFixture)+',"https://codeforces.com/group/abc/contests",200)',returnByValue:true},sessionId);assert.equal(groupResult.result.value.contestTable,true);
+ const timingFixture='<html><body><table><tr><td>Training <a href="/group/abc/contest/720850">Enter »</a></td><td><span class="format-time">Oct/03/2026 08:00</span></td><td>05:00</td></tr></table></body></html>';
+ const timingResult=await cdp.call('Runtime.evaluate',{expression:'parseCfHtml('+JSON.stringify(timingFixture)+',"https://codeforces.com/group/abc/contests",200)',returnByValue:true},sessionId);
+ assert.deepEqual(timingResult.result.value.contests,[{id:'720850',name:'Training',time:'Oct/03/2026 08:00',duration:'05:00'}]);
  challenge=true;await cdp.call('Page.navigate',{url},sessionId);await sleep(500);result=await read();assert.match(result.result.value.error,/安全验证/);assert.equal(result.result.value.result,undefined);
  console.log('PASS: Edge document_start extraction; fetch disabled; local-time transformation preserves original timestamp; challenge page rejected without network retries');
 }finally{if(cdp){try{await cdp.call('Browser.close');}catch{}cdp.close();}else child.kill();}

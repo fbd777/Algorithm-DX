@@ -8,7 +8,7 @@ const cfRowTimes=new WeakMap();
 function rememberCfTime(element){
  if(document.readyState!=='loading'||!element?.matches?.('.format-time')||cfOriginalTimes.has(element))return;
  const value=(element.textContent||'').trim().replace(/\s+/g,' ');
- if(/^[A-Za-z]{3}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?$/.test(value)){cfOriginalTimes.set(element,value);const row=element.closest('tr[data-submission-id]');if(row)cfRowTimes.set(row,value);}
+ if(/^[A-Za-z]{3}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?$/.test(value)){cfOriginalTimes.set(element,value);const row=element.closest('tr');if(row)cfRowTimes.set(row,value);}
 }
 function rememberCfTree(root){
  if(root?.nodeType===3){rememberCfTime(root.parentElement?.closest('.format-time'));return;}

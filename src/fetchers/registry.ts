@@ -1,6 +1,6 @@
 import { cfExtensionBridge } from './cf-extension.ts';
 import { CodeforcesGroupWebFetcher } from './codeforces-group-web.ts';
-import { CodeforcesGroupFetcher, parseGroupLinks } from './codeforces-group.ts';
+import { CodeforcesGroupFetcher, parseGroupLinks, fetchGroupReleases } from './codeforces-group.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Account } from '../domain.ts';
 import { Repository } from '../db/database.ts';
@@ -76,7 +76,11 @@ export function createFactory(db:DatabaseSync,env:NodeJS.ProcessEnv=process.env,
     switch(account.platform){
       case 'codeforces': {
         const groups=parseGroupLinks(env['ALGO_CF_GROUPS_'+account.id]??'');
-        if(groups.length && env['ALGO_CF_GROUP_MODE_'+account.id]!=='api')return new CodeforcesGroupWebFetcher(new Repository(db),http,groups,env['ALGO_CF_GROUP_MODE_'+account.id]==='browser'?undefined:cfExtensionBridge.read.bind(cfExtensionBridge));
+        if(groups.length && env['ALGO_CF_GROUP_MODE_'+account.id]!=='api'){
+          const fetcher=new CodeforcesGroupWebFetcher(new Repository(db),http,groups,env['ALGO_CF_GROUP_MODE_'+account.id]==='browser'?undefined:cfExtensionBridge.read.bind(cfExtensionBridge));
+          if(env.ALGO_CF_API_KEY&&env.ALGO_CF_API_SECRET)fetcher.metadata=signal=>fetchGroupReleases(http,groups,env.ALGO_CF_API_KEY!,env.ALGO_CF_API_SECRET!,signal);
+          return fetcher;
+        }
         return groups.length ? new CodeforcesGroupFetcher(new Repository(db),http,groups,env.ALGO_CF_API_KEY??'',env.ALGO_CF_API_SECRET??'') : new CodeforcesSyncFetcher(new Repository(db),http);
       }
       case 'leetcode':return new LeetCodeFetcher(http);

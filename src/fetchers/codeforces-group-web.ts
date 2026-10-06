@@ -4,7 +4,7 @@ import { readCfPage } from './cf-browser.ts';
 import { FetchError } from './base.ts';
 import { optionsOf, unique, submission } from './common.ts';
 import type { GroupContest } from './codeforces-group.ts';
-import type { Cache, FetchBatch, FetchOptions, Submission } from '../domain.ts';
+import type { Cache, FetchBatch, FetchOptions, Submission, ProblemRelease } from '../domain.ts';
 import type { HttpClient } from './http.ts';
 
 // Read the original response, before CF converts server timestamps to the browser's timezone.
@@ -15,6 +15,7 @@ export const CF_GROUP_SNAPSHOT = '(async()=>{' + parserSource + `
  return parseCfHtml(await response.text(),location.href,response.status);
 })()`;
 export interface PageSnapshot {
+ contests?:{id:string;name:string;time:string;duration:string}[];
  url:string; status:number; title:string; viewer?:string|null; loggedIn:boolean; challenge:boolean;
  contestTable:boolean; statusTable:boolean; empty:boolean;
  links:{href:string;text:string}[];
@@ -76,6 +77,8 @@ export function parseWebRows(page:PageSnapshot,contest:GroupContest,handle:strin
 export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
  groups:GroupContest[];read:PageReader;
  private viewers=new Map<string,string>();
+ private releases=new Map<number,ProblemRelease>();
+ metadata:((signal?:AbortSignal)=>Promise<ProblemRelease[]>)|undefined;
  constructor(cache:Cache,http:HttpClient,groups:GroupContest[],read:PageReader=readCfPage){super(cache,http);this.groups=groups;this.read=read;}
  async discover(signal?:AbortSignal){
   this.viewers.clear();
@@ -87,6 +90,12 @@ export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
     if(count>=100)throw new FetchError('群组比赛列表超过本轮分页上限',false,'PAGINATION_LIMIT');
     const url='https://codeforces.com'+base+(pageNumber===1?'':'/page/'+pageNumber)+'?locale=en';
     const page=await this.read(url,CF_GROUP_SNAPSHOT,signal);validatePage(page,url);
+    for(const c of Array.isArray(page.contests)?page.contests:[]){
+      if(!c||typeof c.id!=='string'||typeof c.name!=='string'||typeof c.time!=='string'||typeof c.duration!=='string')continue;
+      const duration=c.duration.match(/^(\d+):(\d{2})(?::(\d{2}))?$/);
+      if(!/^\d+$/.test(c.id)||!duration||+duration[2]>59||+(duration[3]??0)>59)continue;
+      try{const seconds=+duration[1]*3600+(+duration[2])*60+(+(duration[3]??0));if(seconds>0)this.releases.set(+c.id,{contestId:+c.id,name:c.name,startTime:cfServerTime(c.time),durationSeconds:seconds});}catch{}
+    }
     if(page.loggedIn&&page.viewer)this.viewers.set(group.group,page.viewer.toLowerCase());
     const found=new Map<string,GroupContest>();
     for(const link of page.links){const u=new URL(link.href,'https://codeforces.com');const m=u.pathname.match(/^\/group\/([A-Za-z0-9]+)\/contest\/(\d+)(?:\/|$)/);
@@ -170,8 +179,10 @@ export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
    if(failures.some(f=>/CHALLENGE|AUTH_REQUIRED/.test(f.error.code)||/安全验证|登录已失效/.test(f.error.message)))break;
   }
   if(failures.length&&!pagesRead)throw failures[0].error;
+  let metadataNote='';
+  if(this.metadata){try{for(const release of await this.metadata(options.signal))if(contests.some(c=>Number(c.id)===release.contestId))this.releases.set(release.contestId,release);}catch{options.signal?.throwIfAborted();metadataNote=' 比赛时间信息未完整更新，已有提交已保留。';}}
   const complete=progress.public===null&&contests.every(c=>progress.groups[c.id]===null);
-  return {submissions:unique(rows),source:'https://codeforces.com/group',scope:backfill?'history':'window',acceptedOnly:false,complete,nextCursor:backfill&&!complete?JSON.stringify(progress):null,
-   note:'公开提交与登录账号可见的 Group 提交；本轮包含 '+contests.length+' 场 Group 比赛、'+unique(rows).filter(row=>row.problem_url?.includes('/group/')).length+' 条本账号群组提交。'+(complete?'本轮可见记录已遍历完成。':'本轮最多读取每场 '+opts.maxPages+' 页，完整可见记录请继续回补历史。')+(failures.length?' 群组未完成：'+failures.map(f=>f.contest+'（'+f.error.message+'）').join('；')+'；已读取记录已保留，可继续回补。':'')};
+  return {groupReleases:[...this.releases.values()].filter(r=>contests.some(c=>Number(c.id)===r.contestId)),submissions:unique(rows),source:'https://codeforces.com/group',scope:backfill?'history':'window',acceptedOnly:false,complete,nextCursor:backfill&&!complete?JSON.stringify(progress):null,
+   note:'公开提交与登录账号可见的 Group 提交；本轮包含 '+contests.length+' 场 Group 比赛、'+unique(rows).filter(row=>row.problem_url?.includes('/group/')).length+' 条本账号群组提交。'+(complete?'本轮可见记录已遍历完成。':'本轮最多读取每场 '+opts.maxPages+' 页，完整可见记录请继续回补历史。')+(failures.length?' 群组未完成：'+failures.map(f=>f.contest+'（'+f.error.message+'）').join('；')+'；已读取记录已保留，可继续回补。':'')+metadataNote};
  }
 }

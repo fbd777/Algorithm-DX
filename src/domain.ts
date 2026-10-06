@@ -34,6 +34,8 @@ export interface FetchOptions {
   force?: boolean;
 }
 export interface FetchBatch {
+  /** Group-specific contest metadata accompanying the submission batch. */
+  groupReleases?: ProblemRelease[];
   submissions: Submission[];
   source: string;
   scope: 'recent' | 'window' | 'history';

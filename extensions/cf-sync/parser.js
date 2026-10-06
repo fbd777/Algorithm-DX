@@ -32,7 +32,21 @@ function parseCfDocument(doc,url,status,originalTime){
  const path=cfPath(url);
  const group=path.match(/^\/group\/([A-Za-z0-9]+)\/contests(?:\/page\/\d+)?\/?$/)?.[1];
  const visibleContests=Boolean(group&&links.some(link=>{const match=cfPath(link.href).match(/^\/group\/([A-Za-z0-9]+)\/contest\/\d+(?:\/|$)/);return match?.[1]===group;}));
- return {url,status,title:text(doc.querySelector('title')),
+ const contests=[];
+ if(group){
+  const seen=new Set();
+  for(const a of doc.querySelectorAll('a[href]')){
+   const match=cfPath(a.getAttribute('href')).match(/^\/group\/([A-Za-z0-9]+)\/contest\/(\d+)(?:\/|$)/);
+   if(!match||match[1]!==group||seen.has(match[2]))continue;
+   const tr=a.closest('tr'),cells=tr?Array.from(tr.querySelectorAll('td')):[];
+   if(cells.length<3)continue;
+   const time=originalTime?(originalTime(tr)||''):text(tr.querySelector('.format-time'));
+   const duration=text(cells[2]);
+   if(!time||!/^\d+:\d{2}(?::\d{2})?$/.test(duration))continue;
+   seen.add(match[2]);contests.push({id:match[2],name:text(cells[0]).replace(/Enter\s*»|Virtual participation\s*»/g,'').trim(),time,duration});
+  }
+ }
+ return {contests,url,status,title:text(doc.querySelector('title')),
    viewer:((doc.querySelector('#header,.lang-chooser'))?cfProfileHandles(doc.querySelector('#header,.lang-chooser'))[0]:null)||null,
    loggedIn:cfLoggedIn(doc),
    challenge:cfChallenge(doc),

@@ -3,7 +3,7 @@ import { CodeforcesSyncFetcher } from './codeforces-sync.ts';
 import { normalize } from './codeforces.ts';
 import { FetchError } from './base.ts';
 import { optionsOf, unique } from './common.ts';
-import type { Cache, FetchBatch, FetchOptions, Submission } from '../domain.ts';
+import type { Cache, FetchBatch, FetchOptions, Submission, ProblemRelease } from '../domain.ts';
 import type { HttpClient } from './http.ts';
 
 export interface GroupContest { group: string; id: string; url: string }
@@ -124,4 +124,23 @@ export class CodeforcesGroupFetcher extends CodeforcesSyncFetcher {
       nextCursor:backfill&&!complete?JSON.stringify({version:1,...progress}):null,
       note:'公开提交及已配置群组/比赛的可见提交；群组内新增比赛将在后续同步自动发现。'};
   }
+}
+
+/** Supplemental Group timing only; public submission fetching is unchanged. */
+export async function fetchGroupReleases(http:HttpClient,groups:GroupContest[],key:string,secret:string,signal?:AbortSignal):Promise<ProblemRelease[]>{
+ const rows=new Map<number,ProblemRelease>();
+ for(const group of new Set(groups.map(g=>g.group))){
+  for(const gym of ['false','true']){
+   signal?.throwIfAborted();
+   const url=signedCfUrl('contest.list',{groupCode:group,gym},key,secret);
+   const body:any=await http.json(url.toString(),{signal});
+   if(body?.status!=='OK'||!Array.isArray(body.result))throw new FetchError('Group 比赛时间信息暂不可用',false,'GROUP_METADATA_FAILED');
+   for(const c of body.result){
+    if(!Number.isSafeInteger(c.id)||c.id<=0||!Number.isSafeInteger(c.startTimeSeconds)||c.startTimeSeconds<=0||!Number.isSafeInteger(c.durationSeconds)||c.durationSeconds<=0)continue;
+    if(!groups.some(g=>g.group===group&&(!g.id||Number(g.id)===c.id)))continue;
+    rows.set(c.id,{contestId:c.id,name:String(c.name||''),startTime:c.startTimeSeconds,durationSeconds:c.durationSeconds});
+   }
+  }
+ }
+ return [...rows.values()];
 }
