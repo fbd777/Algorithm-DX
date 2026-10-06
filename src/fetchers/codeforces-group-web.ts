@@ -36,7 +36,7 @@ export function nextPage(page:PageSnapshot,base:string,current:number):number|nu
  let next:number|null=null;
  for(const link of page.links){
   const url=new URL(link.href,'https://codeforces.com');if(url.origin!=='https://codeforces.com')continue;
-  const n=pageNumber(url.pathname,base);if(n!==null&&n>current)next=Math.min(next??Infinity,n);
+  const n=url.pathname===base&&url.searchParams.has('pageIndex')?(/^[1-9]\d*$/.test(url.searchParams.get('pageIndex')!)?Number(url.searchParams.get('pageIndex')):null):pageNumber(url.pathname,base);if(n!==null&&n>current)next=Math.min(next??Infinity,n);
  }
  // Never jump to the last page when CF displays an ellipsis in the pager.
  return next===null?null:current+1;
@@ -76,6 +76,7 @@ export function parseWebRows(page:PageSnapshot,contest:GroupContest,handle:strin
 }
 export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
  groups:GroupContest[];read:PageReader;
+ groupStatus=true;
  private viewers=new Map<string,string>();
  private releases=new Map<number,ProblemRelease>();
  metadata:((signal?:AbortSignal)=>Promise<ProblemRelease[]>)|undefined;
@@ -123,23 +124,25 @@ export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
   let progress:{version:number;public:string|null;groups:Record<string,number|null>;paths:Record<string,string>}={version:3,public:'1',groups:{},paths:{}};
   if(backfill&&opts.cursor){
    try{const old=JSON.parse(opts.cursor);if(old?.version===2||old?.version===3){
-    if(!(old.public===null||/^[1-9]\d*$/.test(old.public))||!old.groups||typeof old.groups!=='object'||Array.isArray(old.groups)||Object.values(old.groups).some(n=>n!==null&&(!Number.isSafeInteger(n)||Number(n)<1)))throw Error();if(old.version===3&&(!old.paths||typeof old.paths!=='object'||Array.isArray(old.paths)||Object.values(old.paths).some(p=>p!=='my'&&p!=='status')))throw Error();progress={...old,version:3,paths:old.paths??Object.fromEntries(Object.keys(old.groups).map(id=>[id,'status']))};
+    if(!(old.public===null||/^[1-9]\d*$/.test(old.public))||!old.groups||typeof old.groups!=='object'||Array.isArray(old.groups)||Object.values(old.groups).some(n=>n!==null&&(!Number.isSafeInteger(n)||Number(n)<1)))throw Error();if(old.version===3&&(!old.paths||typeof old.paths!=='object'||Array.isArray(old.paths)||Object.values(old.paths).some(p=>p!=='my'&&p!=='status'&&p!=='group_status')))throw Error();progress={...old,version:3,paths:old.paths??Object.fromEntries(Object.keys(old.groups).map(id=>[id,'status']))};
    }else if(old?.version===1){progress.public=old.public;}else if(Number.isSafeInteger(old)&&old>0){progress.public=String(old);}else throw Error();
    }catch{throw new FetchError('CF 网页回补进度无效，请重新回补历史');}
   }
   const contests=await this.discover(options.signal),rows:Submission[]=[];
   if(!backfill||progress.public!==null){const batch=await super.fetch_batch(handle,{...options,cursor:backfill?progress.public:null});rows.push(...batch.submissions);progress.public=batch.complete?null:batch.nextCursor;}
+  const groupPages=new Map<string,PageSnapshot>();
   const failures:{contest:string;error:FetchError}[]=[];let pagesRead=0;
   for(const contest of contests){
    if(backfill&&progress.groups[contest.id]===null)continue;
-   const own=this.viewers.get(contest.group)===handle.toLowerCase();
+   const useGroupStatus=this.groupStatus&&this.groups.some(g=>g.group===contest.group&&!g.id);
+   const own=!useGroupStatus&&this.viewers.get(contest.group)===handle.toLowerCase();
    let path=backfill&&progress.paths[contest.id]?progress.paths[contest.id]:(own?'my':'status');
-   let base='/group/'+contest.group+'/contest/'+contest.id+'/'+path;
-   let pageNumber=backfill?progress.groups[contest.id]??1:1,complete=false;const seen=new Set<string>();
+   let base=useGroupStatus?'/group/'+contest.group+'/status':'/group/'+contest.group+'/contest/'+contest.id+'/'+path;
+   let pageNumber=useGroupStatus&&progress.paths[contest.id]!=='group_status'?1:backfill?progress.groups[contest.id]??1:1,complete=false;const seen=new Set<string>();
    let ownUnavailable=false;
    const readCurrent=async()=>{
-    let url='https://codeforces.com'+base+(pageNumber===1?'':'/page/'+pageNumber)+'?locale=en&order=BY_ARRIVED_DESC';
-    try{return {url,page:await this.read(url,CF_GROUP_SNAPSHOT,options.signal)};}
+    let url=useGroupStatus?'https://codeforces.com'+base+'?pageIndex='+pageNumber+'&showUnofficial=true&locale=en':'https://codeforces.com'+base+(pageNumber===1?'':'/page/'+pageNumber)+'?locale=en&order=BY_ARRIVED_DESC';
+    try{let page=useGroupStatus?groupPages.get(url):undefined;if(!page){page=await this.read(url,CF_GROUP_SNAPSHOT,options.signal);if(useGroupStatus)groupPages.set(url,page);}return {url,page};}
     catch(error){
      options.signal?.throwIfAborted();
      // Some contests redirect /my when the current participation has no personal page.
@@ -157,7 +160,7 @@ export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
     options.signal?.throwIfAborted();
     let {url,page}=await readCurrent();
     // Prefer own submissions once the visible page confirms the account identity.
-    if(!ownUnavailable&&!page.challenge&&page.loggedIn&&pageNumber===1&&base.endsWith('/status')&&page.viewer?.toLowerCase()===handle.toLowerCase()&&(!backfill||!progress.paths[contest.id])){
+    if(!useGroupStatus&&!ownUnavailable&&!page.challenge&&page.loggedIn&&pageNumber===1&&base.endsWith('/status')&&page.viewer?.toLowerCase()===handle.toLowerCase()&&(!backfill||!progress.paths[contest.id])){
       base=base.slice(0,-7)+'/my';
       ({url,page}=await readCurrent());
     }
@@ -165,20 +168,23 @@ export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
     if(base.endsWith('/my')&&page.viewer?.toLowerCase()!==handle.toLowerCase())throw new FetchError('CF 登录账号发生变化或无法确认，请使用待同步账号登录后重试',false,'AUTH_REQUIRED');
     if(!page.statusTable)throw new FetchError('CF 比赛提交列表不可见或页面格式已变化',false,'GROUP_ACCESS_FAILED');
     const signature=page.rows.map(row=>row.id).join(',');if(seen.has(signature))throw new FetchError('CF 提交分页没有前进',false,'PAGINATION_STALLED');seen.add(signature);
-    rows.push(...parseWebRows(page,contest,handle));pagesRead++;
+    const selected=useGroupStatus?{...page,rows:page.rows.filter(row=>{try{return new URL(row.problem,'https://codeforces.com').pathname.startsWith('/group/'+contest.group+'/contest/'+contest.id+'/problem/');}catch{return false;}})}:page;
+    rows.push(...parseWebRows(selected,contest,handle));pagesRead++;
     const next=nextPage(page,base,pageNumber);if(next===null){complete=true;break;}pageNumber=next;
    }
    }catch(error){
     options.signal?.throwIfAborted();
     if(!(error instanceof FetchError))throw error;
-    failures.push({contest:contest.id,error});
+    const returnedToList=error.code==='CF_EXTENSION_READ_FAILED'&&error.message.includes('实际 /group/'+contest.group+'/contests');
+    const classified=returnedToList?new FetchError('CF 将比赛 '+contest.id+' 的提交页返回群组列表；当前无法读取该场，请在 CF 确认可访问性。其他已读取记录保留。',false,'GROUP_CONTEST_REDIRECT'):error;
+    failures.push({contest:contest.id,error:classified});
    }
    // One-page overlap prevents ordinary page shifts during backfill from skipping submissions.
-   progress.paths[contest.id]=base.endsWith('/my')?'my':'status';
+   progress.paths[contest.id]=useGroupStatus?'group_status':base.endsWith('/my')?'my':'status';
    progress.groups[contest.id]=complete?null:Math.max(1,pageNumber-(opts.maxPages>1?1:0));
    if(failures.some(f=>/CHALLENGE|AUTH_REQUIRED/.test(f.error.code)||/安全验证|登录已失效/.test(f.error.message)))break;
   }
-  if(failures.length&&!pagesRead)throw failures[0].error;
+  if(failures.length&&!pagesRead&&failures.some(f=>f.error.code!=='GROUP_CONTEST_REDIRECT'))throw failures.find(f=>f.error.code!=='GROUP_CONTEST_REDIRECT')!.error;
   let metadataNote='';
   if(this.metadata){try{for(const release of await this.metadata(options.signal))if(contests.some(c=>Number(c.id)===release.contestId))this.releases.set(release.contestId,release);}catch{options.signal?.throwIfAborted();metadataNote=' 比赛时间信息未完整更新，已有提交已保留。';}}
   const complete=progress.public===null&&contests.every(c=>progress.groups[c.id]===null);

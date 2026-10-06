@@ -1,5 +1,5 @@
 function validCfTask(value){
- try{const u=new URL(value);return u.origin==='https://codeforces.com'&&!u.username&&!u.password&&/^\/group\/[A-Za-z0-9]+\/(?:contests(?:\/page\/\d+)?|contest\/\d+\/(?:status|my)(?:\/page\/\d+)?)$/.test(u.pathname);}catch{return false;}
+ try{const u=new URL(value);return u.origin==='https://codeforces.com'&&!u.username&&!u.password&&/^\/group\/[A-Za-z0-9]+\/(?:(?:contests|status)(?:\/page\/\d+)?|contest\/\d+\/(?:status|my)(?:\/page\/\d+)?)$/.test(u.pathname);}catch{return false;}
 }
 // Capture server-rendered dates while HTML is being parsed, before CF's DOM-ready
 // formatter converts them to the visitor's local time. Never guess a timezone.
@@ -20,7 +20,7 @@ const timeObserver=new MutationObserver(records=>{
 timeObserver.observe(document,{subtree:true,childList:true,characterData:true});rememberCfTree(document);
 document.addEventListener('DOMContentLoaded',()=>{timeObserver.disconnect();},{once:true});
 function sameCfPage(actual,requested){
- try{const a=new URL(actual),b=new URL(requested);return a.origin===b.origin&&a.pathname.replace(/\/$/,'')===b.pathname.replace(/\/$/,'')&&Array.from(a.searchParams.keys()).every(k=>k==='locale'||k==='order'||a.searchParams.get(k)===b.searchParams.get(k))&&(!a.searchParams.has('order')||a.searchParams.get('order')===(b.searchParams.get('order')||'BY_ARRIVED_DESC'));}catch{return false;}
+ try{const a=new URL(actual),b=new URL(requested);return (a.searchParams.get('pageIndex')||'1')===(b.searchParams.get('pageIndex')||'1')&&(a.searchParams.get('showUnofficial')||'false')===(b.searchParams.get('showUnofficial')||'false')&&a.origin===b.origin&&a.pathname.replace(/\/$/,'')===b.pathname.replace(/\/$/,'')&&Array.from(a.searchParams.keys()).every(k=>k==='locale'||k==='order'||a.searchParams.get(k)===b.searchParams.get(k))&&(!a.searchParams.has('order')||a.searchParams.get('order')===(b.searchParams.get('order')||'BY_ARRIVED_DESC'));}catch{return false;}
 }
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
  if(sender.id!==chrome.runtime.id)return;

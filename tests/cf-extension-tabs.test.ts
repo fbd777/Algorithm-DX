@@ -115,3 +115,9 @@ test('stuck owned worker is replaced once without changing the original user tab
  const h=navigationHarness([]),get=h.chrome.tabs.get;h.chrome.tabs.get=async id=>{const tab=await get(id);return id===10?{...tab,url:'https://codeforces.com/group/abc/contests'}:tab;};
  const result=await h.read({url:'https://codeforces.com/group/abc/contest/720850/my'},{id:1,windowId:1});assert.equal(result.result.source,'rendered-page');assert.equal(h.operations.filter(op=>op[0]==='create').length,2);assert.equal(h.session.workerTabId,11);assert.equal(h.session.readingTabId,11);
 });
+
+test('group status query pagination never reuses first page or different unofficial filter',async()=>{
+ for(const old of ['https://codeforces.com/group/abc/status','https://codeforces.com/group/abc/status?pageIndex=1&showUnofficial=true','https://codeforces.com/group/abc/status?pageIndex=2&showUnofficial=false']){
+ const h=navigationHarness([{id:1,url:old,status:'complete',windowId:1}]);await h.read({url:'https://codeforces.com/group/abc/status?pageIndex=2&showUnofficial=true'},{id:1,windowId:1});assert.equal(h.operations[0][0],'create');
+ }
+});

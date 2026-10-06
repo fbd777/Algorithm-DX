@@ -112,7 +112,7 @@ test('valid visible submission tables are accepted even when header login detect
  visits.push(url);if(url.includes('/contests'))return page(url,{viewer:'Tester',links:[{href:contest.url,text:'Contest'}]});
  assert.match(url,/\/my/);const second=url.includes('/page/2');return page(url,{viewer:'Tester',rows:[row(second?'2':'1')],links:second?[]:[{href:contest.url+'/my/page/2',text:'2'}]});
  });
- const first=await f.fetch_batch('Tester',{mode:'backfill',maxPages:1});const cursor=JSON.parse(first.nextCursor!);assert.equal(cursor.paths['720850'],'my');
+ f.groupStatus=false;const first=await f.fetch_batch('Tester',{mode:'backfill',maxPages:1});const cursor=JSON.parse(first.nextCursor!);assert.equal(cursor.paths['720850'],'my');
  const second=await f.fetch_batch('Tester',{mode:'backfill',maxPages:1,cursor:first.nextCursor});assert.equal(second.complete,true);assert.equal(second.submissions[0].submission_id,'2');
  assert.equal(visits.some(url=>url.includes('/status')),false);
  });
@@ -124,7 +124,7 @@ test('valid visible submission tables are accepted even when header login detect
  });
  test('changing logged-in account mid-sync cannot turn own history into empty success',async()=>{
  const f=new CodeforcesGroupWebFetcher(cache,http,parseGroupLinks(root+'/contests'),async url=>url.includes('/contests')?page(url,{viewer:'Tester',links:[{href:contest.url,text:'Contest'}]}):page(url,{viewer:'Other'}));
- await assert.rejects(f.fetch_batch('Tester'),{code:'AUTH_REQUIRED'});
+ f.groupStatus=false;await assert.rejects(f.fetch_batch('Tester'),{code:'AUTH_REQUIRED'});
  });
 
  test('group sync reaches AC records and DX entries, then saved timing appears in practice history',async()=>{
@@ -148,7 +148,7 @@ test('personal-page redirect falls back once to common status and filters the ac
  visits.push(url);if(url.includes('/contests'))return page(url,{viewer:'Tester',links:[{href:contest.url,text:'Contest'}]});
  if(url.includes('/my?'))throw new FetchError('期望 /720850/my，实际 /other/my',false,'CF_EXTENSION_READ_FAILED');
  return page(url,{viewer:'Tester',rows:[row('1'),row('2','Other')]});
- });const batch=await f.fetch_batch('Tester');assert.equal(batch.submissions.length,1);assert.equal(visits.filter(url=>url.includes('/my?')).length,1);assert.equal(visits.filter(url=>url.includes('/status?')).length,1);
+ });f.groupStatus=false;const batch=await f.fetch_batch('Tester');assert.equal(batch.submissions.length,1);assert.equal(visits.filter(url=>url.includes('/my?')).length,1);assert.equal(visits.filter(url=>url.includes('/status?')).length,1);
 });
 
 test('one unavailable contest preserves valid records and resumes only unfinished contests',async()=>{
@@ -169,4 +169,23 @@ test('group timing metadata is persisted with submissions and enables existing c
  recordPractice(db,{userId:user,platform:'codeforces',problemId:'720850:A',seconds:estimate!,outcome:'ac',practiceKind:'unknown',timingSource:'contest_estimate',attemptedAt:null});
  assert.equal(listPractice(db,user)[0].timing_source,'contest_estimate');
  }finally{db.close();}
+});
+
+test('site redirect is reported as unavailable contest coverage, never empty complete history or extension permissions',async()=>{
+ const f=new CodeforcesGroupWebFetcher(cache,http,[contest],async()=>{throw new FetchError('期望 /group/abc/contest/720850/status，实际 /group/abc/contests）。已保留页面，请检查扩展的网站访问权限',false,'CF_EXTENSION_READ_FAILED');});
+ const batch=await f.fetch_batch('Tester',{mode:'backfill',cursor:JSON.stringify({version:3,public:null,groups:{720850:1},paths:{720850:'status'}})});
+ assert.equal(batch.complete,false);assert.equal(batch.submissions.length,0);assert.match(batch.note,/群组未完成.*CF 将比赛 720850/);assert.doesNotMatch(batch.note,/扩展的网站访问权限/);assert.equal(JSON.parse(batch.nextCursor!).groups['720850'],1);
+});
+
+test('group status paginates once for all contests and routes rows by contest and user',async()=>{
+ const visits:string[]=[];const f=new CodeforcesGroupWebFetcher(cache,http,parseGroupLinks(root+'/status'),async url=>{
+ visits.push(url);if(url.includes('/contests'))return page(url,{links:[{href:contest.url,text:'One'},{href:root+'/contest/710682',text:'Two'}]});
+ assert.match(url,/\/group\/abc\/status/);assert.doesNotMatch(url,/\/contest\//);
+ const second=new URL(url).searchParams.get('pageIndex')==='2';return page(url,{rows:second?[{...row('2'),problem:root+'/contest/710682/problem/B'}]:[row('1'),row('3','Other')],links:second?[]:[{href:root+'/status?pageIndex=2&showUnofficial=false',text:'2'}]});
+ });const result=await f.fetch_batch('Tester',{mode:'backfill'});assert.equal(result.complete,true);assert.deepEqual(result.submissions.map(r=>r.problem_id).sort(),['710682:B','720850:A']);assert.equal(visits.filter(u=>u.includes('/status')).length,2);
+});
+test('group status cursor resumes after a bounded batch instead of repeating the first page',async()=>{
+ const visits:string[]=[];const f=new CodeforcesGroupWebFetcher(cache,http,parseGroupLinks(root),async url=>{
+ if(url.includes('/contests'))return page(url,{links:[{href:contest.url,text:'One'}]});visits.push(url);const second=new URL(url).searchParams.get('pageIndex')==='2';return page(url,{rows:[row(second?'2':'1')],links:second?[]:[{href:root+'/status?pageIndex=2&showUnofficial=false',text:'2'}]});
+ });const first=await f.fetch_batch('Tester',{mode:'backfill',maxPages:1});assert.equal(first.complete,false);const second=await f.fetch_batch('Tester',{mode:'backfill',maxPages:1,cursor:first.nextCursor});assert.equal(second.complete,true);assert.equal(second.submissions[0].submission_id,'2');assert.equal(visits.length,2);
 });

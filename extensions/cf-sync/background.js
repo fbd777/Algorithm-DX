@@ -25,7 +25,7 @@ async function findCfTab(){
 }
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function sameTaskPage(actual,requested){
- try{const a=new URL(actual),b=new URL(requested);return a.origin===b.origin&&a.pathname.replace(/\/$/,'')===b.pathname.replace(/\/$/,'')&&Array.from(a.searchParams.keys()).every(k=>k==='locale'||k==='order'||a.searchParams.get(k)===b.searchParams.get(k))&&(!a.searchParams.has('order')||a.searchParams.get('order')===(b.searchParams.get('order')||'BY_ARRIVED_DESC'));}catch{return false;}
+ try{const a=new URL(actual),b=new URL(requested);return (a.searchParams.get('pageIndex')||'1')===(b.searchParams.get('pageIndex')||'1')&&(a.searchParams.get('showUnofficial')||'false')===(b.searchParams.get('showUnofficial')||'false')&&a.origin===b.origin&&a.pathname.replace(/\/$/,'')===b.pathname.replace(/\/$/,'')&&Array.from(a.searchParams.keys()).every(k=>k==='locale'||k==='order'||a.searchParams.get(k)===b.searchParams.get(k))&&(!a.searchParams.has('order')||a.searchParams.get('order')===(b.searchParams.get('order')||'BY_ARRIVED_DESC'));}catch{return false;}
 }
 async function readThroughTab(task,anchor){
  // Prefer an already-open matching page. Never navigate a user's own tab.

@@ -13,7 +13,7 @@ export function parseGroupLinks(input: string): GroupContest[] {
   const seen=new Map<string,GroupContest>();
   for(const link of links){
     let url:URL;try{url=new URL(link);}catch{throw new Error('请填写完整的 CF Group 或比赛链接');}
-    const match=url.pathname.match(/^\/group\/([A-Za-z0-9]+)(?:\/contest\/([1-9]\d*)(?:\/.*)?|\/contests\/?|\/?)$/);
+    const match=url.pathname.match(/^\/group\/([A-Za-z0-9]+)(?:\/contest\/([1-9]\d*)(?:\/.*)?|\/(?:contests|status)\/?|\/?)$/);
     if(url.protocol!=='https:' || url.hostname!=='codeforces.com' || url.port || url.username || url.password || !match)
       throw new Error('请使用 https://codeforces.com/group/群组编号 或其比赛链接');
     if(match[2]&&!Number.isSafeInteger(Number(match[2])))throw new Error('比赛编号无效');
