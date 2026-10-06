@@ -1,11 +1,13 @@
-# Algorithm DX
+# Algorithm DX v0.1.0
 
 这是一个面向算法竞赛爱好者开源的个人算法 Dashboard，在这里，你可以：
 1. 汇总自己的多平台做题记录；
 2. 在“题友圈”追踪关注的人的做题动态；
 3. 使用内置计时器、比赛用时或手动计时 Codeforces AC 用时，来得到你的完成率，进而生成你的 B50，通过练习提高你的你的DX Rating!
 
-基于 maimai DX B50机制启发的 B50 榜单是项目的核心特色；当前计分实现仅覆盖 Codeforces。
+基于 maimai DX B50机制启发的Codeforces B50 与 DX Rating是项目的核心特色。
+
+尽管尽力臻于完善，Algorithm DX 一定还存在各种各样的问题，欢迎使用、反馈和PR。
 
 默认数据库为 `data/algorithm-dx.sqlite`，项目环境变量统一使用 `ALGORITHM_DX_*` 前缀。
 
