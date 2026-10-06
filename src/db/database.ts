@@ -20,6 +20,7 @@ const MIGRATIONS: readonly { appliesWhenAtMost: number; file: string }[] = [
   { appliesWhenAtMost: 12, file: './migrations/013-practice-edit.sql' },
   { appliesWhenAtMost: 13, file: './migrations/014-manual-practice.sql' },
   { appliesWhenAtMost: 14, file: './migrations/015-timer-settlement.sql' },
+  { appliesWhenAtMost: 15, file: './migrations/016-group-rating-sources.sql' },
 ];
 export const SCHEMA_VERSION = MIGRATIONS.length;
 

@@ -1,3 +1,5 @@
+import { CodeforcesSyncFetcher } from '../fetchers/codeforces-sync.ts';
+import { refreshGroupRatings } from '../fetchers/cf-group-ratings.ts';
 import { acquireSyncLock } from './lock.ts';
 import { reconcileTimers } from '../dx/timer.ts';
 import type { DatabaseSync } from 'node:sqlite';
@@ -143,7 +145,8 @@ export class SyncService {
       // 题目评级回填放在**事务提交之后**：这一批刚入库的未评定提交（比赛刚打完
       // 抓回来的那种）在同一次同步里就有机会补上评级，不用等下一轮。
       // 失败与出题日期同样处理：不算同步失败，说明拼进记录即可。
-      const ratingNote=await this.refreshProblemRatings(fetcher,account);
+      let ratingNote=await this.refreshProblemRatings(fetcher,account);
+      if(fetcher instanceof CodeforcesSyncFetcher){try{const note=await refreshGroupRatings(this.db,account.id,fetcher.http);ratingNote=[ratingNote,note].filter(Boolean).join('｜');}catch(error){ratingNote+='｜Group 原题难度未更新（'+redactSecrets(error instanceof Error?error.message:'读取失败')+'）';}}
       assertLock();
       if(ratingNote)this.db.prepare('UPDATE sync_runs SET message=message||? WHERE id=?').run(`｜${ratingNote}`,runId);
       return {accountId:account.id,status:'success',fetched:batch.submissions.length,inserted,message:ratingNote?`${note}｜${ratingNote}`:note};

@@ -689,6 +689,10 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           return feed(ctx, params);
         case '/api/problem':
           return problemDetail(ctx, params);
+        case '/api/cf-group-ratings': {
+          const id=parseIntOrNull(params.get('accountId'),1,Number.MAX_SAFE_INTEGER,'accountId');if(id===null)throw new BadRequest('缺少 accountId');
+          return {status:200,body:{items:ctx.db.prepare("SELECT DISTINCT s.problem_id,s.problem_title,r.source_problem_id,r.source_url,r.rating,r.method FROM submissions s LEFT JOIN cf_group_rating_sources r ON r.problem_id=s.problem_id WHERE s.account_id=? AND s.platform='codeforces' AND s.problem_url LIKE 'https://codeforces.com/group/%' ORDER BY s.problem_id").all(id)}};
+        }
         case '/api/cf-extension/status': {
           const accountId=parseIntOrNull(params.get('accountId'),1,Number.MAX_SAFE_INTEGER,'accountId');
           const records=accountId===null?null:ctx.db.prepare("SELECT COUNT(*) AS submissions, COALESCE(SUM(status='AC'),0) AS accepted, COUNT(DISTINCT CASE WHEN status='AC' THEN problem_id END) AS solved FROM submissions WHERE account_id=? AND platform='codeforces' AND problem_url LIKE 'https://codeforces.com/group/%'").get(accountId);
