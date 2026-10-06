@@ -68,7 +68,7 @@ export function openCfGroups(account,onSaved) {
     try{const r=await fetch('/api/cf-extension/status?accountId='+encodeURIComponent(account.id));if(!r.ok)throw Error('连接状态暂不可用');const state=await r.json();if(closed)return;
       const text=(state.connected?'扩展已连接':'扩展未连接：请打开 Edge 中的扩展并点击连接')+(state.records?'；已保存 Group 提交 '+state.records.submissions+' 条，AC '+state.records.solved+' 题':'');
       const pending=state.pending?.[0];const last=state.lastPage;
-      dialog.querySelector('.extension-status').textContent=text+(pending?'；正在读取 '+new URL(pending.url).pathname:last?.state==='failed'?'；上次读取失败：'+last.message:last?'；最近读取 '+new URL(last.url).pathname+'（'+last.rows+' 条页面记录）':'')+(state.lastSync?.status==='failed'?'；上次同步失败：'+state.lastSync.message:'');
+      dialog.querySelector('.extension-status').textContent=text+(pending?'；正在读取 '+new URL(pending.url).pathname:last?.state==='failed'?'；上次读取失败：'+last.message:last?'；最近读取 '+new URL(last.url).pathname+'（'+last.rows+' 条页面记录）':'')+(state.lastSync?.status==='failed'?'；上次同步失败：'+state.lastSync.message:state.lastSync?.message?.includes('群组未完成')?'；'+state.lastSync.message:'');
     }catch(e){if(!closed)dialog.querySelector('.extension-status').textContent=e.message;}
   };
   dialog.querySelector('.extension-check').onclick=checkConnection;

@@ -62,7 +62,7 @@ test('login, challenge, wrong pages, unknown markup and repeated pages never bec
   await assert.rejects(f.fetch_batch('Tester'));
  }
  const repeated=new CodeforcesGroupWebFetcher(cache,http,[contest],async(url)=>page(url,{rows:[row('1')],links:[{href:'/group/abc/contest/720850/status/page/99',text:'99'}]}));
- await assert.rejects(repeated.fetch_batch('Tester'),/分页没有前进/);
+ const stalled=await repeated.fetch_batch('Tester');assert.equal(stalled.complete,false);assert.match(stalled.note,/分页没有前进/);assert.equal(stalled.submissions.length,1);
  const empty=new CodeforcesGroupWebFetcher(cache,http,[contest],async(url)=>page(url));
  assert.equal((await empty.fetch_batch('Tester')).complete,true);
 });
@@ -141,3 +141,18 @@ test('valid visible submission tables are accepted even when header login detect
  assert.equal((await sync.sync(account,{force:true}))[0].inserted,0,'repeat sync must not duplicate submissions');
  }finally{db.close();}
  });
+
+test('personal-page redirect falls back once to common status and filters the account',async()=>{
+ const visits:string[]=[];const f=new CodeforcesGroupWebFetcher(cache,http,parseGroupLinks(root+'/contests'),async url=>{
+ visits.push(url);if(url.includes('/contests'))return page(url,{viewer:'Tester',links:[{href:contest.url,text:'Contest'}]});
+ if(url.includes('/my?'))throw new FetchError('期望 /720850/my，实际 /other/my',false,'CF_EXTENSION_READ_FAILED');
+ return page(url,{viewer:'Tester',rows:[row('1'),row('2','Other')]});
+ });const batch=await f.fetch_batch('Tester');assert.equal(batch.submissions.length,1);assert.equal(visits.filter(url=>url.includes('/my?')).length,1);assert.equal(visits.filter(url=>url.includes('/status?')).length,1);
+});
+
+test('one unavailable contest preserves valid records and resumes only unfinished contests',async()=>{
+ const contests=[contest,{...contest,id:'710682',url:root+'/contest/710682'},{...contest,id:'710519',url:root+'/contest/710519'}];let broken=true;const visits:string[]=[];
+ const f=new CodeforcesGroupWebFetcher(cache,http,contests,async url=>{visits.push(url);if(url.includes('/710682/')&&broken)throw new FetchError('page unavailable',false,'GROUP_ACCESS_FAILED');const id=url.match(/contest\/(\d+)/)![1];return page(url,{rows:[{...row(id),problem:root+'/contest/'+id+'/problem/A'}]});});
+ const first=await f.fetch_batch('Tester',{mode:'backfill'});assert.equal(first.submissions.length,2);assert.equal(first.complete,false);assert.match(first.note,/群组未完成.*710682/);assert.equal(JSON.parse(first.nextCursor!).groups['710682'],1);
+ broken=false;visits.length=0;const next=await f.fetch_batch('Tester',{mode:'backfill',cursor:first.nextCursor});assert.equal(next.complete,true);assert.equal(next.submissions.length,1);assert.equal(visits.length,1);assert.match(visits[0],/710682/);
+});

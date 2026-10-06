@@ -120,35 +120,58 @@ export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
   }
   const contests=await this.discover(options.signal),rows:Submission[]=[];
   if(!backfill||progress.public!==null){const batch=await super.fetch_batch(handle,{...options,cursor:backfill?progress.public:null});rows.push(...batch.submissions);progress.public=batch.complete?null:batch.nextCursor;}
+  const failures:{contest:string;error:FetchError}[]=[];let pagesRead=0;
   for(const contest of contests){
    if(backfill&&progress.groups[contest.id]===null)continue;
    const own=this.viewers.get(contest.group)===handle.toLowerCase();
    let path=backfill&&progress.paths[contest.id]?progress.paths[contest.id]:(own?'my':'status');
    let base='/group/'+contest.group+'/contest/'+contest.id+'/'+path;
    let pageNumber=backfill?progress.groups[contest.id]??1:1,complete=false;const seen=new Set<string>();
+   let ownUnavailable=false;
+   const readCurrent=async()=>{
+    let url='https://codeforces.com'+base+(pageNumber===1?'':'/page/'+pageNumber)+'?locale=en&order=BY_ARRIVED_DESC';
+    try{return {url,page:await this.read(url,CF_GROUP_SNAPSHOT,options.signal)};}
+    catch(error){
+     options.signal?.throwIfAborted();
+     // Some contests redirect /my when the current participation has no personal page.
+     // Read the visible common status instead and keep the strict handle filter.
+     if(base.endsWith('/my')&&pageNumber===1&&error instanceof FetchError&&error.code==='CF_EXTENSION_READ_FAILED'&&/期望|跳转到了其他页面/.test(error.message)){
+      ownUnavailable=true;base=base.slice(0,-3)+'/status';
+      url='https://codeforces.com'+base+'?locale=en&order=BY_ARRIVED_DESC';
+      return {url,page:await this.read(url,CF_GROUP_SNAPSHOT,options.signal)};
+     }
+     throw error;
+    }
+   };
+   try{
    for(let count=0;count<opts.maxPages;count++){
     options.signal?.throwIfAborted();
-    let url='https://codeforces.com'+base+(pageNumber===1?'':'/page/'+pageNumber)+'?locale=en&order=BY_ARRIVED_DESC';
-    let page=await this.read(url,CF_GROUP_SNAPSHOT,options.signal);
+    let {url,page}=await readCurrent();
     // Prefer own submissions once the visible page confirms the account identity.
-    if(!page.challenge&&page.loggedIn&&pageNumber===1&&base.endsWith('/status')&&page.viewer?.toLowerCase()===handle.toLowerCase()&&(!backfill||!progress.paths[contest.id])){
+    if(!ownUnavailable&&!page.challenge&&page.loggedIn&&pageNumber===1&&base.endsWith('/status')&&page.viewer?.toLowerCase()===handle.toLowerCase()&&(!backfill||!progress.paths[contest.id])){
       base=base.slice(0,-7)+'/my';
-      url='https://codeforces.com'+base+(pageNumber===1?'':'/page/'+pageNumber)+'?locale=en&order=BY_ARRIVED_DESC';
-      page=await this.read(url,CF_GROUP_SNAPSHOT,options.signal);
+      ({url,page}=await readCurrent());
     }
     validatePage(page,url);
     if(base.endsWith('/my')&&page.viewer?.toLowerCase()!==handle.toLowerCase())throw new FetchError('CF 登录账号发生变化或无法确认，请使用待同步账号登录后重试',false,'AUTH_REQUIRED');
     if(!page.statusTable)throw new FetchError('CF 比赛提交列表不可见或页面格式已变化',false,'GROUP_ACCESS_FAILED');
     const signature=page.rows.map(row=>row.id).join(',');if(seen.has(signature))throw new FetchError('CF 提交分页没有前进',false,'PAGINATION_STALLED');seen.add(signature);
-    rows.push(...parseWebRows(page,contest,handle));
+    rows.push(...parseWebRows(page,contest,handle));pagesRead++;
     const next=nextPage(page,base,pageNumber);if(next===null){complete=true;break;}pageNumber=next;
+   }
+   }catch(error){
+    options.signal?.throwIfAborted();
+    if(!(error instanceof FetchError))throw error;
+    failures.push({contest:contest.id,error});
    }
    // One-page overlap prevents ordinary page shifts during backfill from skipping submissions.
    progress.paths[contest.id]=base.endsWith('/my')?'my':'status';
    progress.groups[contest.id]=complete?null:Math.max(1,pageNumber-(opts.maxPages>1?1:0));
+   if(failures.some(f=>/CHALLENGE|AUTH_REQUIRED/.test(f.error.code)||/安全验证|登录已失效/.test(f.error.message)))break;
   }
+  if(failures.length&&!pagesRead)throw failures[0].error;
   const complete=progress.public===null&&contests.every(c=>progress.groups[c.id]===null);
   return {submissions:unique(rows),source:'https://codeforces.com/group',scope:backfill?'history':'window',acceptedOnly:false,complete,nextCursor:backfill&&!complete?JSON.stringify(progress):null,
-   note:'公开提交与登录账号可见的 Group 提交；已读取 '+contests.length+' 场 Group 比赛、'+unique(rows).filter(row=>row.problem_url?.includes('/group/')).length+' 条本账号群组提交。'+(complete?'本轮可见记录已遍历完成。':'本轮最多读取每场 '+opts.maxPages+' 页，完整可见记录请继续回补历史。')};
+   note:'公开提交与登录账号可见的 Group 提交；本轮包含 '+contests.length+' 场 Group 比赛、'+unique(rows).filter(row=>row.problem_url?.includes('/group/')).length+' 条本账号群组提交。'+(complete?'本轮可见记录已遍历完成。':'本轮最多读取每场 '+opts.maxPages+' 页，完整可见记录请继续回补历史。')+(failures.length?' 群组未完成：'+failures.map(f=>f.contest+'（'+f.error.message+'）').join('；')+'；已读取记录已保留，可继续回补。':'')};
  }
 }

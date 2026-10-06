@@ -110,3 +110,8 @@ test('a filtered status page is not reused for an unfiltered task',async()=>{
  const h=navigationHarness([]);const get=h.chrome.tabs.get;h.chrome.tabs.get=async id=>({...await get(id),url:'https://codeforces.com/enter'});
  await assert.rejects(h.read({url:'https://codeforces.com/group/abc/contests'},{id:1,windowId:1}),/期望.*contests.*实际.*enter/);
  });
+
+test('stuck owned worker is replaced once without changing the original user tab',async()=>{
+ const h=navigationHarness([]),get=h.chrome.tabs.get;h.chrome.tabs.get=async id=>{const tab=await get(id);return id===10?{...tab,url:'https://codeforces.com/group/abc/contests'}:tab;};
+ const result=await h.read({url:'https://codeforces.com/group/abc/contest/720850/my'},{id:1,windowId:1});assert.equal(result.result.source,'rendered-page');assert.equal(h.operations.filter(op=>op[0]==='create').length,2);assert.equal(h.session.workerTabId,11);assert.equal(h.session.readingTabId,11);
+});

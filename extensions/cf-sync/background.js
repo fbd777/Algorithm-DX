@@ -43,7 +43,7 @@ async function readThroughTab(task,anchor){
   else {tab=await chrome.tabs.create({url:task.url,active:false,windowId:anchor.windowId});await chrome.storage.session.set({workerTabId:tab.id});}
  }
  await chrome.storage.session.set({readingTabId:tab.id});
- let lastError='',recovered=false;
+ let lastError='',recovered=false,replaced=false;
  for(let i=0;i<50;i++){
   if(!(await chrome.storage.local.get('enabled')).enabled)throw Error('扩展已断开');
   const current=await chrome.tabs.get(tab.id);
@@ -52,7 +52,18 @@ async function readThroughTab(task,anchor){
     const ready=await chrome.tabs.sendMessage(tab.id,{type:'cf-ready'});
     if(ready?.challenge)return {error:'浏览器读取页面出现安全验证。点击扩展「打开读取页面」手动完成后重连；没有再次发起 fetch 请求'};
     if(ready?.ready){
-     if(!sameTaskPage(current.url,task.url)||(ready.actualUrl&&!sameTaskPage(ready.actualUrl,task.url))){lastError='期望 '+new URL(task.url).pathname+'，实际 '+new URL(ready.actualUrl||current.url).pathname;await pause(400);continue;}
+     if(!sameTaskPage(current.url,task.url)||(ready.actualUrl&&!sameTaskPage(ready.actualUrl,task.url))){
+      lastError='期望 '+new URL(task.url).pathname+'，实际 '+new URL(ready.actualUrl||current.url).pathname;
+      // A stuck or redirected worker must not poison every subsequent contest.
+      if(!replaced&&i>=10){
+       const saved=await chrome.storage.session.get('workerTabId');
+       if(saved.workerTabId===tab.id){
+        replaced=true;tab=await chrome.tabs.create({url:task.url,active:false,windowId:anchor.windowId});
+        await chrome.storage.session.set({workerTabId:tab.id,readingTabId:tab.id});
+       }
+      }
+      await pause(400);continue;
+     }
      return await chrome.tabs.sendMessage(tab.id,{type:'read-cf-group',url:task.url});
     }
    }catch(error){
