@@ -1,0 +1,1462 @@
+{
+  "kind": "fitted",
+  "method": "weighted local-linear Gaussian smoother followed by weighted isotonic regression (PAVA)",
+  "slopeFloor": 0,
+  "note": "monotoneSeconds 是主推值；rawSeconds 是同一带宽下的未约束值，保留作对照",
+  "models": {
+    "km": {
+      "bandwidth": 150,
+      "field": "t97KmSeconds",
+      "adjustedGridPoints": 10,
+      "totalGridPoints": 65,
+      "maxAbsDeltaSeconds": 160.2423869097529,
+      "blocks": [
+        {
+          "from": 800,
+          "to": 800,
+          "level": 1446.946822974675,
+          "slopeFloor": 0,
+          "seconds": 1446.946822974675,
+          "weight": 88408.1073596159
+        },
+        {
+          "from": 825,
+          "to": 825,
+          "level": 1587.7372933431514,
+          "slopeFloor": 0,
+          "seconds": 1587.7372933431514,
+          "weight": 94521.01232367798
+        },
+        {
+          "from": 850,
+          "to": 850,
+          "level": 1722.9772226924329,
+          "slopeFloor": 0,
+          "seconds": 1722.9772226924329,
+          "weight": 99715.76443228542
+        },
+        {
+          "from": 875,
+          "to": 875,
+          "level": 1852.7845886966873,
+          "slopeFloor": 0,
+          "seconds": 1852.7845886966873,
+          "weight": 104026.47207170738
+        },
+        {
+          "from": 900,
+          "to": 900,
+          "level": 1977.295004184465,
+          "slopeFloor": 0,
+          "seconds": 1977.295004184465,
+          "weight": 107556.17243631999
+        },
+        {
+          "from": 925,
+          "to": 925,
+          "level": 2096.6359723693618,
+          "slopeFloor": 0,
+          "seconds": 2096.6359723693618,
+          "weight": 110452.3178525958
+        },
+        {
+          "from": 950,
+          "to": 950,
+          "level": 2210.8982982477273,
+          "slopeFloor": 0,
+          "seconds": 2210.8982982477273,
+          "weight": 112877.76687553985
+        },
+        {
+          "from": 975,
+          "to": 975,
+          "level": 2320.1070055793452,
+          "slopeFloor": 0,
+          "seconds": 2320.1070055793452,
+          "weight": 114982.51724297016
+        },
+        {
+          "from": 1000,
+          "to": 1000,
+          "level": 2424.1947106613034,
+          "slopeFloor": 0,
+          "seconds": 2424.1947106613034,
+          "weight": 116880.77775932569
+        },
+        {
+          "from": 1025,
+          "to": 1025,
+          "level": 2522.981376680448,
+          "slopeFloor": 0,
+          "seconds": 2522.981376680448,
+          "weight": 118636.49719688046
+        },
+        {
+          "from": 1050,
+          "to": 1050,
+          "level": 2616.165960041884,
+          "slopeFloor": 0,
+          "seconds": 2616.165960041884,
+          "weight": 120258.5871977664
+        },
+        {
+          "from": 1075,
+          "to": 1075,
+          "level": 2703.337215911397,
+          "slopeFloor": 0,
+          "seconds": 2703.337215911397,
+          "weight": 121705.25538560093
+        },
+        {
+          "from": 1100,
+          "to": 1100,
+          "level": 2784.011057652385,
+          "slopeFloor": 0,
+          "seconds": 2784.011057652385,
+          "weight": 122895.4667250242
+        },
+        {
+          "from": 1125,
+          "to": 1125,
+          "level": 2857.697474660836,
+          "slopeFloor": 0,
+          "seconds": 2857.697474660836,
+          "weight": 123724.7659734061
+        },
+        {
+          "from": 1150,
+          "to": 1150,
+          "level": 2923.9893837126206,
+          "slopeFloor": 0,
+          "seconds": 2923.9893837126206,
+          "weight": 124082.5337676232
+        },
+        {
+          "from": 1175,
+          "to": 1175,
+          "level": 2982.651913910679,
+          "slopeFloor": 0,
+          "seconds": 2982.651913910679,
+          "weight": 123868.09167384864
+        },
+        {
+          "from": 1200,
+          "to": 1200,
+          "level": 3033.6821771801706,
+          "slopeFloor": 0,
+          "seconds": 3033.6821771801706,
+          "weight": 123003.72985114326
+        },
+        {
+          "from": 1225,
+          "to": 1225,
+          "level": 3077.315532071846,
+          "slopeFloor": 0,
+          "seconds": 3077.315532071846,
+          "weight": 121443.51472304454
+        },
+        {
+          "from": 1250,
+          "to": 1250,
+          "level": 3113.975250568237,
+          "slopeFloor": 0,
+          "seconds": 3113.975250568237,
+          "weight": 119177.49145446191
+        },
+        {
+          "from": 1275,
+          "to": 1275,
+          "level": 3144.187644442226,
+          "slopeFloor": 0,
+          "seconds": 3144.187644442226,
+          "weight": 116231.52885465587
+        },
+        {
+          "from": 1300,
+          "to": 1300,
+          "level": 3168.499665602439,
+          "slopeFloor": 0,
+          "seconds": 3168.499665602439,
+          "weight": 112663.51414500468
+        },
+        {
+          "from": 1325,
+          "to": 1325,
+          "level": 3187.433145766054,
+          "slopeFloor": 0,
+          "seconds": 3187.433145766054,
+          "weight": 108556.88109240677
+        },
+        {
+          "from": 1350,
+          "to": 1350,
+          "level": 3201.492166627226,
+          "slopeFloor": 0,
+          "seconds": 3201.492166627226,
+          "weight": 104012.56171977699
+        },
+        {
+          "from": 1375,
+          "to": 1375,
+          "level": 3211.217072989087,
+          "slopeFloor": 0,
+          "seconds": 3211.217072989087,
+          "weight": 99140.41900438129
+        },
+        {
+          "from": 1400,
+          "to": 1400,
+          "level": 3217.260244144843,
+          "slopeFloor": 0,
+          "seconds": 3217.260244144843,
+          "weight": 94051.08345281254
+        },
+        {
+          "from": 1425,
+          "to": 1425,
+          "level": 3220.451175465473,
+          "slopeFloor": 0,
+          "seconds": 3220.451175465473,
+          "weight": 88848.91917937699
+        },
+        {
+          "from": 1450,
+          "to": 1450,
+          "level": 3221.8228657554173,
+          "slopeFloor": 0,
+          "seconds": 3221.8228657554173,
+          "weight": 83626.61905962798
+        },
+        {
+          "from": 1475,
+          "to": 1475,
+          "level": 3222.5844095457537,
+          "slopeFloor": 0,
+          "seconds": 3222.5844095457537,
+          "weight": 78461.69836863292
+        },
+        {
+          "from": 1500,
+          "to": 1500,
+          "level": 3224.039813163348,
+          "slopeFloor": 0,
+          "seconds": 3224.039813163348,
+          "weight": 73414.93700122209
+        },
+        {
+          "from": 1525,
+          "to": 1525,
+          "level": 3227.4647428497556,
+          "slopeFloor": 0,
+          "seconds": 3227.4647428497556,
+          "weight": 68530.62071845937
+        },
+        {
+          "from": 1550,
+          "to": 1550,
+          "level": 3233.9591097487787,
+          "slopeFloor": 0,
+          "seconds": 3233.9591097487787,
+          "weight": 63838.26020112772
+        },
+        {
+          "from": 1575,
+          "to": 1575,
+          "level": 3244.2962874285163,
+          "slopeFloor": 0,
+          "seconds": 3244.2962874285163,
+          "weight": 59355.33521558353
+        },
+        {
+          "from": 1600,
+          "to": 1600,
+          "level": 3258.793317683365,
+          "slopeFloor": 0,
+          "seconds": 3258.793317683365,
+          "weight": 55090.536051143914
+        },
+        {
+          "from": 1625,
+          "to": 1625,
+          "level": 3277.2320715899905,
+          "slopeFloor": 0,
+          "seconds": 3277.2320715899905,
+          "weight": 51046.97075751393
+        },
+        {
+          "from": 1650,
+          "to": 1650,
+          "level": 3298.8643760341592,
+          "slopeFloor": 0,
+          "seconds": 3298.8643760341592,
+          "weight": 47224.88109151482
+        },
+        {
+          "from": 1675,
+          "to": 1675,
+          "level": 3322.525137537845,
+          "slopeFloor": 0,
+          "seconds": 3322.525137537845,
+          "weight": 43623.5536733137
+        },
+        {
+          "from": 1700,
+          "to": 1700,
+          "level": 3346.849884879378,
+          "slopeFloor": 0,
+          "seconds": 3346.849884879378,
+          "weight": 40242.2998433532
+        },
+        {
+          "from": 1725,
+          "to": 1725,
+          "level": 3370.5533206946393,
+          "slopeFloor": 0,
+          "seconds": 3370.5533206946393,
+          "weight": 37080.570086399
+        },
+        {
+          "from": 1750,
+          "to": 1750,
+          "level": 3392.6946393835988,
+          "slopeFloor": 0,
+          "seconds": 3392.6946393835988,
+          "weight": 34137.426380105324
+        },
+        {
+          "from": 1775,
+          "to": 1775,
+          "level": 3412.85547977557,
+          "slopeFloor": 0,
+          "seconds": 3412.85547977557,
+          "weight": 31410.687315742445
+        },
+        {
+          "from": 1800,
+          "to": 1800,
+          "level": 3431.1901628786068,
+          "slopeFloor": 0,
+          "seconds": 3431.1901628786068,
+          "weight": 28896.072919548496
+        },
+        {
+          "from": 1825,
+          "to": 1825,
+          "level": 3448.354516903785,
+          "slopeFloor": 0,
+          "seconds": 3448.354516903785,
+          "weight": 26586.6157752036
+        },
+        {
+          "from": 1850,
+          "to": 1850,
+          "level": 3465.352373414364,
+          "slopeFloor": 0,
+          "seconds": 3465.352373414364,
+          "weight": 24472.496012238968
+        },
+        {
+          "from": 1875,
+          "to": 1875,
+          "level": 3483.3458104478846,
+          "slopeFloor": 0,
+          "seconds": 3483.3458104478846,
+          "weight": 22541.332128808524
+        },
+        {
+          "from": 1900,
+          "to": 1900,
+          "level": 3503.4636013059207,
+          "slopeFloor": 0,
+          "seconds": 3503.4636013059207,
+          "weight": 20778.848497710347
+        },
+        {
+          "from": 1925,
+          "to": 1925,
+          "level": 3526.627364197015,
+          "slopeFloor": 0,
+          "seconds": 3526.627364197015,
+          "weight": 19169.766015404195
+        },
+        {
+          "from": 1950,
+          "to": 1950,
+          "level": 3553.407529557371,
+          "slopeFloor": 0,
+          "seconds": 3553.407529557371,
+          "weight": 17698.734332211297
+        },
+        {
+          "from": 1975,
+          "to": 1975,
+          "level": 3583.922782349844,
+          "slopeFloor": 0,
+          "seconds": 3583.922782349844,
+          "weight": 16351.1397730782
+        },
+        {
+          "from": 2000,
+          "to": 2000,
+          "level": 3617.800279920213,
+          "slopeFloor": 0,
+          "seconds": 3617.800279920213,
+          "weight": 15113.67079610663
+        },
+        {
+          "from": 2025,
+          "to": 2025,
+          "level": 3654.210157310699,
+          "slopeFloor": 0,
+          "seconds": 3654.210157310699,
+          "weight": 13974.58675557297
+        },
+        {
+          "from": 2050,
+          "to": 2050,
+          "level": 3691.9717508745407,
+          "slopeFloor": 0,
+          "seconds": 3691.9717508745407,
+          "weight": 12923.700110239646
+        },
+        {
+          "from": 2075,
+          "to": 2075,
+          "level": 3729.705899971432,
+          "slopeFloor": 0,
+          "seconds": 3729.705899971432,
+          "weight": 11952.134609016115
+        },
+        {
+          "from": 2100,
+          "to": 2100,
+          "level": 3765.991055473378,
+          "slopeFloor": 0,
+          "seconds": 3765.991055473378,
+          "weight": 11051.954789211064
+        },
+        {
+          "from": 2125,
+          "to": 2125,
+          "level": 3799.482092128391,
+          "slopeFloor": 0,
+          "seconds": 3799.482092128391,
+          "weight": 10215.772734667336
+        },
+        {
+          "from": 2150,
+          "to": 2150,
+          "level": 3828.9692744576005,
+          "slopeFloor": 0,
+          "seconds": 3828.9692744576005,
+          "weight": 9436.428111645635
+        },
+        {
+          "from": 2175,
+          "to": 2400,
+          "level": 3845.714379574638,
+          "slopeFloor": 0,
+          "seconds": 3845.714379574638,
+          "weight": 59444.929030756524
+        }
+      ],
+      "binDetails": [
+        {
+          "q": 800,
+          "contests": 71,
+          "samples": 58284,
+          "players": 24430,
+          "observedSeconds": 1396,
+          "unconstrainedSeconds": 1446.946822974675,
+          "monotoneSeconds": 1446.946822974675,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 50.94682297467489,
+          "ciLowSeconds": 1263,
+          "ciHighSeconds": 1556,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 900,
+          "contests": 20,
+          "samples": 20143,
+          "players": 15667,
+          "observedSeconds": 2185,
+          "unconstrainedSeconds": 1977.295004184465,
+          "monotoneSeconds": 1977.295004184465,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -207.70499581553509,
+          "ciLowSeconds": 1885,
+          "ciHighSeconds": 2510,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1000,
+          "contests": 23,
+          "samples": 31953,
+          "players": 22414,
+          "observedSeconds": 2642,
+          "unconstrainedSeconds": 2424.1947106613034,
+          "monotoneSeconds": 2424.1947106613034,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -217.80528933869664,
+          "ciLowSeconds": 2407,
+          "ciHighSeconds": 2919,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1100,
+          "contests": 20,
+          "samples": 35725,
+          "players": 22915,
+          "observedSeconds": 2726,
+          "unconstrainedSeconds": 2784.011057652385,
+          "monotoneSeconds": 2784.011057652385,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 58.01105765238481,
+          "ciLowSeconds": 2281,
+          "ciHighSeconds": 3242,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1200,
+          "contests": 26,
+          "samples": 43268,
+          "players": 27948,
+          "observedSeconds": 3358,
+          "unconstrainedSeconds": 3033.6821771801706,
+          "monotoneSeconds": 3033.6821771801706,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -324.3178228198294,
+          "ciLowSeconds": 3030,
+          "ciHighSeconds": 3689,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1300,
+          "contests": 22,
+          "samples": 33544,
+          "players": 22601,
+          "observedSeconds": 2877,
+          "unconstrainedSeconds": 3168.499665602439,
+          "monotoneSeconds": 3168.499665602439,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 291.4996656024391,
+          "ciLowSeconds": 2571,
+          "ciHighSeconds": 3196,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1400,
+          "contests": 21,
+          "samples": 27061,
+          "players": 17342,
+          "observedSeconds": 3687,
+          "unconstrainedSeconds": 3217.260244144843,
+          "monotoneSeconds": 3217.260244144843,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -469.739755855157,
+          "ciLowSeconds": 3237,
+          "ciHighSeconds": 4283,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": false
+        },
+        {
+          "q": 1500,
+          "contests": 18,
+          "samples": 17432,
+          "players": 11869,
+          "observedSeconds": 2825,
+          "unconstrainedSeconds": 3224.039813163348,
+          "monotoneSeconds": 3224.039813163348,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 399.03981316334784,
+          "ciLowSeconds": 2455,
+          "ciHighSeconds": 3177,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": false
+        },
+        {
+          "q": 1600,
+          "contests": 20,
+          "samples": 16039,
+          "players": 10781,
+          "observedSeconds": 3188,
+          "unconstrainedSeconds": 3258.793317683365,
+          "monotoneSeconds": 3258.793317683365,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 70.79331768336488,
+          "ciLowSeconds": 2808,
+          "ciHighSeconds": 3569,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1700,
+          "contests": 18,
+          "samples": 9611,
+          "players": 6405,
+          "observedSeconds": 3496,
+          "unconstrainedSeconds": 3346.849884879378,
+          "monotoneSeconds": 3346.849884879378,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -149.1501151206221,
+          "ciLowSeconds": 3030,
+          "ciHighSeconds": 3996,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1800,
+          "contests": 17,
+          "samples": 6824,
+          "players": 4696,
+          "observedSeconds": 3570,
+          "unconstrainedSeconds": 3431.1901628786068,
+          "monotoneSeconds": 3431.1901628786068,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -138.80983712139323,
+          "ciLowSeconds": 3116,
+          "ciHighSeconds": 4019,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1900,
+          "contests": 23,
+          "samples": 5236,
+          "players": 3300,
+          "observedSeconds": 3219,
+          "unconstrainedSeconds": 3503.4636013059207,
+          "monotoneSeconds": 3503.4636013059207,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 284.46360130592075,
+          "ciLowSeconds": 2815,
+          "ciHighSeconds": 3738,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 2000,
+          "contests": 19,
+          "samples": 3970,
+          "players": 2440,
+          "observedSeconds": 3618,
+          "unconstrainedSeconds": 3617.800279920213,
+          "monotoneSeconds": 3617.800279920213,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -0.19972007978685724,
+          "ciLowSeconds": 2998,
+          "ciHighSeconds": 4269,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 2100,
+          "contests": 17,
+          "samples": 2628,
+          "players": 1742,
+          "observedSeconds": 3924,
+          "unconstrainedSeconds": 3765.991055473378,
+          "monotoneSeconds": 3765.991055473378,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -158.00894452662214,
+          "ciLowSeconds": 3416,
+          "ciHighSeconds": 4435,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 2200,
+          "contests": 15,
+          "samples": 2098,
+          "players": 1387,
+          "observedSeconds": 3868,
+          "unconstrainedSeconds": 3871.736754554658,
+          "monotoneSeconds": 3845.714379574638,
+          "deltaVsUnconstrainedSeconds": -26.02237498002023,
+          "deltaVsObservedSeconds": -22.28562042536214,
+          "ciLowSeconds": 3475,
+          "ciHighSeconds": 4583,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 2300,
+          "contests": 15,
+          "samples": 1646,
+          "players": 984,
+          "observedSeconds": 4166,
+          "unconstrainedSeconds": 3865.8589087000432,
+          "monotoneSeconds": 3845.714379574638,
+          "deltaVsUnconstrainedSeconds": -20.14452912540537,
+          "deltaVsObservedSeconds": -320.28562042536214,
+          "ciLowSeconds": 3292,
+          "ciHighSeconds": 5035,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 2400,
+          "contests": 15,
+          "samples": 983,
+          "players": 630,
+          "observedSeconds": 3328,
+          "unconstrainedSeconds": 3685.471992664885,
+          "monotoneSeconds": 3845.714379574638,
+          "deltaVsUnconstrainedSeconds": 160.2423869097529,
+          "deltaVsObservedSeconds": 517.7143795746379,
+          "ciLowSeconds": 2821,
+          "ciHighSeconds": 3761,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": false
+        }
+      ]
+    },
+    "success": {
+      "bandwidth": 125,
+      "field": "successP50Seconds",
+      "adjustedGridPoints": 11,
+      "totalGridPoints": 65,
+      "maxAbsDeltaSeconds": 154.43580034305705,
+      "blocks": [
+        {
+          "from": 800,
+          "to": 800,
+          "level": 1237.4597556003757,
+          "slopeFloor": 0,
+          "seconds": 1237.4597556003757,
+          "weight": 79259.06676310995
+        },
+        {
+          "from": 825,
+          "to": 825,
+          "level": 1329.3697085203694,
+          "slopeFloor": 0,
+          "seconds": 1329.3697085203694,
+          "weight": 84509.64014378822
+        },
+        {
+          "from": 850,
+          "to": 850,
+          "level": 1417.6455593147546,
+          "slopeFloor": 0,
+          "seconds": 1417.6455593147546,
+          "weight": 88356.16414784707
+        },
+        {
+          "from": 875,
+          "to": 875,
+          "level": 1502.1191480228933,
+          "slopeFloor": 0,
+          "seconds": 1502.1191480228933,
+          "weight": 90973.78918814835
+        },
+        {
+          "from": 900,
+          "to": 900,
+          "level": 1582.728831032158,
+          "slopeFloor": 0,
+          "seconds": 1582.728831032158,
+          "weight": 92669.67872372911
+        },
+        {
+          "from": 925,
+          "to": 925,
+          "level": 1659.5005940394044,
+          "slopeFloor": 0,
+          "seconds": 1659.5005940394044,
+          "weight": 93811.88360957404
+        },
+        {
+          "from": 950,
+          "to": 950,
+          "level": 1732.5063017467203,
+          "slopeFloor": 0,
+          "seconds": 1732.5063017467203,
+          "weight": 94754.75327076111
+        },
+        {
+          "from": 975,
+          "to": 975,
+          "level": 1801.807889699225,
+          "slopeFloor": 0,
+          "seconds": 1801.807889699225,
+          "weight": 95777.71943327664
+        },
+        {
+          "from": 1000,
+          "to": 1000,
+          "level": 1867.4052515877208,
+          "slopeFloor": 0,
+          "seconds": 1867.4052515877208,
+          "weight": 97048.2372355033
+        },
+        {
+          "from": 1025,
+          "to": 1025,
+          "level": 1929.207829534103,
+          "slopeFloor": 0,
+          "seconds": 1929.207829534103,
+          "weight": 98611.74315115086
+        },
+        {
+          "from": 1050,
+          "to": 1050,
+          "level": 1987.0389651316111,
+          "slopeFloor": 0,
+          "seconds": 1987.0389651316111,
+          "weight": 100404.58749153267
+        },
+        {
+          "from": 1075,
+          "to": 1075,
+          "level": 2040.6609180388857,
+          "slopeFloor": 0,
+          "seconds": 2040.6609180388857,
+          "weight": 102281.92147665622
+        },
+        {
+          "from": 1100,
+          "to": 1100,
+          "level": 2089.796250347098,
+          "slopeFloor": 0,
+          "seconds": 2089.796250347098,
+          "weight": 104051.8402821126
+        },
+        {
+          "from": 1125,
+          "to": 1125,
+          "level": 2134.1384380925037,
+          "slopeFloor": 0,
+          "seconds": 2134.1384380925037,
+          "weight": 105508.79577465761
+        },
+        {
+          "from": 1150,
+          "to": 1150,
+          "level": 2173.379764632406,
+          "slopeFloor": 0,
+          "seconds": 2173.379764632406,
+          "weight": 106461.93949609219
+        },
+        {
+          "from": 1175,
+          "to": 1175,
+          "level": 2207.2924649293855,
+          "slopeFloor": 0,
+          "seconds": 2207.2924649293855,
+          "weight": 106756.40769269555
+        },
+        {
+          "from": 1200,
+          "to": 1200,
+          "level": 2235.8546679509623,
+          "slopeFloor": 0,
+          "seconds": 2235.8546679509623,
+          "weight": 106287.0528415702
+        },
+        {
+          "from": 1225,
+          "to": 1225,
+          "level": 2259.352929595158,
+          "slopeFloor": 0,
+          "seconds": 2259.352929595158,
+          "weight": 105004.85240420784
+        },
+        {
+          "from": 1250,
+          "to": 1250,
+          "level": 2278.3805074937013,
+          "slopeFloor": 0,
+          "seconds": 2278.3805074937013,
+          "weight": 102916.6031709685
+        },
+        {
+          "from": 1275,
+          "to": 1275,
+          "level": 2293.705082522766,
+          "slopeFloor": 0,
+          "seconds": 2293.705082522766,
+          "weight": 100078.89616335572
+        },
+        {
+          "from": 1300,
+          "to": 1300,
+          "level": 2306.0614036241504,
+          "slopeFloor": 0,
+          "seconds": 2306.0614036241504,
+          "weight": 96587.84179844175
+        },
+        {
+          "from": 1325,
+          "to": 1325,
+          "level": 2315.9737393370583,
+          "slopeFloor": 0,
+          "seconds": 2315.9737393370583,
+          "weight": 92566.40425825992
+        },
+        {
+          "from": 1350,
+          "to": 1350,
+          "level": 2323.6998439632976,
+          "slopeFloor": 0,
+          "seconds": 2323.6998439632976,
+          "weight": 88151.27330622345
+        },
+        {
+          "from": 1375,
+          "to": 1375,
+          "level": 2329.3258412983,
+          "slopeFloor": 0,
+          "seconds": 2329.3258412983,
+          "weight": 83480.85813629012
+        },
+        {
+          "from": 1400,
+          "to": 1400,
+          "level": 2332.9670202233406,
+          "slopeFloor": 0,
+          "seconds": 2332.9670202233406,
+          "weight": 78685.36074299233
+        },
+        {
+          "from": 1425,
+          "to": 1425,
+          "level": 2334.979253004449,
+          "slopeFloor": 0,
+          "seconds": 2334.979253004449,
+          "weight": 73879.25166188361
+        },
+        {
+          "from": 1450,
+          "to": 1450,
+          "level": 2336.0825912152436,
+          "slopeFloor": 0,
+          "seconds": 2336.0825912152436,
+          "weight": 69156.08228803781
+        },
+        {
+          "from": 1475,
+          "to": 1475,
+          "level": 2337.3434565330945,
+          "slopeFloor": 0,
+          "seconds": 2337.3434565330945,
+          "weight": 64585.50860706313
+        },
+        {
+          "from": 1500,
+          "to": 1500,
+          "level": 2340.0274103397296,
+          "slopeFloor": 0,
+          "seconds": 2340.0274103397296,
+          "weight": 60212.54686711648
+        },
+        {
+          "from": 1525,
+          "to": 1525,
+          "level": 2345.3794290097853,
+          "slopeFloor": 0,
+          "seconds": 2345.3794290097853,
+          "weight": 56059.19049831957
+        },
+        {
+          "from": 1550,
+          "to": 1550,
+          "level": 2354.391341049895,
+          "slopeFloor": 0,
+          "seconds": 2354.391341049895,
+          "weight": 52128.386197885884
+        },
+        {
+          "from": 1575,
+          "to": 1575,
+          "level": 2367.593499620405,
+          "slopeFloor": 0,
+          "seconds": 2367.593499620405,
+          "weight": 48409.95901629626
+        },
+        {
+          "from": 1600,
+          "to": 1600,
+          "level": 2384.895635943708,
+          "slopeFloor": 0,
+          "seconds": 2384.895635943708,
+          "weight": 44887.54795864053
+        },
+        {
+          "from": 1625,
+          "to": 1625,
+          "level": 2405.5170659343275,
+          "slopeFloor": 0,
+          "seconds": 2405.5170659343275,
+          "weight": 41545.22820761079
+        },
+        {
+          "from": 1650,
+          "to": 1650,
+          "level": 2428.0661955827445,
+          "slopeFloor": 0,
+          "seconds": 2428.0661955827445,
+          "weight": 38372.477931441135
+        },
+        {
+          "from": 1675,
+          "to": 1675,
+          "level": 2450.806572176514,
+          "slopeFloor": 0,
+          "seconds": 2450.806572176514,
+          "weight": 35366.56059147302
+        },
+        {
+          "from": 1700,
+          "to": 1700,
+          "level": 2472.061973503105,
+          "slopeFloor": 0,
+          "seconds": 2472.061973503105,
+          "weight": 32532.107235183747
+        },
+        {
+          "from": 1725,
+          "to": 1725,
+          "level": 2490.619507440178,
+          "slopeFloor": 0,
+          "seconds": 2490.619507440178,
+          "weight": 29878.43844710675
+        },
+        {
+          "from": 1750,
+          "to": 1750,
+          "level": 2505.977263015389,
+          "slopeFloor": 0,
+          "seconds": 2505.977263015389,
+          "weight": 27415.698140777302
+        },
+        {
+          "from": 1775,
+          "to": 1775,
+          "level": 2518.372924951481,
+          "slopeFloor": 0,
+          "seconds": 2518.372924951481,
+          "weight": 25151.025200657674
+        },
+        {
+          "from": 1800,
+          "to": 1800,
+          "level": 2528.6420866309986,
+          "slopeFloor": 0,
+          "seconds": 2528.6420866309986,
+          "weight": 23085.766917174686
+        },
+        {
+          "from": 1825,
+          "to": 1825,
+          "level": 2538.0035031588745,
+          "slopeFloor": 0,
+          "seconds": 2538.0035031588745,
+          "weight": 21214.275425292843
+        },
+        {
+          "from": 1850,
+          "to": 1850,
+          "level": 2547.8449838306365,
+          "slopeFloor": 0,
+          "seconds": 2547.8449838306365,
+          "weight": 19524.31538342664
+        },
+        {
+          "from": 1875,
+          "to": 1875,
+          "level": 2559.5352681244103,
+          "slopeFloor": 0,
+          "seconds": 2559.5352681244103,
+          "weight": 17998.71049376607
+        },
+        {
+          "from": 1900,
+          "to": 1900,
+          "level": 2574.2550489472824,
+          "slopeFloor": 0,
+          "seconds": 2574.2550489472824,
+          "weight": 16617.651589476827
+        },
+        {
+          "from": 1925,
+          "to": 1925,
+          "level": 2592.8365635906844,
+          "slopeFloor": 0,
+          "seconds": 2592.8365635906844,
+          "weight": 15361.078102446278
+        },
+        {
+          "from": 1950,
+          "to": 1950,
+          "level": 2615.619479008125,
+          "slopeFloor": 0,
+          "seconds": 2615.619479008125,
+          "weight": 14210.669230838035
+        },
+        {
+          "from": 1975,
+          "to": 1975,
+          "level": 2642.3560202058725,
+          "slopeFloor": 0,
+          "seconds": 2642.3560202058725,
+          "weight": 13151.165814255248
+        },
+        {
+          "from": 2000,
+          "to": 2000,
+          "level": 2672.2100699516473,
+          "slopeFloor": 0,
+          "seconds": 2672.2100699516473,
+          "weight": 12170.927894838602
+        },
+        {
+          "from": 2025,
+          "to": 2025,
+          "level": 2703.876160748089,
+          "slopeFloor": 0,
+          "seconds": 2703.876160748089,
+          "weight": 11261.782158693371
+        },
+        {
+          "from": 2050,
+          "to": 2050,
+          "level": 2735.7968164474146,
+          "slopeFloor": 0,
+          "seconds": 2735.7968164474146,
+          "weight": 10418.317112049783
+        },
+        {
+          "from": 2075,
+          "to": 2075,
+          "level": 2766.408681348636,
+          "slopeFloor": 0,
+          "seconds": 2766.408681348636,
+          "weight": 9636.843452866307
+        },
+        {
+          "from": 2100,
+          "to": 2100,
+          "level": 2794.3349394911406,
+          "slopeFloor": 0,
+          "seconds": 2794.3349394911406,
+          "weight": 8914.257022943944
+        },
+        {
+          "from": 2125,
+          "to": 2125,
+          "level": 2818.474214098914,
+          "slopeFloor": 0,
+          "seconds": 2818.474214098914,
+          "weight": 8247.025671576039
+        },
+        {
+          "from": 2150,
+          "to": 2400,
+          "level": 2824.416839483953,
+          "slopeFloor": 0,
+          "seconds": 2824.416839483953,
+          "weight": 56186.27659446781
+        }
+      ],
+      "binDetails": [
+        {
+          "q": 800,
+          "contests": 71,
+          "samples": 58284,
+          "players": 24430,
+          "observedSeconds": 1224,
+          "unconstrainedSeconds": 1237.4597556003757,
+          "monotoneSeconds": 1237.4597556003757,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 13.459755600375729,
+          "ciLowSeconds": 1119,
+          "ciHighSeconds": 1355,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 900,
+          "contests": 20,
+          "samples": 20143,
+          "players": 15667,
+          "observedSeconds": 1649,
+          "unconstrainedSeconds": 1582.728831032158,
+          "monotoneSeconds": 1582.728831032158,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -66.27116896784196,
+          "ciLowSeconds": 1480,
+          "ciHighSeconds": 1837,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1000,
+          "contests": 23,
+          "samples": 31953,
+          "players": 22414,
+          "observedSeconds": 2024,
+          "unconstrainedSeconds": 1867.4052515877208,
+          "monotoneSeconds": 1867.4052515877208,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -156.59474841227916,
+          "ciLowSeconds": 1881,
+          "ciHighSeconds": 2162,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": false
+        },
+        {
+          "q": 1100,
+          "contests": 20,
+          "samples": 35725,
+          "players": 22915,
+          "observedSeconds": 2003,
+          "unconstrainedSeconds": 2089.796250347098,
+          "monotoneSeconds": 2089.796250347098,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 86.79625034709807,
+          "ciLowSeconds": 1743,
+          "ciHighSeconds": 2323,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1200,
+          "contests": 26,
+          "samples": 43268,
+          "players": 27948,
+          "observedSeconds": 2432,
+          "unconstrainedSeconds": 2235.8546679509623,
+          "monotoneSeconds": 2235.8546679509623,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -196.14533204903773,
+          "ciLowSeconds": 2235,
+          "ciHighSeconds": 2631,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1300,
+          "contests": 22,
+          "samples": 33544,
+          "players": 22601,
+          "observedSeconds": 2134,
+          "unconstrainedSeconds": 2306.0614036241504,
+          "monotoneSeconds": 2306.0614036241504,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 172.06140362415044,
+          "ciLowSeconds": 1975,
+          "ciHighSeconds": 2305,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": false
+        },
+        {
+          "q": 1400,
+          "contests": 21,
+          "samples": 27061,
+          "players": 17342,
+          "observedSeconds": 2554,
+          "unconstrainedSeconds": 2332.9670202233406,
+          "monotoneSeconds": 2332.9670202233406,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -221.03297977665943,
+          "ciLowSeconds": 2348,
+          "ciHighSeconds": 2821,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": false
+        },
+        {
+          "q": 1500,
+          "contests": 18,
+          "samples": 17432,
+          "players": 11869,
+          "observedSeconds": 2130,
+          "unconstrainedSeconds": 2340.0274103397296,
+          "monotoneSeconds": 2340.0274103397296,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 210.0274103397296,
+          "ciLowSeconds": 1905,
+          "ciHighSeconds": 2400,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1600,
+          "contests": 20,
+          "samples": 16039,
+          "players": 10781,
+          "observedSeconds": 2364,
+          "unconstrainedSeconds": 2384.895635943708,
+          "monotoneSeconds": 2384.895635943708,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 20.89563594370793,
+          "ciLowSeconds": 2130,
+          "ciHighSeconds": 2569,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1700,
+          "contests": 18,
+          "samples": 9611,
+          "players": 6405,
+          "observedSeconds": 2562,
+          "unconstrainedSeconds": 2472.061973503105,
+          "monotoneSeconds": 2472.061973503105,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -89.93802649689496,
+          "ciLowSeconds": 2219,
+          "ciHighSeconds": 2921,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1800,
+          "contests": 17,
+          "samples": 6824,
+          "players": 4696,
+          "observedSeconds": 2574,
+          "unconstrainedSeconds": 2528.6420866309986,
+          "monotoneSeconds": 2528.6420866309986,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -45.35791336900138,
+          "ciLowSeconds": 2315,
+          "ciHighSeconds": 2854,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 1900,
+          "contests": 23,
+          "samples": 5236,
+          "players": 3300,
+          "observedSeconds": 2437,
+          "unconstrainedSeconds": 2574.2550489472824,
+          "monotoneSeconds": 2574.2550489472824,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 137.25504894728238,
+          "ciLowSeconds": 2152,
+          "ciHighSeconds": 2816,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 2000,
+          "contests": 19,
+          "samples": 3970,
+          "players": 2440,
+          "observedSeconds": 2672,
+          "unconstrainedSeconds": 2672.2100699516473,
+          "monotoneSeconds": 2672.2100699516473,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": 0.21006995164725595,
+          "ciLowSeconds": 2303,
+          "ciHighSeconds": 3110,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 2100,
+          "contests": 17,
+          "samples": 2628,
+          "players": 1742,
+          "observedSeconds": 2872,
+          "unconstrainedSeconds": 2794.3349394911406,
+          "monotoneSeconds": 2794.3349394911406,
+          "deltaVsUnconstrainedSeconds": 0,
+          "deltaVsObservedSeconds": -77.66506050885937,
+          "ciLowSeconds": 2628,
+          "ciHighSeconds": 3189,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 2200,
+          "contests": 15,
+          "samples": 2098,
+          "players": 1387,
+          "observedSeconds": 2919,
+          "unconstrainedSeconds": 2860.6829257855006,
+          "monotoneSeconds": 2824.416839483953,
+          "deltaVsUnconstrainedSeconds": -36.2660863015476,
+          "deltaVsObservedSeconds": -94.58316051604697,
+          "ciLowSeconds": 2753,
+          "ciHighSeconds": 3041,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 2300,
+          "contests": 15,
+          "samples": 1646,
+          "players": 984,
+          "observedSeconds": 2921,
+          "unconstrainedSeconds": 2827.1401224422907,
+          "monotoneSeconds": 2824.416839483953,
+          "deltaVsUnconstrainedSeconds": -2.723282958337677,
+          "deltaVsObservedSeconds": -96.58316051604697,
+          "ciLowSeconds": 2472,
+          "ciHighSeconds": 3412,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        },
+        {
+          "q": 2400,
+          "contests": 15,
+          "samples": 983,
+          "players": 630,
+          "observedSeconds": 2567,
+          "unconstrainedSeconds": 2669.981039140896,
+          "monotoneSeconds": 2824.416839483953,
+          "deltaVsUnconstrainedSeconds": 154.43580034305705,
+          "deltaVsObservedSeconds": 257.416839483953,
+          "ciLowSeconds": 2088,
+          "ciHighSeconds": 3022,
+          "ciStatus": "finite",
+          "status": "exploratory",
+          "monotoneWithinCi": true
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Algorithm DX · CF 同步",
+  "version": "0.2.1",
+  "description": "通过已登录的 Codeforces 标签页同步自建比赛记录到本机 Algorithm DX。",
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://codeforces.com/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Algorithm DX · CF 同步"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://codeforces.com/*"
+      ],
+      "js": [
+        "parser.js",
+        "reader.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}

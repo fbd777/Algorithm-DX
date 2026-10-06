@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algorithm DX · Rating 总览</title>
+<meta name="color-scheme" content="dark">
+<link rel="icon" type="image/svg+xml" href="/algorithm-dx-icon.svg">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/ui.css">
+<link rel="stylesheet" href="/dx-result.css">
+</head>
+<body class="dx-page">
+<header class="topbar site-header">
+  <a class="brand" href="/">
+    <img class="mark" src="/algorithm-dx-icon.svg" width="66" height="40" alt="" aria-hidden="true">
+    <div class="brand-text"><h1>Algorithm DX</h1><p>记录练习，查看进步</p></div>
+  </a>
+  <nav class="nav" aria-label="主导航">
+    <a class="btn btn-ghost" href="/">AC 记录</a>
+    <a class="btn btn-ghost" href="/circle.html">题友圈</a>
+    <a class="btn btn-primary" href="/dx.html" aria-current="page">DX Rating</a>
+    <a class="btn btn-ghost" href="/stats.html">练习数据</a>
+    <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
+    <a class="btn btn-ghost" href="/help.html">使用指南</a>
+  </nav>
+</header>
+<div class="app app-wide">
+
+  <div class="page-toolbar" role="group" aria-label="页面操作">
+<select id="userSelect" class="select" aria-label="选择用户"></select>
+      <select id="yearSelect" class="select" aria-label="选择年度"></select>
+      <button id="syncBtn" class="btn btn-ghost" type="button" title="从 Codeforces 拉取最新提交，再重新读取本机数据">同步最新数据</button>
+      <button id="rankTableBtn" class="btn btn-ghost" type="button" title="各难度拿到 S ~ SSS+ 分别要压到多少时间">参考表</button>
+      <button id="saveB50Btn" class="btn btn-ghost" type="button" disabled>保存 B50 图片</button>
+      <span id="saveB50Status" class="field-hint" role="status"></span>
+      <button id="practiceBtn" class="btn btn-primary" type="button">手动添加做题记录</button>
+      <details class="dx-more"><summary class="btn btn-ghost">更多</summary><button id="backtestBtn" class="btn btn-ghost" type="button">本地回测 / 导出</button><a href="/help.html#validation">回测说明</a></details>
+  </div>
+
+  <nav class="dx-pages" aria-label="练习与成绩">
+    <a id="boardPageLink" class="btn btn-primary" href="/dx.html" aria-current="page">Rating 总览</a>
+    <a id="practicePageLink" class="btn btn-ghost" href="/dx.html?view=practice">用时补录</a>
+    <a id="historyPageLink" class="btn btn-ghost" href="/dx.html?view=history">练习历史</a>
+    <a id="recordedPageLink" class="btn btn-ghost" href="/dx.html?view=recorded">全部成绩</a>
+  </nav>
+  <div class="notice notice-ac" id="syncNotice" hidden></div>
+
+  <section class="dx-timer" aria-labelledby="timerTitle">
+    <div class="dx-timer-heading"><div><span class="dx-eyebrow">FOCUS SESSION</span><h2 id="timerTitle">准备就绪，开始解题</h2></div><span class="badge">自动识别 AC · 自动保存</span></div>
+    <form id="timerForm" class="dx-timer-form">
+      <label class="field"><span class="field-label">Codeforces 题号或链接</span><input id="timerProblem" class="input" required maxlength="300" placeholder="2259:A 或粘贴题目链接"></label>
+      <label class="field"><span class="field-label">本次练习</span><select id="timerKind" class="select"><option value="unknown">自动识别重做 / 其余未知</option><option value="first">首次独立解题</option><option value="repeat">熟题重做</option><option value="assisted">使用提示、题解或 AI</option></select></label>
+      <button id="timerStart" class="btn btn-primary" type="submit">开始计时</button>
+    </form>
+    <div id="timerRunning" hidden>
+      <div class="dx-timer-live"><div><strong id="timerProblemLabel"></strong><p id="timerStarted" class="field-hint"></p></div><output id="timerClock" aria-label="本次已用时间">00:00:00</output><a id="timerProblemLink" class="btn btn-ghost" target="_blank" rel="noreferrer">打开题目 ↗</a></div>
+      <div class="form-actions"><button id="timerCheck" class="btn btn-primary" type="button">已提交，立即检查</button><button id="timerCancel" class="btn btn-ghost" type="button">取消计时（不保存）</button></div>
+      <p id="timerOverdue" class="field-hint" hidden>已超过 24 小时。下一次同步将检查此前的 AC；若没有有效 AC，则结束本次计时。也可以取消后手动记录。</p>
+    </div>
+    <p id="timerStatus" class="field-hint" role="status"></p>
+    <button id="timerResultOpen" class="btn btn-ghost" type="button" hidden>查看本次结算 ↗</button>
+    <details class="dx-timer-help"><summary>计时与自动保存说明</summary><p>先打开题目和 IDE，再点击开始；题目无需已有提交。服务运行期间每约 30 秒同步当前计时账号，发现开始后的对应 AC，按平台提交时间停止，爬取延迟不计入用时。请保持电脑时间准确。</p><p>刷新或关闭页面不会丢失计时；请保持本机服务运行。服务停机或网络中断时不能爬取，恢复后重新核对。最长记录 24 小时；取消不生成成绩。辅助解题只进入历史。数据保存在本机，不会向其他服务上传。</p></details>
+  </section>
+
+  <main id="boardPage">
+
+  <div class="dx-page-intro"><h2>我的 DX Rating</h2><p>把 Codeforces 练习用时换算为单题得分，取旧题前 35 道与新题前 15 道，组成你的 B50。</p></div>
+
+  <div class="notice notice-warn" id="releaseNotice" hidden></div>
+
+  <section class="dx-summary" id="dxSummary" aria-label="总览"></section>
+  <section class="dx-next" id="dxNext" aria-label="下一步" hidden></section>
+  <details class="dx-rules"><summary>总分怎么算？为什么有些题没上榜？</summary>
+    <p>同步 AC 记录 → 填写实际用时 → 自动计算单题得分并选入 B50。同一题保留最佳有效成绩，每道题只占一格。</p>
+    <p>新旧题按<strong>比赛发布年份</strong>划分。例如今年完成一道往年发布的题，仍属于旧题。年度选择用于划分题目，不是筛选练习日期。</p>
+    <p>空位按 0 分计算；未上榜的成绩仍会保留。题目尚未公布难度时可以先填用时，公布并同步后再参与排名。DX Rating 是娱乐向换算，不是 Codeforces 官方 Rating。</p>
+    <a href="/help.html#scoring">查看完整评分规则 ↗</a>
+  </details>
+
+  <section class="section" id="oldSection">
+    <div class="section-head">
+      <h2>旧题 <span class="section-count" id="oldCount"></span></h2>
+      <span class="section-hint" id="oldHint">Best 35</span>
+    </div>
+    <div class="dx-grid dx-b50-grid" id="oldGrid"></div>
+  </section>
+
+  <section class="section" id="newSection">
+    <div class="section-head">
+      <h2>新题 <span class="section-count" id="newCount"></span></h2>
+      <span class="section-hint" id="newHint">Best 15</span>
+    </div>
+    <div class="dx-grid dx-b50-grid" id="newGrid"></div>
+  </section>
+  </main>
+
+  <main id="practicePage" hidden>
+  <div class="dx-page-intro">
+    <h2 id="practicePageTitle">用时补录</h2>
+    <p id="practicePageDescription">只在记得实际用时时补录，不必补齐刷题历史。不记得用时可以不再提醒；从下一次练习开始使用计时器即可。</p>
+  </div>
+  <div class="practice-tools">
+    <label class="field"><span class="field-label">搜索题号或题名</span><input id="practiceSearch" class="input" type="search" maxlength="120" placeholder="例如 2266:A 或题目名称"></label>
+    <label class="field" id="practiceSortField" hidden><span class="field-label">历史记录排序</span><select id="practiceSort" class="select">
+      <option value="recorded_desc">最近录入</option><option value="date_desc">练习日期：新 → 旧</option><option value="date_asc">练习日期：旧 → 新</option>
+      <option value="seconds_asc">用时：短 → 长</option><option value="seconds_desc">用时：长 → 短</option><option value="problem_asc">题号顺序</option>
+      <option value="difficulty_asc">难度：低 → 高</option><option value="difficulty_desc">难度：高 → 低</option>
+    </select></label>
+  </div>
+  <p id="practiceLoadStatus" role="status" class="field-hint"></p>
+  <div class="practice-columns dx-practice-panels"><div class="practice-column" id="pendingPanel">
+  <label class="field"><span class="field-label">查看范围</span><select id="pendingScope" class="select"><option value="recent">近期练习（最近 7 天）</option><option value="historical">历史未计时（不提醒）</option><option value="dismissed">已设为不再提醒</option></select></label>
+  <p class="field-hint">历史题目不会计入总览提醒。不再提醒仅隐藏提示，不删除 AC 或已有成绩；这里仍可填写用时。恢复提醒时，超过 7 天的题会回到历史清单。</p>
+  <p id="pendingActionStatus" class="field-hint" role="status"></p>
+  <section class="section" id="pendingSection" hidden>
+    <div class="section-head">
+      <button class="collapse-toggle" id="pendingToggle" type="button" aria-expanded="true">
+        <span class="caret" aria-hidden="true">▾</span>
+        可补录题目<span class="section-count" id="pendingCount"></span>
+      </button>
+      <span class="section-hint">最近完成的题目排在前面</span>
+    </div>
+    <div class="dx-pending" id="pendingList"></div>
+    <div class="dx-pagination"><button id="pendingPrev" class="btn btn-ghost" type="button">上一页</button><span id="pendingPagination" role="status"></span><button id="pendingNext" class="btn btn-ghost" type="button">下一页</button></div>
+    <p class="section-hint">填写实际用时；辅助解题请选择对应练习类型。</p>
+  </section>
+
+  <p id="pendingEmpty" class="section-hint" hidden>暂时没有待填写的已 AC 题目。新做完题后可同步最新数据；重做或未完成的题可点「记录练习」。</p>
+  </div><div class="practice-column" id="historyPanel" hidden>
+  <section class="section" id="practiceSection" hidden>
+    <div class="section-head"><h2>历史记录 <span id="practiceCount" class="section-count"></span></h2></div>
+    <p class="section-hint">保留每次练习。作废的记录不再计分。</p>
+    <div class="dx-pending" id="practiceList"></div>
+    <div class="form-actions">
+      <button id="practicePrev" class="btn btn-ghost" type="button">上一页</button>
+      <span id="practicePagination"></span>
+      <button id="practiceNext" class="btn btn-ghost" type="button">下一页</button>
+    </div>
+  </section>
+  <p id="practiceEmpty" class="section-hint" hidden>还没有练习记录，保存第一条用时后会显示在这里。</p>
+  </div></div>
+  </main>
+
+  <main id="recordedPage" hidden>
+  <div class="dx-page-intro">
+    <span class="dx-eyebrow">YOUR SCORE LIBRARY</span><h2>全部成绩</h2>
+    <p>每题显示最佳有效用时及上榜状态。新增练习后会自动重新选取最佳成绩；要作废某次记录，请到「练习历史」。</p>
+  </div>
+  <section id="recordsSummary" class="dx-summary" aria-label="全部成绩统计"></section>
+  <div id="rankDistribution" class="dx-rank-distribution" aria-label="按评级快速筛选"></div>
+  <form id="recordsFilters" class="dx-records-filters">
+  <div class="practice-tools">
+    <label class="field"><span class="field-label">搜索题号或题名</span><input id="recordedSearch" class="input" type="search" placeholder="例如 2266:A 或题目名称" maxlength="120"></label>
+    <label class="field"><span class="field-label">上榜状态</span><select id="recordedFilter" class="select"><option value="all">全部状态</option><option value="onBoard">已上榜</option><option value="belowCutoff">未进入 B50</option><option value="waitingRating">等待题目难度</option><option value="outsideYear">晚于所选年度</option></select></label>
+    <label class="field"><span class="field-label">评级</span><select id="recordedRank" class="select"><option value="all">全部评级</option><option>SSS+</option><option>SSS</option><option>SS+</option><option>SS</option><option>S+</option><option>S</option><option value="other">其他（S 以下）</option><option>AAA</option><option>AA</option><option>A</option><option>BBB</option><option>BB</option><option>B</option><option>C</option><option>D</option></select></label>
+    <label class="field"><span class="field-label">题目分区</span><select id="recordedPartition" class="select"><option value="all">全部年份</option><option value="old">所选年度之前的旧题</option><option value="new">所选年度的新题</option></select></label>
+  </div>
+  <div class="dx-range-filters">
+    <fieldset><legend>题目难度</legend><input id="difficultyMin" type="number" min="0" step="100" class="input" aria-label="最低难度" placeholder="最低"><span>—</span><input id="difficultyMax" type="number" min="0" step="100" class="input" aria-label="最高难度" placeholder="最高"></fieldset>
+    <fieldset><legend>完成度 %</legend><input id="achievementMin" type="number" min="0" max="101" step="0.0001" class="input" aria-label="最低完成度" placeholder="最低"><span>—</span><input id="achievementMax" type="number" min="0" max="101" step="0.0001" class="input" aria-label="最高完成度" placeholder="最高"></fieldset>
+    <fieldset><legend>实际用时 · 分钟</legend><input id="secondsMin" type="number" min="0" step="any" class="input" aria-label="最短用时（分钟）" placeholder="最短"><span>—</span><input id="secondsMax" type="number" min="0" step="any" class="input" aria-label="最长用时（分钟）" placeholder="最长"></fieldset>
+  </div>
+  <div class="dx-library-toolbar">
+    <label class="field"><span class="field-label">排序方式</span><select id="recordedSort" class="select"><option value="rating_desc">单题 Rating：高 → 低</option><option value="rating_asc">单题 Rating：低 → 高</option><option value="achievement_desc">完成度：高 → 低</option><option value="achievement_asc">完成度：低 → 高</option><option value="difficulty_desc">难度：高 → 低</option><option value="difficulty_asc">难度：低 → 高</option><option value="seconds_asc">用时：短 → 长</option><option value="seconds_desc">用时：长 → 短</option><option value="date_desc">首次 AC：新 → 旧</option><option value="date_asc">首次 AC：旧 → 新</option><option value="problem_asc">题号顺序</option></select></label>
+    <label class="field"><span class="field-label">显示方式</span><select id="recordedView" class="select"><option value="grid">网格</option><option value="list">列表</option></select></label>
+    <label class="field"><span class="field-label">每页条数</span><select id="recordedPageSize" class="select"><option>20</option><option selected>35</option><option>50</option><option>100</option></select></label>
+    <button id="recordsReset" class="btn btn-ghost" type="reset">重置筛选</button>
+    <button id="recordsExport" class="btn btn-ghost" type="button">导出筛选结果 CSV</button>
+  </div>
+  <p class="field-hint">筛选可叠加；填写数值范围时，尚无该数值的题目会被排除。统计卡片显示全部成绩，列表显示当前筛选结果。</p>
+  </form>
+  <p id="recordedEmpty" class="field-hint" role="status" hidden>没有匹配的成绩，试试其他关键词或状态。</p>
+  <section class="section" id="recordedSection" hidden>
+    <div class="section-head"><h3>题目成绩 <span id="recordedCount" class="section-count"></span></h3></div>
+    <p class="section-hint">每题最佳有效成绩。</p>
+    <div class="dx-library-grid" id="recordedList"></div>
+    <div class="dx-pagination"><button id="recordsPrev" class="btn btn-ghost" type="button">上一页</button><span id="recordsPagination" role="status"></span><button id="recordsNext" class="btn btn-ghost" type="button">下一页</button></div>
+  </section>
+  </main>
+  <div class="placeholder" id="placeholder">
+    <div class="spinner" aria-hidden="true"></div>
+    <p>正在读取本机数据…</p>
+  </div>
+
+  <div class="empty" id="empty" hidden>
+    <h3 id="emptyTitle">还没有可计分的题目</h3>
+    <p id="emptyBody"></p>
+  </div>
+
+  <footer class="foot">
+    <span id="footInfo"></span>
+    <a class="foot-note" id="scoringNote" href="/help.html#scoring">评分规则</a>
+  </footer>
+
+</div>
+
+<div class="modal" id="timeModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="timeModalTitle">
+    <h3 id="timeModalTitle">填写完成用时</h3>
+    <p class="modal-sub" id="timeModalSub"></p>
+    <form id="timeForm" autocomplete="off">
+      <label class="field"><span class="field-label">平台（可自定义，已同步题目请使用对应平台标识）</span>
+        <input id="practicePlatform" class="input" required maxlength="64" value="codeforces" list="practicePlatforms">
+        <datalist id="practicePlatforms"><option value="codeforces">Codeforces</option><option value="atcoder">AtCoder</option><option value="leetcode">LeetCode</option><option value="luogu">洛谷</option><option value="nowcoder">牛客</option><option value="matiji">码题集</option></datalist>
+      </label>
+      <div id="manualPracticeFields">
+        <label class="field"><span><input type="checkbox" id="practiceManual"> 手动记录（无需已同步提交，仅限自己的记录）</span></label>
+        <label class="field"><span class="field-label">题名（可不填）</span><input id="practiceTitle" class="input" maxlength="200"></label>
+        <label class="field"><span class="field-label">难度（可不填，按原平台数值填写）</span><input id="practiceDifficulty" class="input" type="number" min="0" max="1000000" step="1"></label>
+      </div>
+      <label class="field"><span class="field-label">题号</span>
+        <input id="practiceProblem" class="input" required maxlength="64" placeholder="例如 2259:A">
+      </label>
+      <div class="form-actions">
+        <label class="field"><span class="field-label">结果</span><select id="practiceOutcome" class="select">
+          <option value="ac">已 AC</option><option value="unfinished">未完成 / 放弃</option>
+        </select></label>
+        <label class="field"><span class="field-label">练习类型</span><select id="practiceKind" class="select">
+          <option value="auto">自动识别</option><option value="unknown">不确定 / 未标注</option><option value="first">首次独立解题</option>
+          <option value="repeat">熟题重做</option><option value="assisted">使用题解、提示或 AI</option>
+        </select></label>
+      </div>
+      <p class="field-hint" id="practiceKindHint" aria-live="polite"></p>
+      <label class="field"><span class="field-label">练习结束时间（默认带入 AC 时间，可修改或留空）</span>
+        <input id="practiceDate" type="datetime-local" step="1" class="input" aria-describedby="practiceDateHint">
+      </label>
+      <p class="field-hint" id="practiceDateHint" aria-live="polite"></p>
+      <div class="field">
+        <span class="field-label">本次用时（未完成时填写实际投入时间）</span>
+        <div class="duration-inputs">
+          <label class="duration-field">
+            <input id="timeHours" class="input" type="number" min="0" max="24" step="1" inputmode="numeric" placeholder="0" autocomplete="off">
+            <span class="duration-unit">时</span>
+          </label>
+          <label class="duration-field">
+            <input id="timeMinutes" class="input" type="number" min="0" max="59" step="1" inputmode="numeric" placeholder="0" autocomplete="off">
+            <span class="duration-unit">分</span>
+          </label>
+          <label class="duration-field">
+            <input id="timeSeconds" class="input" type="number" min="0" max="59" step="1" inputmode="numeric" placeholder="0" autocomplete="off">
+            <span class="duration-unit">秒</span>
+          </label>
+        </div>
+      </div>
+      <p class="field-hint" id="timeHint"></p>
+      <div class="form-actions">
+        <button id="timeSubmit" class="btn btn-primary" type="submit">新增练习记录</button>
+        <label id="timeVoidWrap" class="field-hint" hidden><input id="timeVoid" type="checkbox"> 作废此条记录（保留历史，不再计分）</label>
+        <button id="timeCancelBtn" class="btn btn-ghost" type="button">取消</button>
+        <span class="form-status" id="timeStatus"></span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="rankTableModal" hidden>
+  <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="rankTableTitle">
+    <h3 id="rankTableTitle">各难度拿 S ~ SSS+ 需要多快</h3>
+    <p class="modal-sub" id="rankTableSub"></p>
+    <div class="table-scroll" id="rankTableBody"></div>
+    <div class="form-actions">
+      <button id="rankTableCloseBtn" class="btn btn-ghost" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="backtestModal" hidden>
+  <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="backtestTitle">
+    <h3 id="backtestTitle">本地回测报告</h3>
+    <p class="modal-sub">仅在本机计算。下载文件不含账号、姓名、题号、逐题用时和具体练习日期；由你决定是否分享。汇总数据仍可能透露练习习惯。</p>
+    <div id="backtestBody" class="table-scroll"></div>
+    <div class="form-actions">
+      <button id="backtestDownload" class="btn btn-primary" type="button" disabled>下载汇总 JSON</button>
+      <button id="backtestClose" class="btn btn-ghost" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script src="/dx.js" type="module"></script>
+</body>
+</html>

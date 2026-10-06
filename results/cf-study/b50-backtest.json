@@ -1,0 +1,2186 @@
+{
+  "schema": "algorithm-dx-backtest-v1",
+  "kind": "public-contest-summary",
+  "year": 2026,
+  "models": {
+    "algorithms": [
+      "linear-clipped-v1",
+      "bounded-tail-v2"
+    ],
+    "curveSha256": "6779b6c8d41b3ccce8abed4a5e61bc7cf0c48735cfd7a57408ca9997ad1e1136",
+    "fitRange": [
+      800,
+      2400
+    ],
+    "ratingGain": 1.6,
+    "legacyTail": {
+      "anchorRatio": 0.646,
+      "nextRatio": 0.732,
+      "displayCap": 101
+    },
+    "currentTail": {
+      "anchorRatio": 0.646,
+      "anchorAchievement": 100.5,
+      "limit": 101
+    }
+  },
+  "bins": [
+    "<97",
+    "[97,100)",
+    "[100,100.5)",
+    "[100.5,100.9)",
+    "[100.9,101)",
+    "101"
+  ],
+  "source": {
+    "manifestSha256": "09ad442fa5fae859ca420e786e8f09a04fbe0eec5fdcaee53f1c9dfc2285e8ba",
+    "contestIds": [
+      1628,
+      1630,
+      1641,
+      1656,
+      1737,
+      1738,
+      1750,
+      1779,
+      1874,
+      1909,
+      1919,
+      1920,
+      1922,
+      1924,
+      1927,
+      1930,
+      1932,
+      1936,
+      1943,
+      1945,
+      1948,
+      1951,
+      1956,
+      1967,
+      1972,
+      1975,
+      1979,
+      1980,
+      1987,
+      1991,
+      1994,
+      1996,
+      1997,
+      2002,
+      2004,
+      2014,
+      2018,
+      2019,
+      2020,
+      2026,
+      2037,
+      2039,
+      2043,
+      2060,
+      2062,
+      2066,
+      2070,
+      2071,
+      2072,
+      2074,
+      2077,
+      2085,
+      2089,
+      2093,
+      2097,
+      2101,
+      2106,
+      2108,
+      2110,
+      2112,
+      2117,
+      2118,
+      2120,
+      2122,
+      2123,
+      2124,
+      2125,
+      2127,
+      2129,
+      2137,
+      2145,
+      2146,
+      2154,
+      2156,
+      2157,
+      2163,
+      2164,
+      2178,
+      2180,
+      2189,
+      2192,
+      2194,
+      2196,
+      2205,
+      2207,
+      2217,
+      2219,
+      2229,
+      2234,
+      2253,
+      2254,
+      2257
+    ],
+    "firstContestYear": 2022,
+    "lastContestYear": 2026,
+    "calendar": "UTC",
+    "minObservedContests": 10
+  },
+  "limitations": [
+    "Cached selected contests are not a representative population sample or a complete player history.",
+    "No rating-distance window; original ordered-progression and shared-subtask-start filters still apply.",
+    "Contest intervals estimate elapsed time; they are not measured practice time. Censored records never score.",
+    "Difficulty uses cached official values. Only the production fit range participates.",
+    "Full B35/B15 is coverage, not proof of sufficient training. Incomplete boards are reported separately.",
+    "Development/holdout groups are assigned by player hash; T97 itself was fitted using study contests, so this is not independent curve validation.",
+    "Checkpoint cohorts differ in coverage. Differences do not establish a causal training effect."
+  ],
+  "coverage": {
+    "requestedContests": 92,
+    "processedContests": 92,
+    "afterYearContests": 0,
+    "solvedRecords": 2010615,
+    "censoredRecords": 718563,
+    "participants": 236324,
+    "excludedByContestCount": 215263
+  },
+  "groups": [
+    {
+      "group": "development/all/full",
+      "participants": 792,
+      "fullBoards": 792,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 792,
+          "meanPlayerShare100To101": 0.15401515151515152,
+          "meanPlayerShareAt101": 0.6308333333333345,
+          "slotCounts": [
+            2429,
+            6091,
+            2712,
+            2649,
+            738,
+            24981
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 792,
+          "meanPlayerShare100To101": 0.7848484848484837,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            2429,
+            6091,
+            2712,
+            26865,
+            1503,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/all/incomplete",
+      "participants": 15922,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 15922,
+          "meanPlayerShare100To101": 0.12852882162964827,
+          "meanPlayerShareAt101": 0.5161124056165137,
+          "slotCounts": [
+            94666,
+            67079,
+            28911,
+            27841,
+            7681,
+            267748
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 15922,
+          "meanPlayerShare100To101": 0.6446412272461713,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            94666,
+            67079,
+            28911,
+            284705,
+            18565,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/first-100-observed-solves/full",
+      "participants": 50,
+      "fullBoards": 50,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 50,
+          "meanPlayerShare100To101": 0.162,
+          "meanPlayerShareAt101": 0.6347999999999998,
+          "slotCounts": [
+            101,
+            407,
+            162,
+            186,
+            57,
+            1587
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 50,
+          "meanPlayerShare100To101": 0.7968000000000001,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            101,
+            407,
+            162,
+            1768,
+            62,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/first-100-observed-solves/incomplete",
+      "participants": 370,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 370,
+          "meanPlayerShare100To101": 0.1870697893235017,
+          "meanPlayerShareAt101": 0.6180493582884757,
+          "slotCounts": [
+            295,
+            2411,
+            1165,
+            1087,
+            317,
+            8540
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 370,
+          "meanPlayerShare100To101": 0.8051191476119768,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            295,
+            2411,
+            1165,
+            9699,
+            245,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/first-200-observed-solves/full",
+      "participants": 2,
+      "fullBoards": 2,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 2,
+          "meanPlayerShare100To101": 0.21000000000000002,
+          "meanPlayerShareAt101": 0.5800000000000001,
+          "slotCounts": [
+            1,
+            20,
+            6,
+            9,
+            6,
+            58
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 2,
+          "meanPlayerShare100To101": 0.79,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            1,
+            20,
+            6,
+            73,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/first-25-observed-solves/incomplete",
+      "participants": 13024,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 13024,
+          "meanPlayerShare100To101": 0.11481949970261987,
+          "meanPlayerShareAt101": 0.5210842231600529,
+          "slotCounts": [
+            78905,
+            39481,
+            16980,
+            15912,
+            4402,
+            169260
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 13024,
+          "meanPlayerShare100To101": 0.6359037228627563,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            78905,
+            39481,
+            16980,
+            175388,
+            14186,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/first-50-observed-solves/full",
+      "participants": 15,
+      "fullBoards": 15,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 15,
+          "meanPlayerShare100To101": 0.11600000000000005,
+          "meanPlayerShareAt101": 0.5040000000000001,
+          "slotCounts": [
+            191,
+            94,
+            38,
+            38,
+            11,
+            378
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 15,
+          "meanPlayerShare100To101": 0.62,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            191,
+            94,
+            38,
+            406,
+            21,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/first-50-observed-solves/incomplete",
+      "participants": 4094,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 4094,
+          "meanPlayerShare100To101": 0.13654878635926176,
+          "meanPlayerShareAt101": 0.6881555455796248,
+          "slotCounts": [
+            7255,
+            19115,
+            8592,
+            9115,
+            2467,
+            101542
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 4094,
+          "meanPlayerShare100To101": 0.8247043319388789,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            7255,
+            19115,
+            8592,
+            105052,
+            8072,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/problems-100-199/full",
+      "participants": 216,
+      "fullBoards": 216,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 216,
+          "meanPlayerShare100To101": 0.18175925925925926,
+          "meanPlayerShareAt101": 0.6206481481481487,
+          "slotCounts": [
+            314,
+            1820,
+            895,
+            842,
+            226,
+            6703
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 216,
+          "meanPlayerShare100To101": 0.8024074074074078,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            314,
+            1820,
+            895,
+            7485,
+            286,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/problems-100-199/incomplete",
+      "participants": 200,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 200,
+          "meanPlayerShare100To101": 0.18643116345911168,
+          "meanPlayerShareAt101": 0.5995458036470231,
+          "slotCounts": [
+            326,
+            1494,
+            699,
+            684,
+            182,
+            5103
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 200,
+          "meanPlayerShare100To101": 0.7859769671061347,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            326,
+            1494,
+            699,
+            5769,
+            200,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/problems-200plus/full",
+      "participants": 2,
+      "fullBoards": 2,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 2,
+          "meanPlayerShare100To101": 0.2,
+          "meanPlayerShareAt101": 0.59,
+          "slotCounts": [
+            0,
+            21,
+            6,
+            9,
+            5,
+            59
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 2,
+          "meanPlayerShare100To101": 0.79,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            0,
+            21,
+            6,
+            73,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/problems-50-99/full",
+      "participants": 574,
+      "fullBoards": 574,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 574,
+          "meanPlayerShare100To101": 0.14341463414634134,
+          "meanPlayerShareAt101": 0.6348083623693381,
+          "slotCounts": [
+            2115,
+            4250,
+            1811,
+            1798,
+            507,
+            18219
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 574,
+          "meanPlayerShare100To101": 0.7782229965156788,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            2115,
+            4250,
+            1811,
+            19307,
+            1217,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/problems-50-99/incomplete",
+      "participants": 3106,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 3106,
+          "meanPlayerShare100To101": 0.1527248373395433,
+          "meanPlayerShareAt101": 0.6535582700598769,
+          "slotCounts": [
+            6224,
+            17529,
+            7883,
+            8221,
+            2206,
+            78891
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 3106,
+          "meanPlayerShare100To101": 0.80628310739942,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            6224,
+            17529,
+            7883,
+            84685,
+            4633,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/problems-under50/incomplete",
+      "participants": 12616,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 12616,
+          "meanPlayerShare100To101": 0.1216539569212788,
+          "meanPlayerShareAt101": 0.4809512186660363,
+          "slotCounts": [
+            88116,
+            48056,
+            20329,
+            18936,
+            5293,
+            183754
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 12616,
+          "meanPlayerShare100To101": 0.602605175587334,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            88116,
+            48056,
+            20329,
+            194251,
+            13732,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-0-399/incomplete",
+      "participants": 3,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 3,
+          "meanPlayerShare100To101": 0.08465608465608465,
+          "meanPlayerShareAt101": 0.1402116402116402,
+          "slotCounts": [
+            14,
+            6,
+            1,
+            2,
+            0,
+            6
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 3,
+          "meanPlayerShare100To101": 0.22486772486772488,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            14,
+            6,
+            1,
+            8,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-1200-1599/full",
+      "participants": 273,
+      "fullBoards": 273,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 273,
+          "meanPlayerShare100To101": 0.15838827838827824,
+          "meanPlayerShareAt101": 0.605714285714285,
+          "slotCounts": [
+            1115,
+            2105,
+            934,
+            976,
+            252,
+            8268
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 273,
+          "meanPlayerShare100To101": 0.7641025641025649,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            1115,
+            2105,
+            934,
+            9100,
+            396,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-1200-1599/incomplete",
+      "participants": 8139,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 8139,
+          "meanPlayerShare100To101": 0.13284061002501624,
+          "meanPlayerShareAt101": 0.5186433188455495,
+          "slotCounts": [
+            50000,
+            35632,
+            15420,
+            14821,
+            4090,
+            135602
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 8139,
+          "meanPlayerShare100To101": 0.6514839288705714,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            50000,
+            35632,
+            15420,
+            146124,
+            8389,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-1600-1999/full",
+      "participants": 381,
+      "fullBoards": 381,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 381,
+          "meanPlayerShare100To101": 0.15055118110236196,
+          "meanPlayerShareAt101": 0.6457217847769028,
+          "slotCounts": [
+            934,
+            2947,
+            1268,
+            1235,
+            365,
+            12301
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 381,
+          "meanPlayerShare100To101": 0.7962729658792648,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            934,
+            2947,
+            1268,
+            13136,
+            765,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-1600-1999/incomplete",
+      "participants": 3151,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 3151,
+          "meanPlayerShare100To101": 0.12784379922966232,
+          "meanPlayerShareAt101": 0.6412186573463727,
+          "slotCounts": [
+            11505,
+            14158,
+            6382,
+            6383,
+            1751,
+            72515
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 3151,
+          "meanPlayerShare100To101": 0.769062456576035,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            11505,
+            14158,
+            6382,
+            75062,
+            5587,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-2000-2399/full",
+      "participants": 90,
+      "fullBoards": 90,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 90,
+          "meanPlayerShare100To101": 0.15511111111111106,
+          "meanPlayerShareAt101": 0.6457777777777776,
+          "slotCounts": [
+            213,
+            683,
+            327,
+            291,
+            80,
+            2906
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 90,
+          "meanPlayerShare100To101": 0.8008888888888889,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            213,
+            683,
+            327,
+            3046,
+            231,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-2000-2399/incomplete",
+      "participants": 899,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 899,
+          "meanPlayerShare100To101": 0.12490095171043797,
+          "meanPlayerShareAt101": 0.6818962085274877,
+          "slotCounts": [
+            2316,
+            4146,
+            1912,
+            1790,
+            498,
+            22742
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 899,
+          "meanPlayerShare100To101": 0.8067971602379234,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            2316,
+            4146,
+            1912,
+            22641,
+            2389,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-2400-2799/full",
+      "participants": 20,
+      "fullBoards": 20,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 20,
+          "meanPlayerShare100To101": 0.15000000000000005,
+          "meanPlayerShareAt101": 0.6839999999999998,
+          "slotCounts": [
+            33,
+            133,
+            68,
+            65,
+            17,
+            684
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 20,
+          "meanPlayerShare100To101": 0.834,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            33,
+            133,
+            68,
+            692,
+            74,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-2400-2799/incomplete",
+      "participants": 194,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 194,
+          "meanPlayerShare100To101": 0.12598434060063696,
+          "meanPlayerShareAt101": 0.7091674924796351,
+          "slotCounts": [
+            317,
+            923,
+            378,
+            448,
+            112,
+            5296
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 194,
+          "meanPlayerShare100To101": 0.8351518330802719,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            317,
+            923,
+            378,
+            5245,
+            611,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-2800-3199/full",
+      "participants": 2,
+      "fullBoards": 2,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 2,
+          "meanPlayerShare100To101": 0.18,
+          "meanPlayerShareAt101": 0.73,
+          "slotCounts": [
+            3,
+            6,
+            8,
+            8,
+            2,
+            73
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 2,
+          "meanPlayerShare100To101": 0.9099999999999999,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            3,
+            6,
+            8,
+            81,
+            2,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-2800-3199/incomplete",
+      "participants": 53,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 53,
+          "meanPlayerShare100To101": 0.11540410818249354,
+          "meanPlayerShareAt101": 0.7910865875710102,
+          "slotCounts": [
+            28,
+            160,
+            96,
+            106,
+            30,
+            1597
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 53,
+          "meanPlayerShare100To101": 0.9064906957535036,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            28,
+            160,
+            96,
+            1532,
+            201,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-3200-3599/full",
+      "participants": 2,
+      "fullBoards": 2,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 2,
+          "meanPlayerShare100To101": 0.08,
+          "meanPlayerShareAt101": 0.89,
+          "slotCounts": [
+            0,
+            3,
+            3,
+            4,
+            1,
+            89
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 2,
+          "meanPlayerShare100To101": 0.97,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            0,
+            3,
+            3,
+            85,
+            9,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-3200-3599/incomplete",
+      "participants": 13,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 13,
+          "meanPlayerShare100To101": 0.09484077676256006,
+          "meanPlayerShareAt101": 0.8547265548605208,
+          "slotCounts": [
+            7,
+            21,
+            24,
+            20,
+            5,
+            464
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 13,
+          "meanPlayerShare100To101": 0.9495673316230809,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            7,
+            21,
+            24,
+            410,
+            79,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-3600-3999/incomplete",
+      "participants": 3,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 3,
+          "meanPlayerShare100To101": 0.0656084656084656,
+          "meanPlayerShareAt101": 0.9195767195767196,
+          "slotCounts": [
+            0,
+            2,
+            1,
+            6,
+            1,
+            105
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 3,
+          "meanPlayerShare100To101": 0.9851851851851853,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            0,
+            2,
+            1,
+            93,
+            19,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-400-799/incomplete",
+      "participants": 177,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 177,
+          "meanPlayerShare100To101": 0.08649671655784891,
+          "meanPlayerShareAt101": 0.17310507733818753,
+          "slotCounts": [
+            1640,
+            311,
+            115,
+            80,
+            36,
+            486
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 177,
+          "meanPlayerShare100To101": 0.25960179389603666,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            1640,
+            311,
+            115,
+            584,
+            18,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-800-1199/full",
+      "participants": 24,
+      "fullBoards": 24,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 24,
+          "meanPlayerShare100To101": 0.1625,
+          "meanPlayerShareAt101": 0.5500000000000002,
+          "slotCounts": [
+            131,
+            214,
+            104,
+            70,
+            21,
+            660
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 24,
+          "meanPlayerShare100To101": 0.7125000000000002,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            131,
+            214,
+            104,
+            725,
+            26,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "development/rating-800-1199/incomplete",
+      "participants": 3290,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 3290,
+          "meanPlayerShare100To101": 0.12236273059079424,
+          "meanPlayerShareAt101": 0.3460068625270199,
+          "slotCounts": [
+            28839,
+            11720,
+            4582,
+            4185,
+            1158,
+            28935
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 3290,
+          "meanPlayerShare100To101": 0.4683695931178141,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            28839,
+            11720,
+            4582,
+            33006,
+            1272,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/all/full",
+      "participants": 211,
+      "fullBoards": 211,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 211,
+          "meanPlayerShare100To101": 0.15317535545023697,
+          "meanPlayerShareAt101": 0.6301421800947871,
+          "slotCounts": [
+            678,
+            1608,
+            700,
+            712,
+            204,
+            6648
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 211,
+          "meanPlayerShare100To101": 0.7833175355450238,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            678,
+            1608,
+            700,
+            7194,
+            370,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/all/incomplete",
+      "participants": 4136,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 4136,
+          "meanPlayerShare100To101": 0.12833989201253704,
+          "meanPlayerShareAt101": 0.5164066693962261,
+          "slotCounts": [
+            24578,
+            17441,
+            7634,
+            7195,
+            1996,
+            69963
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 4136,
+          "meanPlayerShare100To101": 0.6447465614087651,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            24578,
+            17441,
+            7634,
+            74338,
+            4816,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/first-100-observed-solves/full",
+      "participants": 21,
+      "fullBoards": 21,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 21,
+          "meanPlayerShare100To101": 0.16857142857142862,
+          "meanPlayerShareAt101": 0.620952380952381,
+          "slotCounts": [
+            39,
+            182,
+            69,
+            78,
+            30,
+            652
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 21,
+          "meanPlayerShare100To101": 0.7895238095238096,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            39,
+            182,
+            69,
+            731,
+            29,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/first-100-observed-solves/incomplete",
+      "participants": 88,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 88,
+          "meanPlayerShare100To101": 0.19071688753978966,
+          "meanPlayerShareAt101": 0.6145251122403254,
+          "slotCounts": [
+            71,
+            580,
+            277,
+            292,
+            61,
+            2046
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 88,
+          "meanPlayerShare100To101": 0.8052419997801149,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            71,
+            580,
+            277,
+            2333,
+            66,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/first-25-observed-solves/incomplete",
+      "participants": 3426,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 3426,
+          "meanPlayerShare100To101": 0.11525037301253448,
+          "meanPlayerShareAt101": 0.5225285408488748,
+          "slotCounts": [
+            20738,
+            10240,
+            4613,
+            4088,
+            1148,
+            44630
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 3426,
+          "meanPlayerShare100To101": 0.6377789138614083,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            20738,
+            10240,
+            4613,
+            46091,
+            3775,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/first-50-observed-solves/full",
+      "participants": 8,
+      "fullBoards": 8,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 8,
+          "meanPlayerShare100To101": 0.13499999999999998,
+          "meanPlayerShareAt101": 0.4925,
+          "slotCounts": [
+            91,
+            58,
+            27,
+            20,
+            7,
+            197
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 8,
+          "meanPlayerShare100To101": 0.6275000000000001,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            91,
+            58,
+            27,
+            214,
+            10,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/first-50-observed-solves/incomplete",
+      "participants": 1110,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 1110,
+          "meanPlayerShare100To101": 0.13742208768564637,
+          "meanPlayerShareAt101": 0.6923581054277015,
+          "slotCounts": [
+            1911,
+            5029,
+            2426,
+            2407,
+            664,
+            27695
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 1110,
+          "meanPlayerShare100To101": 0.8297801931133465,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            1911,
+            5029,
+            2426,
+            28514,
+            2252,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/problems-100-199/full",
+      "participants": 57,
+      "fullBoards": 57,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 57,
+          "meanPlayerShare100To101": 0.175438596491228,
+          "meanPlayerShareAt101": 0.614035087719298,
+          "slotCounts": [
+            74,
+            526,
+            204,
+            224,
+            72,
+            1750
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 57,
+          "meanPlayerShare100To101": 0.7894736842105265,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            74,
+            526,
+            204,
+            1988,
+            58,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/problems-100-199/incomplete",
+      "participants": 48,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 48,
+          "meanPlayerShare100To101": 0.1887781021205648,
+          "meanPlayerShareAt101": 0.6093263828892761,
+          "slotCounts": [
+            84,
+            340,
+            166,
+            193,
+            34,
+            1280
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 48,
+          "meanPlayerShare100To101": 0.7981044850098411,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            84,
+            340,
+            166,
+            1440,
+            67,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/problems-50-99/full",
+      "participants": 154,
+      "fullBoards": 154,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 154,
+          "meanPlayerShare100To101": 0.14493506493506486,
+          "meanPlayerShareAt101": 0.6361038961038961,
+          "slotCounts": [
+            604,
+            1082,
+            496,
+            488,
+            132,
+            4898
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 154,
+          "meanPlayerShare100To101": 0.7810389610389606,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            604,
+            1082,
+            496,
+            5206,
+            312,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/problems-50-99/incomplete",
+      "participants": 853,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 853,
+          "meanPlayerShare100To101": 0.1539829010563286,
+          "meanPlayerShareAt101": 0.6570029502806853,
+          "slotCounts": [
+            1629,
+            4708,
+            2257,
+            2204,
+            604,
+            21702
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 853,
+          "meanPlayerShare100To101": 0.8109858513370118,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            1629,
+            4708,
+            2257,
+            23175,
+            1335,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/problems-under50/incomplete",
+      "participants": 3235,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 3235,
+          "meanPlayerShare100To101": 0.12068161664946417,
+          "meanPlayerShareAt101": 0.47795573466914415,
+          "slotCounts": [
+            22865,
+            12393,
+            5211,
+            4798,
+            1358,
+            46981
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 3235,
+          "meanPlayerShare100To101": 0.5986373513186112,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            22865,
+            12393,
+            5211,
+            49723,
+            3414,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-0-399/incomplete",
+      "participants": 1,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 1,
+          "meanPlayerShare100To101": 0.08571428571428572,
+          "meanPlayerShareAt101": 0.3142857142857143,
+          "slotCounts": [
+            15,
+            6,
+            2,
+            1,
+            0,
+            11
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 1,
+          "meanPlayerShare100To101": 0.4,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            15,
+            6,
+            2,
+            11,
+            1,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-1200-1599/full",
+      "participants": 85,
+      "fullBoards": 85,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 85,
+          "meanPlayerShare100To101": 0.15905882352941167,
+          "meanPlayerShareAt101": 0.5952941176470589,
+          "slotCounts": [
+            349,
+            695,
+            273,
+            318,
+            85,
+            2530
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 85,
+          "meanPlayerShare100To101": 0.7543529411764703,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            349,
+            695,
+            273,
+            2820,
+            113,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-1200-1599/incomplete",
+      "participants": 2040,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 2040,
+          "meanPlayerShare100To101": 0.13330448462471495,
+          "meanPlayerShareAt101": 0.5146786320687844,
+          "slotCounts": [
+            12693,
+            9152,
+            4021,
+            3737,
+            1006,
+            34162
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 2040,
+          "meanPlayerShare100To101": 0.6479831166934993,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            12693,
+            9152,
+            4021,
+            36881,
+            2024,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-1600-1999/full",
+      "participants": 97,
+      "fullBoards": 97,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 97,
+          "meanPlayerShare100To101": 0.14680412371134013,
+          "meanPlayerShareAt101": 0.6523711340206185,
+          "slotCounts": [
+            248,
+            726,
+            327,
+            299,
+            86,
+            3164
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 97,
+          "meanPlayerShare100To101": 0.799175257731959,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            248,
+            726,
+            327,
+            3364,
+            185,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-1600-1999/incomplete",
+      "participants": 848,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 848,
+          "meanPlayerShare100To101": 0.12394269552635857,
+          "meanPlayerShareAt101": 0.6513955887204791,
+          "slotCounts": [
+            2927,
+            3768,
+            1651,
+            1649,
+            478,
+            19692
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 848,
+          "meanPlayerShare100To101": 0.775338284246836,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            2927,
+            3768,
+            1651,
+            20308,
+            1511,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-2000-2399/full",
+      "participants": 16,
+      "fullBoards": 16,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 16,
+          "meanPlayerShare100To101": 0.14875000000000002,
+          "meanPlayerShareAt101": 0.66375,
+          "slotCounts": [
+            44,
+            106,
+            48,
+            56,
+            15,
+            531
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 16,
+          "meanPlayerShare100To101": 0.8125000000000001,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            44,
+            106,
+            48,
+            555,
+            47,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-2000-2399/incomplete",
+      "participants": 235,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 235,
+          "meanPlayerShare100To101": 0.13038165470913418,
+          "meanPlayerShareAt101": 0.68333569709057,
+          "slotCounts": [
+            558,
+            1052,
+            499,
+            496,
+            144,
+            5880
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 235,
+          "meanPlayerShare100To101": 0.813717351799704,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            558,
+            1052,
+            499,
+            5942,
+            578,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-2400-2799/full",
+      "participants": 6,
+      "fullBoards": 6,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 6,
+          "meanPlayerShare100To101": 0.15666666666666668,
+          "meanPlayerShareAt101": 0.6966666666666667,
+          "slotCounts": [
+            6,
+            38,
+            26,
+            16,
+            5,
+            209
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 6,
+          "meanPlayerShare100To101": 0.8533333333333334,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            6,
+            38,
+            26,
+            212,
+            18,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-2400-2799/incomplete",
+      "participants": 67,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 67,
+          "meanPlayerShare100To101": 0.12476162169388702,
+          "meanPlayerShareAt101": 0.7170312456433048,
+          "slotCounts": [
+            94,
+            303,
+            149,
+            139,
+            29,
+            1796
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 67,
+          "meanPlayerShare100To101": 0.8417928673371915,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            94,
+            303,
+            149,
+            1703,
+            261,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-2800-3199/full",
+      "participants": 3,
+      "fullBoards": 3,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 3,
+          "meanPlayerShare100To101": 0.18000000000000002,
+          "meanPlayerShareAt101": 0.6933333333333334,
+          "slotCounts": [
+            3,
+            16,
+            9,
+            9,
+            9,
+            104
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 3,
+          "meanPlayerShare100To101": 0.8733333333333334,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            3,
+            16,
+            9,
+            118,
+            4,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-2800-3199/incomplete",
+      "participants": 14,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 14,
+          "meanPlayerShare100To101": 0.13823474081673595,
+          "meanPlayerShareAt101": 0.7539403158921034,
+          "slotCounts": [
+            11,
+            48,
+            42,
+            26,
+            6,
+            419
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 14,
+          "meanPlayerShare100To101": 0.8921750567088396,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            11,
+            48,
+            42,
+            409,
+            42,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-3200-3599/incomplete",
+      "participants": 4,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 4,
+          "meanPlayerShare100To101": 0.05070643642072213,
+          "meanPlayerShareAt101": 0.8878074306645735,
+          "slotCounts": [
+            4,
+            6,
+            4,
+            2,
+            2,
+            144
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 4,
+          "meanPlayerShare100To101": 0.9385138670852957,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            4,
+            6,
+            4,
+            125,
+            23,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-400-799/incomplete",
+      "participants": 44,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 44,
+          "meanPlayerShare100To101": 0.07291600307904657,
+          "meanPlayerShareAt101": 0.14790646033743562,
+          "slotCounts": [
+            444,
+            64,
+            23,
+            24,
+            7,
+            126
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 44,
+          "meanPlayerShare100To101": 0.22082246341648226,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            444,
+            64,
+            23,
+            155,
+            2,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-800-1199/full",
+      "participants": 4,
+      "fullBoards": 4,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 4,
+          "meanPlayerShare100To101": 0.17500000000000002,
+          "meanPlayerShareAt101": 0.5499999999999999,
+          "slotCounts": [
+            28,
+            27,
+            17,
+            14,
+            4,
+            110
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 4,
+          "meanPlayerShare100To101": 0.725,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            28,
+            27,
+            17,
+            125,
+            3,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "group": "holdout/rating-800-1199/incomplete",
+      "participants": 883,
+      "fullBoards": 0,
+      "variants": [
+        {
+          "version": "linear-clipped-v1",
+          "participantsWithScores": 883,
+          "meanPlayerShare100To101": 0.12382603723061973,
+          "meanPlayerShareAt101": 0.34425432568385567,
+          "slotCounts": [
+            7832,
+            3042,
+            1243,
+            1121,
+            324,
+            7733
+          ]
+        },
+        {
+          "version": "bounded-tail-v2",
+          "participantsWithScores": 883,
+          "meanPlayerShare100To101": 0.4680803629144744,
+          "meanPlayerShareAt101": 0,
+          "slotCounts": [
+            7832,
+            3042,
+            1243,
+            8804,
+            374,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}

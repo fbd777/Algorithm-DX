@@ -1,0 +1,14 @@
+{
+  "checkedAt": "2026-09-16T02:42:44.989Z",
+  "node": "v24.15.0",
+  "method": "canonical JSON SHA256 before/after fully offline rebuild",
+  "identical": true,
+  "before": {
+    "candidates": "e9398e63a713d471e7a4b39ab8228390d5f988af4577412226b96e3cce1a700e",
+    "samples": "e4ba97f750996f06686c8a1d3fe963e09c2ab7c664780a8b54a10f6f517708c1"
+  },
+  "after": {
+    "candidates": "e9398e63a713d471e7a4b39ab8228390d5f988af4577412226b96e3cce1a700e",
+    "samples": "e4ba97f750996f06686c8a1d3fe963e09c2ab7c664780a8b54a10f6f517708c1"
+  }
+}

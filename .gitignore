@@ -1,0 +1,30 @@
+node_modules/
+output/
+.env
+.env.*
+!.env.example
+data/
+*.sqlite-wal
+*.sqlite-shm
+# 工作日志与助手记忆：含真实账号、本机绝对路径与未公开的内部判断，绝不入库。
+.workbuddy/
+
+# Local artifacts, custom databases and credentials.
+*.sqlite
+*.sqlite-journal
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+*.log
+*.pem
+*.key
+__pycache__/
+*.py[cod]
+.codex/
+.agents/
+.aws/
+.DS_Store
+Thumbs.db
+results/local-*.json
+prompt0.md

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Algorithm DX · 练习数据</title>
+<link rel="icon" type="image/svg+xml" href="/algorithm-dx-icon.svg">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/ui.css">
+</head>
+<body>
+<header class="topbar site-header">
+  <a class="brand" href="/">
+    <img class="mark" src="/algorithm-dx-icon.svg" width="66" height="40" alt="" aria-hidden="true">
+    <div class="brand-text"><h1>Algorithm DX</h1><p>记录练习，查看进步</p></div>
+  </a>
+  <nav class="nav" aria-label="主导航">
+    <a class="btn btn-ghost" href="/">AC 记录</a>
+    <a class="btn btn-ghost" href="/circle.html">题友圈</a>
+    <a class="btn btn-ghost" href="/dx.html">DX Rating</a>
+    <a class="btn btn-primary" href="/stats.html" aria-current="page">练习数据</a>
+    <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
+    <a class="btn btn-ghost" href="/help.html">使用指南</a>
+  </nav>
+</header>
+<main class="app">
+  
+  <div class="stats-toolbar"><div><span class="stats-eyebrow">PRACTICE INSIGHTS</span><h2>每一次尝试，都看得见</h2><p>从每日积累到解题分布，回顾你的练习节奏。</p></div><div><button id="saveStatsImage" class="btn btn-primary" type="button" disabled>保存统计图片</button><p id="exportStatus" class="analytics-note" aria-live="polite">导出 PNG · 图片在本机生成</p></div></div>
+  <section id="heatmapHost" class="heatmap-top" aria-label="年度 AC 热力图"><p class="analytics-note">正在读取热力图…</p></section>
+  <section class="filters" aria-label="统计对象">
+    <label class="filter-group"><span class="filter-label">用户</span><select id="statsUser" class="select"><option value="me">仅我</option><option value="all">我和关注的人</option></select></label>
+    <label class="filter-group"><span class="filter-label">平台</span><select id="statsPlatform" class="select"><option value="">全部平台</option></select></label>
+    <span class="analytics-note">用户影响全部版面；平台筛选今日与历史统计；历史日期不影响今日版面。</span>
+  </section>
+  <p id="statsCoverage" class="analytics-note">统计以本地已同步记录为准，历史未回补完整时可能低于平台实际数量。</p>
+  <section id="todayHost" class="today-panel" aria-label="今日练习"><p class="analytics-note">正在读取今日练习…</p></section>
+  <div id="analyticsHost"></div>
+  <footer class="foot"><a href="/?admin=1">账号管理与数据同步</a><span class="foot-note"><a href="/help.html#sync">数据说明</a></span></footer>
+</main>
+<script src="/stats-page.js" type="module"></script>
+</body>
+</html>

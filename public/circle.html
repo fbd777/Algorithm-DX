@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>题友圈 · Algorithm DX</title><meta name="color-scheme" content="dark"><link rel="icon" href="/algorithm-dx-icon.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/circle.css"><link rel="stylesheet" href="/ui.css">
+</head>
+<body>
+<header class="topbar site-header">
+  <a class="brand" href="/">
+    <img class="mark" src="/algorithm-dx-icon.svg" width="66" height="40" alt="" aria-hidden="true">
+    <div class="brand-text"><h1>Algorithm DX</h1><p>记录练习，查看进步</p></div>
+  </a>
+  <nav class="nav" aria-label="主导航">
+    <a class="btn btn-ghost" href="/">AC 记录</a>
+    <a class="btn btn-primary" href="/circle.html" aria-current="page">题友圈</a>
+    <a class="btn btn-ghost" href="/dx.html">DX Rating</a>
+    <a class="btn btn-ghost" href="/stats.html">练习数据</a>
+    <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
+    <a class="btn btn-ghost" href="/help.html">使用指南</a>
+  </nav>
+</header><main class="app circle-app">
+
+<section class="circle-hero"><div><span class="circle-eyebrow">TOGETHER, ONE PROBLEM AT A TIME</span><h2>每一份坚持，都有回响。</h2><p>看看关注的人在挑战什么，也为自己的下一题寻找灵感。</p></div><a class="btn btn-primary" href="/?admin=1">＋ 添加题友</a></section>
+<div class="circle-layout"><aside class="circle-sidebar"><div class="circle-sidebar-head"><h2>我的关注</h2><span id="peopleCount"></span></div><label class="circle-label">找一位题友<input class="input" id="peopleSearch" type="search" placeholder="搜索名字" autocomplete="off"></label><div id="people"></div><p class="circle-note">关注仅在本机生效。动态来自已同步的公开记录；未抓取的历史不代表没有练习。</p></aside>
+<section class="circle-main" aria-label="题友动态"><div id="profile"></div>
+<form id="filters" class="circle-filters"><label class="circle-label circle-query">找一道题<input class="input" id="query" type="search" placeholder="搜索题目名称或题号" maxlength="120"></label><label class="circle-label">平台<select class="select" id="platform"><option value="">所有平台</option></select></label><label class="circle-label">结果<select class="select" id="status"><option value="all">全部动态</option><option value="ac">已通过 · AC</option><option value="unac">其他提交</option></select></label><label class="circle-label">时间<select class="select" id="period"><option value="all">全部时间</option><option value="7">近 7 天</option><option value="30">近 30 天</option><option value="90">近 90 天</option></select></label><button class="btn btn-ghost" type="reset">重置筛选</button></form>
+<div class="circle-feed-head"><h2 id="feedTitle">题友的新鲜事</h2><button class="btn btn-ghost" id="refresh" type="button">刷新动态</button></div><p id="message" role="status" aria-live="polite"></p><div id="feed" aria-busy="true"></div><button class="btn btn-ghost circle-more" id="more" type="button" hidden>查看更多动态</button>
+</section></div></main><script type="module" src="/circle.js"></script></body></html>

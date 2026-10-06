@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>使用指南 · Algorithm DX</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/ui.css">
+</head>
+<body>
+<header class="topbar site-header">
+  <a class="brand" href="/">
+    <img class="mark" src="/algorithm-dx-icon.svg" width="66" height="40" alt="" aria-hidden="true">
+    <div class="brand-text"><h1>Algorithm DX</h1><p>记录练习，查看进步</p></div>
+  </a>
+  <nav class="nav" aria-label="主导航">
+    <a class="btn btn-ghost" href="/">AC 记录</a>
+    <a class="btn btn-ghost" href="/circle.html">题友圈</a>
+    <a class="btn btn-ghost" href="/dx.html">DX Rating</a>
+    <a class="btn btn-ghost" href="/stats.html">练习数据</a>
+    <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
+    <a class="btn btn-primary" href="/help.html" aria-current="page">使用指南</a>
+  </nav>
+</header><main class="app help-page">
+<div class="help-heading"><span class="stats-eyebrow">GETTING STARTED</span><h2>使用指南</h2><p>从绑定第一个账号，到记录练习、看懂成绩与统计。</p><a class="btn btn-ghost" href="/?admin=1">前往账号管理 ↗</a></div>
+<nav class="help-toc" aria-label="教程目录"><a href="#start">首次使用</a><a href="#identity">名称与账号 ID</a><a href="#cookie">通用 Cookie 教程</a><a href="#luogu">洛谷数据范围</a><a href="#sync">同步与历史</a><a href="#cf-groups">CF 自建比赛</a><a href="#matiji">码蹄集同步</a><a href="#dx">用时与 B50</a><a href="#faq">常见问题</a><a href="#scoring">评分规则</a><a href="#validation">模型与验证</a></nav>
+<section id="start"><h2>1. 需要注册吗？</h2><p>Algorithm DX 是本机应用，没有单独的注册、密码或云端账号。你需要在 Codeforces、码蹄集等平台上已有账号；如果没有，先在对应平台官网完成注册。</p><ol><li>打开首页「账号管理」，在「这个账号属于谁」中选择「添加一个人」。</li><li>起一个本地显示名称，例如“我”，并勾选「标记为我」。同一个人的其他平台账号以后选这个名称，不要重复建人。</li><li>选择平台，按输入框下的提示填写用户名或数字 ID。需要登录 Cookie 的平台可按下面的通用 Cookie 教程填写。</li><li>点击「保存账号」，再点「同步最新数据」。保存不等于已经抓取了数据。</li></ol><p>添加关注的人：为对方建一个本地名称，不勾选「我」，再把其公开平台账号绑定到这个名称。关注仅影响本机展示，不会在原平台发起关注或通知对方。码蹄集登录后可查询网站允许查看的其他用户做题记录。</p></section>
+<section id="identity"><h2>2. 本地名称、昵称、账号 ID 有什么区别？</h2><p><strong>本地名称</strong>由你起，方便把同一个人的多个平台账号放在一起。<strong>平台用户名 / ID</strong>用来找到真正的账号，必须按个人主页地址填写。</p><ul><li>Codeforces：/profile/ 后的用户名。</li><li>AtCoder：/users/ 后的用户名。</li><li>力扣国际站 / 中国站：个人主页 /u/ 后的字符，不一定与显示昵称相同。</li><li>洛谷：/user/ 后的数字。</li><li>码蹄集：自己的个人主页通常不显示 ID，填写 Cookie 后点击「识别我的账号」即可自动填入；他人账号需已知 ID 或含 /other-homepage/ 的链接。</li></ul><p>不要填写密码、电子邮箱或完整主页网址来代替账号 ID。输入框下也会随平台显示对应例子。</p></section>
+<section id="cookie">
+<h2>3. 如何获取登录 Cookie？（通用教程）</h2>
+<p>Cookie 是网站识别登录状态的信息。本教程使用电脑浏览器的网络面板，适用于 Chrome、Edge、Firefox 等支持查看请求标头的浏览器，界面名称可能略有不同。其他浏览器也可按相同思路操作；手机浏览器通常不提供这些工具，建议用电脑完成。</p>
+<p><strong>先分清两个页面：</strong>在平台网站获取 Cookie，回本应用填写 Cookie。不同平台的 Cookie 不能混用；在另一个浏览器或另一个浏览器用户中登录，也不会让当前窗口自动登录。</p>
+<h3>通用操作：按顺序完成这六步</h3>
+<ol>
+<li><strong>登录平台。</strong>在电脑浏览器打开要同步的网站，登录自己的账号，进入个人信息或做题记录页。</li>
+<li><strong>打开网络面板。</strong>在平台网页空白处右键选「检查」，切到「网络 / Network」，然后刷新网页。</li>
+<li><strong>点开请求。</strong>在请求列表的「名称 / Name」列，点击一条个人信息或做题记录相关的请求，打开详情。不要点击列标题。</li>
+<li><strong>找到 Cookie。</strong>在打开的详情中点击「标头 / Headers」，确认请求网址属于该平台。向下滚动，展开「请求标头 / Request Headers」，找到 <code>Cookie</code>；没有就换一条请求。</li>
+<li><strong>复制完整值。</strong>复制 Cookie 右侧的全部内容，保留名称、等号和分号。不要带 <code>Cookie:</code> 前缀，也不要复制 <code>Set-Cookie</code>。</li>
+<li><strong>保存并同步。</strong>回到本应用，在对应平台的「登录 Cookie」框粘贴并保存。未自动获取时，点击「同步最新数据」或「回补历史」。</li>
+</ol>
+<p>Chrome、Edge 打开开发者工具也可用 Windows/Linux 的 <kbd>Ctrl + Shift + I</kbd> 或 macOS 的 <kbd>Command + Option + I</kbd>。不熟悉快捷键时直接使用右键「检查」或浏览器菜单。</p>
+<h3>到底复制哪一部分？</h3>
+<p>若请求标头显示 <code>Cookie: name=example_value; other=another_value</code>，输入框里应只有：</p>
+<pre><code>name=example_value; other=another_value</code></pre>
+<p>这只是格式示例，不能照抄。必须使用浏览器中的实际内容；不要只复制某一个值，长内容也要完整复制。</p>
+<p>如果右键菜单有「复制值 / Copy value」，可用它；否则选中完整字段值复制。视觉上折成多行时也要复制完整，不要只选开头或省略号。请求标头是浏览器发送给网站的内容，响应标头是网站返回的内容；这里要的是前者。</p>
+<details><summary>不知道选哪条请求？当前平台的查找线索</summary>
+<ul>
+<li>力扣中国站：登录 <code>leetcode.cn</code> 后打开个人记录或题目提交记录，可寻找该域名下名称含 <code>graphql</code> 的请求。</li>
+<li>洛谷：登录 <code>www.luogu.com.cn</code> 后打开提交记录列表，可寻找路径含 <code>/record/list</code> 的请求。</li>
+<li>码蹄集：登录 <code>www.matiji.net</code> 后打开个人信息或刷题记录，可寻找路径含 <code>/exam-back/</code> 的请求。</li>
+</ul><p>这些只是筛选线索，网站改版后名称可能变化。最终以请求网址属于目标平台、请求标头中实际出现 Cookie 为准。状态 200 本身不能证明已登录。</p></details>
+<h3>保存后怎么看是否成功？</h3>
+<p>查看同步状态和返回结果。“已保存”仅表示配置写入本机；“跳过”表示前置条件没齐；“失败”需按具体原因处理；“成功但新增 0 条”可能表示记录已经存在，结合数据覆盖说明判断。登录过期后重新复制并覆盖旧配置，平时留空即可沿用。</p>
+<p>力扣中国站的公开近期 AC 不需要 Cookie，历史回补需要与绑定账号一致的本人 Cookie，保存新 Cookie 后会自动开始回补。洛谷、码蹄集使用登录配置读取当前可见记录。通用的是获取 Cookie 的操作方法，各平台允许读取的范围并不相同。</p>
+<h3>找不到 Cookie，或更新后仍失败？</h3>
+<ul>
+<li><strong>只看到「名称、状态、类型」，没有 Headers：</strong>先点击请求列表中的一条具体记录，详情打开后才会出现「标头 / Headers」。面板太窄时可拉宽开发者工具，或展开详情标签旁的「≫」。</li>
+<li><strong>请求列表为空：</strong>清空筛选、选择「全部」、恢复录制后刷新。开发者工具打开前的请求不会自动补录。</li>
+<li><strong>没有 Cookie 或只有“临时标头 / Provisional headers”：</strong>等待请求完成，换一条实际发出的个人信息或记录请求；必要时勾选「停用缓存 / Disable cache」再刷新，不必清除登录 Cookie。</li>
+<li><strong>只有 Set-Cookie：</strong>你看的是响应标头，去找请求标头。若仍没有 Cookie，就换其他请求。</li>
+<li><strong>提示格式错误：</strong>重新复制完整字段值，检查是否混入 Cookie:、引号、换行或整段请求，不要自行删改凭据中的实际值。</li>
+<li><strong>提示登录失效：</strong>在平台重新登录，再按上述步骤复制新值。只刷新本应用不会更新平台 Cookie。</li>
+<li><strong>提示账号不匹配：</strong>核对浏览器登录账号与绑定的账号 ID/主页标识，不要只比较昵称。力扣不能用自己的 Cookie 回补别人的历史。</li>
+<li><strong>403、访问受限或接口格式变化：</strong>先确认平台网页可正常访问；新 Cookie 仍失败时，可能是平台限制或接口变化，并不一定是复制有误。</li>
+</ul>
+<p>Cookie 相当于登录凭据，只在本机输入框填写，不要发送到聊天、截图或共享文件。本应用保存到本机 .env，分享项目时不要包含该文件。无需安装扩展，也无需在控制台执行脚本。</p>
+<p>浏览器操作参考：<a href="https://developer.chrome.com/docs/devtools/network/reference" target="_blank" rel="noopener noreferrer">Chrome 网络面板</a>、<a href="https://learn.microsoft.com/en-us/microsoft-edge/devtools/network/" target="_blank" rel="noopener noreferrer">Edge 网络面板</a>、<a href="https://firefox-source-docs.mozilla.org/devtools-user/network_monitor/request_details/index.html" target="_blank" rel="noopener noreferrer">Firefox 请求详情</a>。</p>
+</section>
+<section id="luogu"><h2>洛谷：绑定 UID 与提交数据范围</h2><p><strong>只填数字 UID 可以绑定账号，不代表能获取全部评测数据。</strong>程序会尝试从公开主页获取昵称；绑定成功不等于同步成功。</p><p>抓取提交列表需要<strong>你自己的洛谷登录 Cookie</strong>。同一份配置供所有关注的洛谷账号使用，不需要逐个填写好友的 Cookie。已有有效配置时，新增好友只填 UID 即可；未配置或登录已过期时，需要在账号管理中填写或更新，再同步验证。</p><ul><li>「同步最新数据」默认读取最近 100 条提交，不会自动回补全部历史。</li><li>「回补历史」分页读取更早的记录并保存进度，可能需要多轮。</li><li>收录当前登录态可见的提交列表：题目、提交时间、AC 及其他判题结果、得分、语言、耗时、内存（以数据源提供的字段为准）。</li><li>当前不抓取源代码、逐测试点结果等评测详情。私有、比赛隐藏或当前登录账号无权查看的记录可能不可见。</li></ul><p>「可见历史已回补」只表示遍历完当前数据源可见的记录，不保证包含该账号全部评测数据；没有抓取到也不等于没有做题。</p><a href="/?admin=1">前往账号管理</a> · <a href="#cookie">查看 Cookie 获取教程</a></section>
+<section id="nowcoder"><h2>牛客账号与练习记录</h2><p>在账号管理选择「牛客」，填写个人主页 /users/ 或竞赛主页 /profile/ 后面的数字 ID（不是昵称）。无需 Cookie；本人和关注的人都可以添加。同步范围为牛客竞赛站「TA 的练习 → 编程题」中的公开记录，可同步近期提交或回补历史；不含选择题和非公开记录。</p><p>记录会进入 AC 记录与练习数据统计。目前牛客题目不参与 B50，难度留空；页面不可访问时会显示同步失败并保留已有数据。</p></section><section id="cf-groups"><h2>CF 自建比赛：获取设置</h2>
+<h3 id="cf-extension">普通 Edge 扩展（推荐）</h3>
+<ol><li>在你平时使用的 Edge 中打开 <code>edge://extensions</code>，打开「开发人员模式」，点击「加载解压缩的扩展」，选择本项目的 <code>extensions/cf-sync</code> 文件夹（其中有 manifest.json）。</li><li>在普通 Edge 打开并登录 <a href="https://codeforces.com/" target="_blank" rel="noopener">Codeforces</a>，确认能打开你的群组。安装后请刷新这个 CF 标签页。</li><li>回到面板「账号管理 → CF 自建比赛」，选择「普通 Edge 扩展」，粘贴群组链接，点击「生成连接码」并复制。该连接码只用于扩展连接本机面板，不是 CF 密码或 API Key。</li><li>点击 Edge 工具栏的 Algorithm DX 扩展图标，面板地址默认 <code>http://127.0.0.1:8787</code>（端口改过就填写实际端口），粘贴连接码，点击「连接」。确认扩展显示「已连接」。</li><li>回面板「保存配置」，再点击同步或回补历史。后续页面自动同步沿用此连接；保持普通 Edge 和已登录的 CF 标签页开启，面板也可以在其他浏览器中使用。</li></ol>
+<p>扩展只请求已配置群组的比赛列表与提交页面，数据仅发送到你配对的本机面板，不读取 Cookie、密码或源码。扩展直接读取已显示的网页，不使用 fetch 重新请求 CF HTML；翻页使用扩展自己的后台标签页。CF 要求验证时会暂停，不自动操作验证码；点击扩展「打开读取页面」手动完成验证，再点「连接」。更新扩展后请刷新原有 CF 标签页一次，以捕获原始提交时间。关闭浏览器、退出登录或重启面板后，连接可能需要数十秒恢复，也可点击扩展「连接」立即恢复。重新生成连接码会使旧码失效。</p>
+<p>扩展方式需通过面板启动同步，不支持独立 CLI 同步；它复用普通浏览器登录，但网站仍可能对请求进行验证，不能保证所有群组都可读取。只有榜单而没有提交页访问权限时仍无法取得提交明细。</p>
+<h3>专用浏览器（兼容方式）</h3>
+<ol><li>在「账号管理 → CF 自建比赛」选择要统计的用户名，粘贴群组列表链接或单场比赛链接。</li><li>获取方式选择「浏览器登录」，点击「打开 CF 登录窗口」。程序会打开独立的 Edge / Chrome 窗口；在里面登录已加入该群组的 CF 账号。普通 Edge 窗口里的登录不会自动复制过来。</li><li>在这个专用窗口确认可以查看群组及比赛的 Status（提交记录）页面。如果 CF 要求人机验证，请在窗口里手动完成。</li><li>返回面板「保存配置」，再同步。同步期间保持专用窗口开启（可以最小化）；关闭后需重新点击登录按钮。登录状态保存在本机，下次打开可继续使用，失效时重新登录。</li></ol>
+<p>程序自动遍历群组比赛和提交分页，只保存所选用户名的提交，不读取源码。近期同步读取每场前若干页；更早的记录请使用「回补历史」。权限不足、验证页和格式异常会报错，不会当作空记录覆盖已有数据。只有榜单、看不到提交页的比赛仍无法获取提交明细。</p>
+<p>未指定方式的旧配置默认使用扩展方式，不必重新创建 API Key。网页回补首次使用时重新扫描群组历史，按提交编号去重。已验证 API 可用的账号可手动选择下方 API 方式。</p>
+<p>登录资料保存在项目 data/cf-browser 目录（已排除版本控制），请勿分享此目录。不需要上传 Cookie 或密码。Windows 自动查找 Edge；其他系统需安装 Edge / Chrome / Chromium，也可以在 .env 用 ALGO_CF_BROWSER_EXECUTABLE 指定路径。本功能需要部署机器有图形桌面；远程无桌面服务器请使用 API 方式。</p>
+<details><summary>安全验证一直加载怎么办？</summary><p>先在普通 Edge 窗口确认 codeforces.com 能否正常打开。若普通窗口也失败，请检查网络连接、浏览器版本及是否有扩展阻止验证脚本；不要反复点击同步。专用窗口的验证完成前，程序会停止网页抓取，遇到验证页会保留标签页供你手动处理。自动化浏览器不保证能通过 CF 的安全验证；普通窗口正常而专用窗口持续失败时，请使用上方普通 Edge 扩展方式，或选择已有权限的 API 方式。不要反复创建密钥或重试验证。</p></details><h3>API Key 方式（可选）</h3>
+<p>选择 API 方式时使用 CF 的 <strong>API Key 签名授权</strong>。尚未实现 OAuth 登录；两种凭据不能混用。</p>
+<h3>1. 先确认打开的是哪种页面</h3>
+<p>登录能访问比赛的 CF 账号，打开 <a href="https://codeforces.com/settings/api" target="_blank" rel="noopener">CF API 设置</a>。按官方 <a href="https://codeforces.com/apiHelp#authorization" target="_blank" rel="noopener">API 授权说明</a>，当前实现需要一对 <code>key</code> 和 <code>secret</code>。</p>
+<p><strong>如果页面标题是「Edit OAuth App」或「Create OAuth App」</strong>，并显示 <code>Name</code>、<code>Client id</code>、<code>Client secret</code>、<code>Redirect Uris</code>，这是 OAuth 应用设置，不是当前程序支持的授权方式。不要把 Client id / Client secret 粘贴到本项目的 API Key / Secret 输入框。</p>
+<p>本项目目前没有 OAuth 回调地址，因此不用为本项目填写 Redirect Uris；<code>http://127.0.0.1:8787/</code> 只是面板首页，并不能完成 OAuth 授权。无需点击 Regenerate，也无需删除已创建的 OAuth 应用。返回 API 设置，在上方「API keys」区域使用「Add API key」；下方「Authorized OAuth apps」与「Your OAuth apps」属于另一种授权方式。</p>
+<h3>2. 取得 API key / secret 后配置</h3>
+<ol><li>打开 Algorithm DX 的「账号管理」，在顶部「CF 自建比赛」选择需要统计提交的 CF 账号，点击「配置自建比赛」。</li><li>每行粘贴一个 Group 群组链接，例如 <code>https://codeforces.com/group/0doN9wUJK1</code>（或以 /contests 结尾的群组比赛列表链接）。同步时会自动发现群组内可访问的比赛，以后新增比赛无需另加链接。只想同步单场时，仍可填写 <code>https://codeforces.com/group/0doN9wUJK1/contest/720850</code> 或其榜单、题目链接。</li><li>将 API 授权的 <code>key</code> 填入「API Key（非 OAuth Client id）」，将配套 <code>secret</code> 填入「API Secret（非 OAuth Client secret）」。两项需配套，不能填掩码星号、登录密码或 Cookie。</li><li>点击「保存配置」。保存只表示配置已写入本机；点击「同步最新数据」后，才能确认授权是否可用。较早提交使用「回补历史」。以后已配置的群组和比赛会随自动同步更新。比赛较多时同步需要更长时间；近期同步读取每场近期记录，旧提交仍通过历史回补补全。</li></ol>
+<p>更新授权时两项一起填写，留空沿用已保存的授权；清空比赛链接并保存可停止额外同步，已有记录保留。授权只保存在本机 .env，网页不会回显，各 CF 账号共用。</p>
+<details><summary>保存后仍获取失败</summary><p>先确认使用的是 API key / secret，而非 OAuth 应用凭据；再核对生成密钥的账号能否访问比赛、比赛链接是否正确，以及电脑时间是否准确。只获取已配置群组或单场比赛中当前绑定用户名的提交；失败时已有记录保留。API 方式不会使用浏览器登录状态。私有群组中，能打开比赛网页、能通过 API 列出比赛，不保证提交接口也可读取。若提示「找不到比赛」，请先核对比赛编号；编号正确时，可能是 API 访问权限限制。普通参与者不能使用管理员模式。此时重复创建密钥通常无法解决，请切换「浏览器登录」并完成上方步骤，或联系管理员确认访问权限。</p></details>
+<p>Group 题号暂不自动映射为原题。提交可进入 AC 记录与统计，没有题目评级时不会自动获得 B50 分数。</p>
+</section><section id="sync"><h2>4. 同步最新数据与回补历史</h2><p>打开、刷新或切换页面时，会在后台同步近期记录；如果已有同步正在运行，会等待该任务完成。同步结束后，其他打开的页面也会自动更新。短时间内重复访问会复用近期缓存。断网或某个平台失败不会删除已有记录，联网后会再次尝试；也可以点击「同步最新数据」重试。自动同步不会执行历史回补。</p><p>「同步最新数据」读取近期记录；「回补历史」为支持的平台分页读取以前的记录，可能需要多轮。它们都只读取平台记录，不会替你提交答案。</p><ul><li>Codeforces、洛谷、AtCoder：支持历史回补；仍以数据源当前可见范围为准。</li><li>力扣：中国站只提供近期最多 20 条 AC；国际站公开近期提交最多 20 条。没有获取到的历史不算成 0，也不能靠反复回补补全。</li><li>码蹄集：配置一次 Cookie 后可同步近期记录、分页回补网站可见历史；实际可见范围由网站决定。</li></ul><p>“待配置”表示还缺登录信息或文件；“同步失败”表示已尝试但没有成功；“近期记录已同步”不代表全部历史。</p></section>
+<section id="matiji"><h2>5. 码蹄集同步与备用导入</h2><p>推荐方式：在账号管理选择码蹄集，输入自己的昵称、粘贴自己的个人主页链接或留空，直接保存。首次粘贴一次 Cookie，以后自动沿用；保存时会识别数字 ID 并开始近期同步。昵称与登录账号不一致时不会绑定，关注他人请用数字 ID 或他人主页链接。也可先点「识别我的账号」查看登录身份。自己的 /personalcenter/homepage 地址不含数字 ID，无需从中查找。该登录配置供所有码蹄集账号共用，过期后再更新。无需整理 JSON。已实测登录账号识别、近期同步和可见历史回补；失败时保留旧记录并显示原因。</p><h3>已有记录文件时的备用方式</h3><p>在「账号管理」绑定码蹄集账号，然后点击账号旁的「导入记录」，选择 JSON 文件，核对预览后确认导入。不需要放到指定目录，也不需要修改 .env。重复上传会合并已有提交，整份文件都会导入。文件上限 10 MB、100000 条；格式或账号不匹配时整批拒绝，不会只导入一部分。<br>备用导入需要已有的真实提交记录文件；常规同步使用上面的登录方式。弹窗可下载空模板，模板本身不包含记录。</p><ol><li>准备包含真实 OJ 提交记录的 JSON 文件，格式如下。不要放 Cookie、密码或源代码。</li><li>account_handle 填你绑定的码蹄集账号 ID；提交 ID、题目 ID、提交时间必填，时间为 Unix 秒或毫秒。</li><li>在账号管理点击「导入记录」，选择文件，预览并确认。以后有新文件时重复上传即可。</li></ol><pre><code>{
+  "account_handle": "网站账号ID",
+  "records": [{
+    "submissionId": "真实提交ID",
+    "problemId": "真实题目ID",
+    "problemTitle": "题目标题",
+    "judgeResultSlug": "Accepted",
+    "submitTime": 1700000000,
+    "languageName": "C++"
+  }]
+}</code></pre><p>以上是格式示例，不要把它当成你的真实成绩导入。文件最大 10 MB；默认一次同步最多读取 100 条，更大文件需调整同步条数。详细限制见项目 docs/platforms.md。</p></section>
+<section id="dx"><h2>6. 用时、题目评级与 B50</h2><p>目前 B50 只计算 Codeforces。先同步 AC 记录，再到 DX Rating 填写实际做题用时。比赛自动计时是根据提交间隔估算，不一定等于真实思考时间。</p><p>个人 CF Rating 更新与题目难度评级是两回事。未评级题可以先填用时，评级公布并同步后参与排名；不保证进入前 35 / 15。已填写记录仍可查看，练习记录保留每次尝试，辅助解题和未完成尝试不计入成绩。</p><p>年度按出题年份分组，采用当前成绩，不是历史快照。不同平台的同一道题目前不能可靠合并。</p></section>
+<p>练习类型默认自动识别：根据本次结束时间减去用时得到开始时间；若本地记录显示在这之前已经 AC 过该题，则建议「熟题重做」。本次的 AC、同一轮中的重复提交不会仅因数量多就算重做。无足够依据时保留未知；「首次独立」及是否使用题解、提示或 AI 需由本人选择。手动选择优先，修改题号、时间或用时后会重新识别。历史记录和比赛估算不会被批量改写。</p><section id="faq"><h2>7. 操作会改变什么？</h2><ul><li>同一账号改名：只有平台用户名变了、仍是同一身份才使用。数字 ID 不支持这样改。</li><li>换绑账号：新账号独立开始，旧账号归档并退出当前统计，历史保留。</li><li>取消关注：只改变本机展示，不删除记录。</li><li>解绑 / 删除用户：会删除对应的本地账号和提交数据，操作前查看确认提示。</li><li>数据只存在这台电脑上。项目支持备份；移动项目时需要保留数据库，但不要公开它或登录配置。</li></ul></section>
+<section id="scoring"><h2>8. B50 评分规则</h2>
+<p>DX 页新增专注计时：准备好题目和 IDE，填写题号或 Codeforces 链接后开始。无需已有提交；服务运行时每约 30 秒同步正在计时的账号，以开始后首个对应 AC 的提交时间结算并保存。刷新或关闭浏览器不会丢失计时，但服务关闭时无法继续抓取；恢复后会核对已有提交。取消不生成成绩，最多记录 24 小时。</p>
+<p>「全部成绩」不限于 B50，显示每题最佳有效成绩。可以叠加难度、完成度、用时、评级、年份分区和上榜状态筛选，按不同指标排序，切换网格或列表，并导出当前筛选结果。每次尝试（含辅助解题及未完成）仍在「补录与历史」查看。</p>
+<p>总分为 B35 与 B15 中各题单题 rating 之和。单题 rating =（题目 Rating ÷ 50）× 系数因子，各题先取一位小数再求和。该换算借鉴 maimai DX，用来观察练习表现，不是 Codeforces 官方排名。</p>
+<p>T97 是当前模型给出的参考用时：本题用时等于 T97 时完成度为 97%。它是统计估计，不是这道题所有人的真实用时。完成度越高，计分系数越高；评分在 100.5% 封顶，更快的记录仍会显示更高完成度。正用时对应的完成度趋近 101%，不直接截成 101%。</p>
+<p id="currentScoring" role="status">正在读取当前计分参数…</p>
+<p>同分按实际完成度从高到低排序，再按用时从短到长；完全相同的成绩使用难度与题号保持顺序稳定。新题为所选年度发布的题，旧题为之前发布的题，之后发布的题不参与。未知出题日期暂按旧题处理。使用当前保存的有效成绩，不是该年度的历史快照。</p>
+<p>辅助解题、未完成与已作废记录不计入 B50，但保留在练习历史中。在历史记录中点击「修改」可更正用时、结果、练习类型和日期，保存后重新计算最佳成绩；需要作废时，在同一窗口勾选「作废此条记录」再确认。修正后的记录标注为手动修正。未评级题可以先记录用时，公布评级并同步后参与排名，不保证进入前 35／15。比赛计时按相邻完成提交的间隔估算，可能与实际思考时间不同。</p>
+<details><summary>查看当前完成度与计分系数</summary><div id="scoringLadder"></div></details>
+</section>
+<section id="validation"><h2>9. 模型来源、判据与回测</h2>
+<p>评分曲线依据练习用时样本拟合，用来估计不同难度的参考用时。模型受到样本覆盖、题序与计时筛选的影响，不应解读为每道题的实测时间或个人能力的精确测量。验证通过表示满足项目当前设定的检查标准，不等于模型适合所有人。</p>
+<details><summary>当前模型与验证依据</summary><div id="curveDetails">正在读取…</div></details>
+<p>在 DX 页面「更多 → 本地回测 / 导出」可以查看当前与旧版完成度模型的对比，并下载汇总 JSON。回测会区分计时来源、练习类型和未完成次数；未知练习日期不进入训练过程分析，未满 B35／B15 不能代表充分训练。报告不自动调整评分参数，练习数据不会自动上传。</p>
+<p>实现及研究记录保存在项目 docs/cf-maimai-study.md、docs/backtesting.md；界面中的参数和验证状态来自服务端当前模型。</p>
+</section>
+</main><script src="/help.js" type="module"></script></body></html>

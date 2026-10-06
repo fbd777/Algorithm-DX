@@ -1,0 +1,10 @@
+{
+  "kind": "empirical_descriptive",
+  "finiteBins": 13,
+  "pearson": -0.17980572805832198,
+  "spearman": -0.14835164835164835,
+  "normalizedMaxCdfRange": 0.4998313249636882,
+  "normalizedMaxAt": 0.5,
+  "significance": "not_established",
+  "productionReady": false
+}

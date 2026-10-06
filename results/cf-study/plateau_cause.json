@@ -1,0 +1,2243 @@
+{
+  "kind": "diagnostic",
+  "note": "分层诊断，不改变任何生产口径",
+  "sections": {
+    "describe": [
+      {
+        "q": 800,
+        "n": 54420,
+        "contests": 63,
+        "solved": 48907,
+        "median": 1216,
+        "players": 22645,
+        "posMedian": 1,
+        "posMedianSolved": 1,
+        "acTimeMedian": 1372,
+        "prevAcMedian": 0,
+        "remainingMedian": 6617,
+        "divisions": "Div3 45%，Div2 39%，Div1+2 11%",
+        "solveRate": 0.8986953325983095
+      },
+      {
+        "q": 900,
+        "n": 17923,
+        "contests": 17,
+        "solved": 13950,
+        "median": 1582,
+        "players": 14063,
+        "posMedian": 2,
+        "posMedianSolved": 2,
+        "acTimeMedian": 2568,
+        "prevAcMedian": 672,
+        "remainingMedian": 5606,
+        "divisions": "Div3 60%，Div2 25%，Special 10%",
+        "solveRate": 0.7783295207275568
+      },
+      {
+        "q": 1000,
+        "n": 31930,
+        "contests": 23,
+        "solved": 23881,
+        "median": 2023,
+        "players": 22397,
+        "posMedian": 2,
+        "posMedianSolved": 2,
+        "acTimeMedian": 3426,
+        "prevAcMedian": 1095,
+        "remainingMedian": 4678,
+        "divisions": "Div2 40%，Div3 38%，Div1+2 18%",
+        "solveRate": 0.7479173191356091
+      },
+      {
+        "q": 1100,
+        "n": 33597,
+        "contests": 18,
+        "solved": 24646,
+        "median": 2001,
+        "players": 21898,
+        "posMedian": 2,
+        "posMedianSolved": 2,
+        "acTimeMedian": 3547,
+        "prevAcMedian": 1022,
+        "remainingMedian": 4092,
+        "divisions": "Div2 65%，Div3 26%，Div1+2 9%",
+        "solveRate": 0.7335774027442926
+      },
+      {
+        "q": 1200,
+        "n": 39332,
+        "contests": 22,
+        "solved": 27699,
+        "median": 2316,
+        "players": 25676,
+        "posMedian": 3,
+        "posMedianSolved": 3,
+        "acTimeMedian": 4225,
+        "prevAcMedian": 1510,
+        "remainingMedian": 4083,
+        "divisions": "Div2 42%，Div3 37%，Div1+2 13%",
+        "solveRate": 0.7042357368046375
+      },
+      {
+        "q": 1300,
+        "n": 31314,
+        "contests": 20,
+        "solved": 22009,
+        "median": 2114,
+        "players": 21190,
+        "posMedian": 3,
+        "posMedianSolved": 3,
+        "acTimeMedian": 4421,
+        "prevAcMedian": 1901,
+        "remainingMedian": 3347,
+        "divisions": "Div2 59%，Div3 32%，Div1+2 9%",
+        "solveRate": 0.7028485661365523
+      },
+      {
+        "q": 1400,
+        "n": 25322,
+        "contests": 19,
+        "solved": 16770,
+        "median": 2486,
+        "players": 16153,
+        "posMedian": 3,
+        "posMedianSolved": 3,
+        "acTimeMedian": 4925,
+        "prevAcMedian": 1962,
+        "remainingMedian": 3392,
+        "divisions": "Div3 41%，Div2 34%，Div1+2 14%",
+        "solveRate": 0.6622699628781297
+      },
+      {
+        "q": 1500,
+        "n": 16535,
+        "contests": 16,
+        "solved": 11748,
+        "median": 2110,
+        "players": 11165,
+        "posMedian": 4,
+        "posMedianSolved": 4,
+        "acTimeMedian": 4820,
+        "prevAcMedian": 2310,
+        "remainingMedian": 3078,
+        "divisions": "Div2 56%，Div3 44%",
+        "solveRate": 0.7104928938615059
+      },
+      {
+        "q": 1600,
+        "n": 14259,
+        "contests": 18,
+        "solved": 9682,
+        "median": 2306,
+        "players": 9813,
+        "posMedian": 4,
+        "posMedianSolved": 4,
+        "acTimeMedian": 4704,
+        "prevAcMedian": 1957,
+        "remainingMedian": 2872,
+        "divisions": "Div2 72%，Div3 16%，Div1+2 12%",
+        "solveRate": 0.6790097482291886
+      },
+      {
+        "q": 1700,
+        "n": 9116,
+        "contests": 17,
+        "solved": 6089,
+        "median": 2576,
+        "players": 5990,
+        "posMedian": 4,
+        "posMedianSolved": 4,
+        "acTimeMedian": 5048,
+        "prevAcMedian": 2052,
+        "remainingMedian": 3735,
+        "divisions": "Div2 51%，Div1+2 33%，Special 10%",
+        "solveRate": 0.6679464677490127
+      },
+      {
+        "q": 1800,
+        "n": 6183,
+        "contests": 15,
+        "solved": 4202,
+        "median": 2441,
+        "players": 4245,
+        "posMedian": 4,
+        "posMedianSolved": 4,
+        "acTimeMedian": 5243,
+        "prevAcMedian": 2473,
+        "remainingMedian": 2909,
+        "divisions": "Div2 68%，Div1+2 26%，Other 5%",
+        "solveRate": 0.6796053695617015
+      },
+      {
+        "q": 1900,
+        "n": 3530,
+        "contests": 15,
+        "solved": 2413,
+        "median": 2385,
+        "players": 2517,
+        "posMedian": 4,
+        "posMedianSolved": 4,
+        "acTimeMedian": 5086,
+        "prevAcMedian": 2199,
+        "remainingMedian": 3004,
+        "divisions": "Div2 56%，Div1+2 38%，Div1 5%",
+        "solveRate": 0.6835694050991501
+      },
+      {
+        "q": 2000,
+        "n": 3022,
+        "contests": 15,
+        "solved": 2082,
+        "median": 2051,
+        "players": 2016,
+        "posMedian": 4,
+        "posMedianSolved": 4,
+        "acTimeMedian": 5597,
+        "prevAcMedian": 3266,
+        "remainingMedian": 2848,
+        "divisions": "Div2 51%，Special 20%，Div1 15%",
+        "solveRate": 0.6889477167438782
+      },
+      {
+        "q": 2100,
+        "n": 2266,
+        "contests": 15,
+        "solved": 1462,
+        "median": 2722,
+        "players": 1605,
+        "posMedian": 5,
+        "posMedianSolved": 5,
+        "acTimeMedian": 6083,
+        "prevAcMedian": 3081,
+        "remainingMedian": 2968,
+        "divisions": "Div1+2 41%，Div2 37%，Special 12%",
+        "solveRate": 0.6451897616946161
+      }
+    ],
+    "window": [
+      {
+        "q": 800,
+        "band50": {
+          "n": 26775,
+          "contests": 63,
+          "solved": 23881,
+          "median": 1258,
+          "players": 13621
+        },
+        "band100": {
+          "n": 54420,
+          "contests": 63,
+          "solved": 48907,
+          "median": 1216,
+          "players": 22645
+        },
+        "band150": {
+          "n": 84761,
+          "contests": 63,
+          "solved": 77007,
+          "median": 1184,
+          "players": 31398
+        }
+      },
+      {
+        "q": 900,
+        "band50": {
+          "n": 9053,
+          "contests": 17,
+          "solved": 7008,
+          "median": 1617,
+          "players": 7788
+        },
+        "band100": {
+          "n": 17923,
+          "contests": 17,
+          "solved": 13950,
+          "median": 1582,
+          "players": 14063
+        },
+        "band150": {
+          "n": 27003,
+          "contests": 17,
+          "solved": 21320,
+          "median": 1553,
+          "players": 19900
+        }
+      },
+      {
+        "q": 1000,
+        "band50": {
+          "n": 16245,
+          "contests": 23,
+          "solved": 12066,
+          "median": 2059,
+          "players": 12984
+        },
+        "band100": {
+          "n": 31930,
+          "contests": 23,
+          "solved": 23881,
+          "median": 2023,
+          "players": 22397
+        },
+        "band150": {
+          "n": 47140,
+          "contests": 23,
+          "solved": 35688,
+          "median": 1989,
+          "players": 30404
+        }
+      },
+      {
+        "q": 1100,
+        "band50": {
+          "n": 17067,
+          "contests": 18,
+          "solved": 12466,
+          "median": 2023,
+          "players": 12783
+        },
+        "band100": {
+          "n": 33597,
+          "contests": 18,
+          "solved": 24646,
+          "median": 2001,
+          "players": 21898
+        },
+        "band150": {
+          "n": 49011,
+          "contests": 18,
+          "solved": 35948,
+          "median": 1979,
+          "players": 29392
+        }
+      },
+      {
+        "q": 1200,
+        "band50": {
+          "n": 20167,
+          "contests": 22,
+          "solved": 14441,
+          "median": 2348,
+          "players": 15284
+        },
+        "band100": {
+          "n": 39332,
+          "contests": 22,
+          "solved": 27699,
+          "median": 2316,
+          "players": 25676
+        },
+        "band150": {
+          "n": 57266,
+          "contests": 22,
+          "solved": 39884,
+          "median": 2290,
+          "players": 34009
+        }
+      },
+      {
+        "q": 1300,
+        "band50": {
+          "n": 15825,
+          "contests": 20,
+          "solved": 11179,
+          "median": 2125,
+          "players": 12419
+        },
+        "band100": {
+          "n": 31314,
+          "contests": 20,
+          "solved": 22009,
+          "median": 2114,
+          "players": 21190
+        },
+        "band150": {
+          "n": 46047,
+          "contests": 20,
+          "solved": 31762,
+          "median": 2106,
+          "players": 28509
+        }
+      },
+      {
+        "q": 1400,
+        "band50": {
+          "n": 12831,
+          "contests": 19,
+          "solved": 8667,
+          "median": 2499,
+          "players": 9435
+        },
+        "band100": {
+          "n": 25322,
+          "contests": 19,
+          "solved": 16770,
+          "median": 2486,
+          "players": 16153
+        },
+        "band150": {
+          "n": 37104,
+          "contests": 19,
+          "solved": 24028,
+          "median": 2478,
+          "players": 21728
+        }
+      },
+      {
+        "q": 1500,
+        "band50": {
+          "n": 8309,
+          "contests": 16,
+          "solved": 6015,
+          "median": 2111,
+          "players": 6487
+        },
+        "band100": {
+          "n": 16535,
+          "contests": 16,
+          "solved": 11748,
+          "median": 2110,
+          "players": 11165
+        },
+        "band150": {
+          "n": 23573,
+          "contests": 16,
+          "solved": 16086,
+          "median": 2118,
+          "players": 15013
+        }
+      },
+      {
+        "q": 1600,
+        "band50": {
+          "n": 7157,
+          "contests": 18,
+          "solved": 5018,
+          "median": 2326,
+          "players": 5625
+        },
+        "band100": {
+          "n": 14259,
+          "contests": 18,
+          "solved": 9682,
+          "median": 2306,
+          "players": 9813
+        },
+        "band150": {
+          "n": 21135,
+          "contests": 18,
+          "solved": 13793,
+          "median": 2301,
+          "players": 13415
+        }
+      },
+      {
+        "q": 1700,
+        "band50": {
+          "n": 4464,
+          "contests": 16,
+          "solved": 3042,
+          "median": 2568,
+          "players": 3404
+        },
+        "band100": {
+          "n": 9116,
+          "contests": 17,
+          "solved": 6089,
+          "median": 2576,
+          "players": 5990
+        },
+        "band150": {
+          "n": 13708,
+          "contests": 18,
+          "solved": 8978,
+          "median": 2570,
+          "players": 8310
+        }
+      },
+      {
+        "q": 1800,
+        "band50": {
+          "n": 2982,
+          "contests": 15,
+          "solved": 2072,
+          "median": 2408,
+          "players": 2357
+        },
+        "band100": {
+          "n": 6183,
+          "contests": 15,
+          "solved": 4202,
+          "median": 2441,
+          "players": 4245
+        },
+        "band150": {
+          "n": 9657,
+          "contests": 16,
+          "solved": 6338,
+          "median": 2453,
+          "players": 6067
+        }
+      },
+      {
+        "q": 1900,
+        "band50": {
+          "n": 1786,
+          "contests": 15,
+          "solved": 1255,
+          "median": 2384,
+          "players": 1412
+        },
+        "band100": {
+          "n": 3530,
+          "contests": 15,
+          "solved": 2413,
+          "median": 2385,
+          "players": 2517
+        },
+        "band150": {
+          "n": 5312,
+          "contests": 15,
+          "solved": 3555,
+          "median": 2395,
+          "players": 3540
+        }
+      },
+      {
+        "q": 2000,
+        "band50": {
+          "n": 1447,
+          "contests": 15,
+          "solved": 1005,
+          "median": 2087,
+          "players": 1138
+        },
+        "band100": {
+          "n": 3022,
+          "contests": 15,
+          "solved": 2082,
+          "median": 2051,
+          "players": 2016
+        },
+        "band150": {
+          "n": 4513,
+          "contests": 15,
+          "solved": 3073,
+          "median": 2044,
+          "players": 2818
+        }
+      },
+      {
+        "q": 2100,
+        "band50": {
+          "n": 1101,
+          "contests": 15,
+          "solved": 738,
+          "median": 2760,
+          "players": 904
+        },
+        "band100": {
+          "n": 2266,
+          "contests": 15,
+          "solved": 1462,
+          "median": 2722,
+          "players": 1605
+        },
+        "band150": {
+          "n": 3494,
+          "contests": 15,
+          "solved": 2168,
+          "median": 2723,
+          "players": 2296
+        }
+      }
+    ],
+    "byDivision": [
+      {
+        "q": 800,
+        "Div2": {
+          "n": 21135,
+          "contests": 32,
+          "solved": 18483,
+          "median": 1489,
+          "players": 13205
+        },
+        "Div3": {
+          "n": 24542,
+          "contests": 16,
+          "solved": 22561,
+          "median": 1006,
+          "players": 12820
+        },
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 5754,
+          "contests": 12,
+          "solved": 5070,
+          "median": 1481,
+          "players": 4299
+        },
+        "Special": {
+          "n": 2401,
+          "contests": 2,
+          "solved": 2238,
+          "median": 857,
+          "players": 1513
+        }
+      },
+      {
+        "q": 900,
+        "Div2": {
+          "n": 4490,
+          "contests": 5,
+          "solved": 3269,
+          "median": 1780,
+          "players": 4118
+        },
+        "Div3": {
+          "n": 10750,
+          "contests": 8,
+          "solved": 8645,
+          "median": 1454,
+          "players": 9386
+        },
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 943,
+          "contests": 2,
+          "solved": 659,
+          "median": 2194,
+          "players": 926
+        },
+        "Special": {
+          "n": 1740,
+          "contests": 2,
+          "solved": 1377,
+          "median": 1758,
+          "players": 1732
+        }
+      },
+      {
+        "q": 1000,
+        "Div2": {
+          "n": 12810,
+          "contests": 9,
+          "solved": 9010,
+          "median": 2196,
+          "players": 10365
+        },
+        "Div3": {
+          "n": 12275,
+          "contests": 7,
+          "solved": 9744,
+          "median": 1825,
+          "players": 10720
+        },
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 5692,
+          "contests": 6,
+          "solved": 4197,
+          "median": 2214,
+          "players": 5156
+        },
+        "Special": null
+      },
+      {
+        "q": 1100,
+        "Div2": {
+          "n": 21894,
+          "contests": 11,
+          "solved": 15539,
+          "median": 2151,
+          "players": 16099
+        },
+        "Div3": {
+          "n": 8821,
+          "contests": 5,
+          "solved": 7028,
+          "median": 1611,
+          "players": 8037
+        },
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 2882,
+          "contests": 2,
+          "solved": 2079,
+          "median": 2290,
+          "players": 2867
+        },
+        "Special": null
+      },
+      {
+        "q": 1200,
+        "Div2": {
+          "n": 16689,
+          "contests": 9,
+          "solved": 11091,
+          "median": 2551,
+          "players": 14290
+        },
+        "Div3": {
+          "n": 14447,
+          "contests": 7,
+          "solved": 10877,
+          "median": 1853,
+          "players": 11455
+        },
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 4918,
+          "contests": 4,
+          "solved": 3493,
+          "median": 2598,
+          "players": 4326
+        },
+        "Special": {
+          "n": 3278,
+          "contests": 2,
+          "solved": 2238,
+          "median": 3311,
+          "players": 3270
+        }
+      },
+      {
+        "q": 1300,
+        "Div2": {
+          "n": 18542,
+          "contests": 12,
+          "solved": 12425,
+          "median": 2221,
+          "players": 14149
+        },
+        "Div3": {
+          "n": 9985,
+          "contests": 6,
+          "solved": 7542,
+          "median": 1846,
+          "players": 8792
+        },
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 2787,
+          "contests": 2,
+          "solved": 2042,
+          "median": 2618,
+          "players": 2520
+        },
+        "Special": null
+      },
+      {
+        "q": 1400,
+        "Div2": {
+          "n": 8637,
+          "contests": 6,
+          "solved": 5663,
+          "median": 2492,
+          "players": 6618
+        },
+        "Div3": {
+          "n": 10275,
+          "contests": 7,
+          "solved": 6885,
+          "median": 2267,
+          "players": 8011
+        },
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 3612,
+          "contests": 4,
+          "solved": 2503,
+          "median": 2894,
+          "players": 3282
+        },
+        "Special": {
+          "n": 2798,
+          "contests": 2,
+          "solved": 1719,
+          "median": 3294,
+          "players": 2657
+        }
+      },
+      {
+        "q": 1500,
+        "Div2": {
+          "n": 9200,
+          "contests": 9,
+          "solved": 6432,
+          "median": 2191,
+          "players": 7661
+        },
+        "Div3": {
+          "n": 7335,
+          "contests": 7,
+          "solved": 5316,
+          "median": 1987,
+          "players": 5922
+        },
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": null,
+        "Special": null
+      },
+      {
+        "q": 1600,
+        "Div2": {
+          "n": 10265,
+          "contests": 10,
+          "solved": 6820,
+          "median": 2410,
+          "players": 7921
+        },
+        "Div3": {
+          "n": 2329,
+          "contests": 6,
+          "solved": 1689,
+          "median": 1897,
+          "players": 2155
+        },
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 1665,
+          "contests": 2,
+          "solved": 1173,
+          "median": 2322,
+          "players": 1647
+        },
+        "Special": null
+      },
+      {
+        "q": 1700,
+        "Div2": {
+          "n": 4617,
+          "contests": 8,
+          "solved": 3058,
+          "median": 2130,
+          "players": 3652
+        },
+        "Div3": null,
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 2976,
+          "contests": 5,
+          "solved": 1962,
+          "median": 2814,
+          "players": 2563
+        },
+        "Special": {
+          "n": 871,
+          "contests": 1,
+          "solved": 638,
+          "median": 3599,
+          "players": 871
+        }
+      },
+      {
+        "q": 1800,
+        "Div2": {
+          "n": 4221,
+          "contests": 10,
+          "solved": 2741,
+          "median": 2208,
+          "players": 3271
+        },
+        "Div3": null,
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 1630,
+          "contests": 4,
+          "solved": 1210,
+          "median": 3127,
+          "players": 1497
+        },
+        "Special": null
+      },
+      {
+        "q": 1900,
+        "Div2": {
+          "n": 1983,
+          "contests": 9,
+          "solved": 1355,
+          "median": 2104,
+          "players": 1656
+        },
+        "Div3": null,
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 1354,
+          "contests": 4,
+          "solved": 908,
+          "median": 2846,
+          "players": 1061
+        },
+        "Special": null
+      },
+      {
+        "q": 2000,
+        "Div2": {
+          "n": 1542,
+          "contests": 8,
+          "solved": 1038,
+          "median": 2063,
+          "players": 1277
+        },
+        "Div3": null,
+        "Educational": null,
+        "Div1": {
+          "n": 447,
+          "contests": 3,
+          "solved": 335,
+          "median": 792,
+          "players": 414
+        },
+        "Div1+2": {
+          "n": 423,
+          "contests": 2,
+          "solved": 283,
+          "median": 2263,
+          "players": 384
+        },
+        "Special": {
+          "n": 610,
+          "contests": 2,
+          "solved": 426,
+          "median": 2518,
+          "players": 463
+        }
+      },
+      {
+        "q": 2100,
+        "Div2": {
+          "n": 836,
+          "contests": 9,
+          "solved": 517,
+          "median": 2263,
+          "players": 729
+        },
+        "Div3": null,
+        "Educational": null,
+        "Div1": null,
+        "Div1+2": {
+          "n": 933,
+          "contests": 4,
+          "solved": 623,
+          "median": 3382,
+          "players": 798
+        },
+        "Special": {
+          "n": 278,
+          "contests": 1,
+          "solved": 167,
+          "median": 3407,
+          "players": 278
+        }
+      }
+    ],
+    "divisionCounts": {
+      "Div2": [
+        21135,
+        4490,
+        12810,
+        21894,
+        16689,
+        18542,
+        8637,
+        9200,
+        10265,
+        4617,
+        4221,
+        1983,
+        1542,
+        836
+      ],
+      "Div3": [
+        24542,
+        10750,
+        12275,
+        8821,
+        14447,
+        9985,
+        10275,
+        7335,
+        2329,
+        5,
+        0,
+        0,
+        0,
+        0
+      ],
+      "Educational": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "Div1": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        193,
+        447,
+        0
+      ],
+      "Div1+2": [
+        5754,
+        943,
+        5692,
+        2882,
+        4918,
+        2787,
+        3612,
+        0,
+        1665,
+        2976,
+        1630,
+        1354,
+        423,
+        933
+      ],
+      "Special": [
+        2401,
+        1740,
+        0,
+        0,
+        3278,
+        0,
+        2798,
+        0,
+        0,
+        871,
+        0,
+        0,
+        610,
+        278
+      ]
+    },
+    "byPosition": [
+      {
+        "q": 800,
+        "第1题": {
+          "n": 43779,
+          "contests": 63,
+          "solved": 40662,
+          "median": 1185,
+          "players": 22645
+        },
+        "第2题": {
+          "n": 10641,
+          "contests": 14,
+          "solved": 8245,
+          "median": 1372,
+          "players": 8964
+        },
+        "第3题": null,
+        "第4题": null,
+        "第5题及以后": null
+      },
+      {
+        "q": 900,
+        "第1题": {
+          "n": 2485,
+          "contests": 3,
+          "solved": 1897,
+          "median": 2027,
+          "players": 2420
+        },
+        "第2题": {
+          "n": 14168,
+          "contests": 12,
+          "solved": 11043,
+          "median": 1521,
+          "players": 11680
+        },
+        "第3题": {
+          "n": 1270,
+          "contests": 2,
+          "solved": 1010,
+          "median": 1524,
+          "players": 1269
+        },
+        "第4题": null,
+        "第5题及以后": null
+      },
+      {
+        "q": 1000,
+        "第1题": null,
+        "第2题": {
+          "n": 21263,
+          "contests": 17,
+          "solved": 15535,
+          "median": 2133,
+          "players": 15892
+        },
+        "第3题": {
+          "n": 10667,
+          "contests": 6,
+          "solved": 8346,
+          "median": 1811,
+          "players": 9519
+        },
+        "第4题": null,
+        "第5题及以后": null
+      },
+      {
+        "q": 1100,
+        "第1题": null,
+        "第2题": {
+          "n": 21039,
+          "contests": 12,
+          "solved": 15049,
+          "median": 2251,
+          "players": 16470
+        },
+        "第3题": {
+          "n": 10908,
+          "contests": 6,
+          "solved": 8158,
+          "median": 1784,
+          "players": 9413
+        },
+        "第4题": {
+          "n": 1650,
+          "contests": 1,
+          "solved": 1439,
+          "median": 1149,
+          "players": 1650
+        },
+        "第5题及以后": null
+      },
+      {
+        "q": 1200,
+        "第1题": null,
+        "第2题": {
+          "n": 11849,
+          "contests": 7,
+          "solved": 8202,
+          "median": 2637,
+          "players": 10328
+        },
+        "第3题": {
+          "n": 22359,
+          "contests": 13,
+          "solved": 15853,
+          "median": 2287,
+          "players": 17444
+        },
+        "第4题": {
+          "n": 5124,
+          "contests": 3,
+          "solved": 3644,
+          "median": 1778,
+          "players": 4530
+        },
+        "第5题及以后": null
+      },
+      {
+        "q": 1300,
+        "第1题": null,
+        "第2题": {
+          "n": 4008,
+          "contests": 3,
+          "solved": 2831,
+          "median": 2622,
+          "players": 3789
+        },
+        "第3题": {
+          "n": 19822,
+          "contests": 12,
+          "solved": 13648,
+          "median": 2140,
+          "players": 14818
+        },
+        "第4题": {
+          "n": 7484,
+          "contests": 5,
+          "solved": 5530,
+          "median": 1827,
+          "players": 6912
+        },
+        "第5题及以后": null
+      },
+      {
+        "q": 1400,
+        "第1题": null,
+        "第2题": null,
+        "第3题": {
+          "n": 15449,
+          "contests": 13,
+          "solved": 10358,
+          "median": 2610,
+          "players": 11659
+        },
+        "第4题": {
+          "n": 7050,
+          "contests": 6,
+          "solved": 4576,
+          "median": 2432,
+          "players": 6091
+        },
+        "第5题及以后": {
+          "n": 2823,
+          "contests": 2,
+          "solved": 1836,
+          "median": 2044,
+          "players": 2808
+        }
+      },
+      {
+        "q": 1500,
+        "第1题": null,
+        "第2题": null,
+        "第3题": {
+          "n": 5405,
+          "contests": 6,
+          "solved": 3819,
+          "median": 2301,
+          "players": 4805
+        },
+        "第4题": {
+          "n": 6079,
+          "contests": 5,
+          "solved": 4269,
+          "median": 2129,
+          "players": 5404
+        },
+        "第5题及以后": {
+          "n": 5051,
+          "contests": 5,
+          "solved": 3660,
+          "median": 1899,
+          "players": 4356
+        }
+      },
+      {
+        "q": 1600,
+        "第1题": null,
+        "第2题": null,
+        "第3题": {
+          "n": 6439,
+          "contests": 6,
+          "solved": 4280,
+          "median": 2412,
+          "players": 5203
+        },
+        "第4题": {
+          "n": 5491,
+          "contests": 6,
+          "solved": 3713,
+          "median": 2395,
+          "players": 4867
+        },
+        "第5题及以后": {
+          "n": 2329,
+          "contests": 6,
+          "solved": 1689,
+          "median": 1897,
+          "players": 2155
+        }
+      },
+      {
+        "q": 1700,
+        "第1题": null,
+        "第2题": {
+          "n": 389,
+          "contests": 1,
+          "solved": 335,
+          "median": 1527,
+          "players": 389
+        },
+        "第3题": {
+          "n": 2014,
+          "contests": 3,
+          "solved": 1244,
+          "median": 2784,
+          "players": 1897
+        },
+        "第4题": {
+          "n": 6670,
+          "contests": 10,
+          "solved": 4483,
+          "median": 2618,
+          "players": 4865
+        },
+        "第5题及以后": null
+      },
+      {
+        "q": 1800,
+        "第1题": null,
+        "第2题": null,
+        "第3题": {
+          "n": 674,
+          "contests": 2,
+          "solved": 511,
+          "median": 2246,
+          "players": 666
+        },
+        "第4题": {
+          "n": 5358,
+          "contests": 12,
+          "solved": 3607,
+          "median": 2492,
+          "players": 3841
+        },
+        "第5题及以后": null
+      },
+      {
+        "q": 1900,
+        "第1题": null,
+        "第2题": null,
+        "第3题": {
+          "n": 323,
+          "contests": 2,
+          "solved": 256,
+          "median": 3569,
+          "players": 319
+        },
+        "第4题": {
+          "n": 2805,
+          "contests": 11,
+          "solved": 1906,
+          "median": 2280,
+          "players": 2180
+        },
+        "第5题及以后": {
+          "n": 336,
+          "contests": 2,
+          "solved": 200,
+          "median": 2319,
+          "players": 331
+        }
+      },
+      {
+        "q": 2000,
+        "第1题": null,
+        "第2题": null,
+        "第3题": {
+          "n": 502,
+          "contests": 3,
+          "solved": 378,
+          "median": 1370,
+          "players": 461
+        },
+        "第4题": {
+          "n": 930,
+          "contests": 4,
+          "solved": 638,
+          "median": 2255,
+          "players": 839
+        },
+        "第5题及以后": {
+          "n": 1506,
+          "contests": 8,
+          "solved": 991,
+          "median": 2204,
+          "players": 1262
+        }
+      },
+      {
+        "q": 2100,
+        "第1题": null,
+        "第2题": null,
+        "第3题": null,
+        "第4题": {
+          "n": 564,
+          "contests": 3,
+          "solved": 378,
+          "median": 2315,
+          "players": 509
+        },
+        "第5题及以后": {
+          "n": 1702,
+          "contests": 12,
+          "solved": 1084,
+          "median": 2800,
+          "players": 1302
+        }
+      }
+    ],
+    "standardized": [
+      {
+        "q": 800,
+        "raw": 1216,
+        "n": 54420,
+        "stdSolved": 1416,
+        "stdAll": 1412,
+        "core": {
+          "n": 26889,
+          "contests": 44,
+          "solved": 23553,
+          "median": 1488,
+          "players": 15210
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.9698787747846279,
+        "strata": 5,
+        "cells": [
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 21135,
+            "nSolved": 18483
+          },
+          {
+            "division": "Div3",
+            "share": 0.00015415082516215866,
+            "n": 24542,
+            "nSolved": 22561
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 5754,
+            "nSolved": 5070
+          },
+          {
+            "division": "Special",
+            "share": 0.06772312943370289,
+            "n": 2401,
+            "nSolved": 2238
+          },
+          {
+            "division": "Other",
+            "share": 0.044954866689273475,
+            "n": 588,
+            "nSolved": 555
+          }
+        ],
+        "within": {
+          "Div2": 1489,
+          "Div1+2": 1481,
+          "Special": 857,
+          "Other": 960,
+          "Div1": null,
+          "Div3": 1006
+        }
+      },
+      {
+        "q": 900,
+        "raw": 1582,
+        "n": 17923,
+        "stdSolved": 1884,
+        "stdAll": 1879,
+        "core": {
+          "n": 5433,
+          "contests": 7,
+          "solved": 3928,
+          "median": 1835,
+          "players": 4959
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.9249239080953544,
+        "strata": 4,
+        "cells": [
+          {
+            "division": "Div3",
+            "share": 0.00015415082516215866,
+            "n": 10750,
+            "nSolved": 8645
+          },
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 4490,
+            "nSolved": 3269
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 943,
+            "nSolved": 659
+          },
+          {
+            "division": "Special",
+            "share": 0.06772312943370289,
+            "n": 1740,
+            "nSolved": 1377
+          }
+        ],
+        "within": {
+          "Div2": 1780,
+          "Div1+2": 2194,
+          "Special": 1758,
+          "Other": null,
+          "Div1": null,
+          "Div3": 1454
+        }
+      },
+      {
+        "q": 1000,
+        "raw": 2023,
+        "n": 31930,
+        "stdSolved": 2175,
+        "stdAll": 2173,
+        "core": {
+          "n": 18502,
+          "contests": 15,
+          "solved": 13207,
+          "median": 2201,
+          "players": 13776
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.9021556453509251,
+        "strata": 4,
+        "cells": [
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 12810,
+            "nSolved": 9010
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 5692,
+            "nSolved": 4197
+          },
+          {
+            "division": "Div3",
+            "share": 0.00015415082516215866,
+            "n": 12275,
+            "nSolved": 9744
+          },
+          {
+            "division": "Other",
+            "share": 0.044954866689273475,
+            "n": 1153,
+            "nSolved": 930
+          }
+        ],
+        "within": {
+          "Div2": 2196,
+          "Div1+2": 2214,
+          "Special": null,
+          "Other": 1696,
+          "Div1": null,
+          "Div3": 1825
+        }
+      },
+      {
+        "q": 1100,
+        "raw": 2001,
+        "n": 33597,
+        "stdSolved": 2196,
+        "stdAll": 2196,
+        "core": {
+          "n": 24776,
+          "contests": 13,
+          "solved": 17618,
+          "median": 2163,
+          "players": 17420
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.8572007786616516,
+        "strata": 3,
+        "cells": [
+          {
+            "division": "Div3",
+            "share": 0.00015415082516215866,
+            "n": 8821,
+            "nSolved": 7028
+          },
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 21894,
+            "nSolved": 15539
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 2882,
+            "nSolved": 2079
+          }
+        ],
+        "within": {
+          "Div2": 2151,
+          "Div1+2": 2290,
+          "Special": null,
+          "Other": null,
+          "Div1": null,
+          "Div3": 1611
+        }
+      },
+      {
+        "q": 1200,
+        "raw": 2316,
+        "n": 39332,
+        "stdSolved": 2607,
+        "stdAll": 2608,
+        "core": {
+          "n": 21607,
+          "contests": 13,
+          "solved": 14584,
+          "median": 2556,
+          "players": 16994
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.9249239080953544,
+        "strata": 4,
+        "cells": [
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 16689,
+            "nSolved": 11091
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 4918,
+            "nSolved": 3493
+          },
+          {
+            "division": "Div3",
+            "share": 0.00015415082516215866,
+            "n": 14447,
+            "nSolved": 10877
+          },
+          {
+            "division": "Special",
+            "share": 0.06772312943370289,
+            "n": 3278,
+            "nSolved": 2238
+          }
+        ],
+        "within": {
+          "Div2": 2551,
+          "Div1+2": 2598,
+          "Special": 3311,
+          "Other": null,
+          "Div1": null,
+          "Div3": 1853
+        }
+      },
+      {
+        "q": 1300,
+        "raw": 2114,
+        "n": 31314,
+        "stdSolved": 2333,
+        "stdAll": 2342,
+        "core": {
+          "n": 21329,
+          "contests": 14,
+          "solved": 14467,
+          "median": 2265,
+          "players": 15349
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.8572007786616516,
+        "strata": 3,
+        "cells": [
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 18542,
+            "nSolved": 12425
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 2787,
+            "nSolved": 2042
+          },
+          {
+            "division": "Div3",
+            "share": 0.00015415082516215866,
+            "n": 9985,
+            "nSolved": 7542
+          }
+        ],
+        "within": {
+          "Div2": 2221,
+          "Div1+2": 2618,
+          "Special": null,
+          "Other": null,
+          "Div1": null,
+          "Div3": 1846
+        }
+      },
+      {
+        "q": 1400,
+        "raw": 2486,
+        "n": 25322,
+        "stdSolved": 2636,
+        "stdAll": 2639,
+        "core": {
+          "n": 12249,
+          "contests": 10,
+          "solved": 8166,
+          "median": 2594,
+          "players": 8856
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.9249239080953544,
+        "strata": 4,
+        "cells": [
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 8637,
+            "nSolved": 5663
+          },
+          {
+            "division": "Div3",
+            "share": 0.00015415082516215866,
+            "n": 10275,
+            "nSolved": 6885
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 3612,
+            "nSolved": 2503
+          },
+          {
+            "division": "Special",
+            "share": 0.06772312943370289,
+            "n": 2798,
+            "nSolved": 1719
+          }
+        ],
+        "within": {
+          "Div2": 2492,
+          "Div1+2": 2894,
+          "Special": 3294,
+          "Other": null,
+          "Div1": null,
+          "Div3": 2267
+        }
+      },
+      {
+        "q": 1500,
+        "raw": 2110,
+        "n": 16535,
+        "stdSolved": 2191,
+        "stdAll": 2191,
+        "core": {
+          "n": 9200,
+          "contests": 9,
+          "solved": 6432,
+          "median": 2191,
+          "players": 7661
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.5649938783678107,
+        "strata": 2,
+        "cells": [
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 9200,
+            "nSolved": 6432
+          },
+          {
+            "division": "Div3",
+            "share": 0.00015415082516215866,
+            "n": 7335,
+            "nSolved": 5316
+          }
+        ],
+        "within": {
+          "Div2": 2191,
+          "Div1+2": null,
+          "Special": null,
+          "Other": null,
+          "Div1": null,
+          "Div3": 1987
+        }
+      },
+      {
+        "q": 1600,
+        "raw": 2306,
+        "n": 14259,
+        "stdSolved": 2383,
+        "stdAll": 2382,
+        "core": {
+          "n": 11930,
+          "contests": 12,
+          "solved": 7993,
+          "median": 2400,
+          "players": 8783
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.8572007786616516,
+        "strata": 3,
+        "cells": [
+          {
+            "division": "Div3",
+            "share": 0.00015415082516215866,
+            "n": 2329,
+            "nSolved": 1689
+          },
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 10265,
+            "nSolved": 6820
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 1665,
+            "nSolved": 1173
+          }
+        ],
+        "within": {
+          "Div2": 2410,
+          "Div1+2": 2322,
+          "Special": null,
+          "Other": null,
+          "Div1": null,
+          "Div3": 1897
+        }
+      },
+      {
+        "q": 1700,
+        "raw": 2576,
+        "n": 9116,
+        "stdSolved": 2487,
+        "stdAll": 2496,
+        "core": {
+          "n": 7593,
+          "contests": 13,
+          "solved": 5020,
+          "median": 2387,
+          "players": 5209
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.9697246239594658,
+        "strata": 4,
+        "cells": [
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 4617,
+            "nSolved": 3058
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 2976,
+            "nSolved": 1962
+          },
+          {
+            "division": "Other",
+            "share": 0.044954866689273475,
+            "n": 647,
+            "nSolved": 428
+          },
+          {
+            "division": "Special",
+            "share": 0.06772312943370289,
+            "n": 871,
+            "nSolved": 638
+          }
+        ],
+        "within": {
+          "Div2": 2130,
+          "Div1+2": 2814,
+          "Special": 3599,
+          "Other": 3280,
+          "Div1": null,
+          "Div3": null
+        }
+      },
+      {
+        "q": 1800,
+        "raw": 2441,
+        "n": 6183,
+        "stdSolved": 2471,
+        "stdAll": 2494,
+        "core": {
+          "n": 5851,
+          "contests": 14,
+          "solved": 3951,
+          "median": 2432,
+          "players": 4037
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.902001494525763,
+        "strata": 3,
+        "cells": [
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 4221,
+            "nSolved": 2741
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 1630,
+            "nSolved": 1210
+          },
+          {
+            "division": "Other",
+            "share": 0.044954866689273475,
+            "n": 332,
+            "nSolved": 251
+          }
+        ],
+        "within": {
+          "Div2": 2208,
+          "Div1+2": 3127,
+          "Special": null,
+          "Other": 2520,
+          "Div1": null,
+          "Div3": null
+        }
+      },
+      {
+        "q": 1900,
+        "raw": 2385,
+        "n": 3530,
+        "stdSolved": 2321,
+        "stdAll": 2324,
+        "core": {
+          "n": 3337,
+          "contests": 13,
+          "solved": 2263,
+          "median": 2331,
+          "players": 2411
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.8871678530518615,
+        "strata": 3,
+        "cells": [
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 1983,
+            "nSolved": 1355
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 1354,
+            "nSolved": 908
+          },
+          {
+            "division": "Div1",
+            "share": 0.030121225215372062,
+            "n": 193,
+            "nSolved": 150
+          }
+        ],
+        "within": {
+          "Div2": 2104,
+          "Div1+2": 2846,
+          "Special": null,
+          "Other": null,
+          "Div1": 3389,
+          "Div3": null
+        }
+      },
+      {
+        "q": 2000,
+        "raw": 2051,
+        "n": 3022,
+        "stdSolved": 2131,
+        "stdAll": 2131,
+        "core": {
+          "n": 1965,
+          "contests": 10,
+          "solved": 1321,
+          "median": 2102,
+          "players": 1553
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.9548909824855644,
+        "strata": 4,
+        "cells": [
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 1542,
+            "nSolved": 1038
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 423,
+            "nSolved": 283
+          },
+          {
+            "division": "Div1",
+            "share": 0.030121225215372062,
+            "n": 447,
+            "nSolved": 335
+          },
+          {
+            "division": "Special",
+            "share": 0.06772312943370289,
+            "n": 610,
+            "nSolved": 426
+          }
+        ],
+        "within": {
+          "Div2": 2063,
+          "Div1+2": 2263,
+          "Special": 2518,
+          "Other": null,
+          "Div1": 792,
+          "Div3": null
+        }
+      },
+      {
+        "q": 2100,
+        "raw": 2722,
+        "n": 2266,
+        "stdSolved": 2605,
+        "stdAll": 2610,
+        "core": {
+          "n": 1769,
+          "contests": 13,
+          "solved": 1140,
+          "median": 2766,
+          "players": 1331
+        },
+        "coreDivisions": [
+          "Div2",
+          "Div1+2"
+        ],
+        "coverage": 0.9697246239594658,
+        "strata": 4,
+        "cells": [
+          {
+            "division": "Div2",
+            "share": 0.5648397275426486,
+            "n": 836,
+            "nSolved": 517
+          },
+          {
+            "division": "Div1+2",
+            "share": 0.29220690029384094,
+            "n": 933,
+            "nSolved": 623
+          },
+          {
+            "division": "Special",
+            "share": 0.06772312943370289,
+            "n": 278,
+            "nSolved": 167
+          },
+          {
+            "division": "Other",
+            "share": 0.044954866689273475,
+            "n": 219,
+            "nSolved": 155
+          }
+        ],
+        "within": {
+          "Div2": 2263,
+          "Div1+2": 3382,
+          "Special": 3407,
+          "Other": 1306,
+          "Div1": null,
+          "Div3": null
+        }
+      }
+    ],
+    "differences": [
+      {
+        "q": 800,
+        "raw": 1216,
+        "std": 1416
+      },
+      {
+        "q": 900,
+        "raw": 1582,
+        "std": 1884
+      },
+      {
+        "q": 1000,
+        "raw": 2023,
+        "std": 2175
+      },
+      {
+        "q": 1100,
+        "raw": 2001,
+        "std": 2196
+      },
+      {
+        "q": 1200,
+        "raw": 2316,
+        "std": 2607
+      },
+      {
+        "q": 1300,
+        "raw": 2114,
+        "std": 2333
+      },
+      {
+        "q": 1400,
+        "raw": 2486,
+        "std": 2636
+      },
+      {
+        "q": 1500,
+        "raw": 2110,
+        "std": 2191
+      },
+      {
+        "q": 1600,
+        "raw": 2306,
+        "std": 2383
+      },
+      {
+        "q": 1700,
+        "raw": 2576,
+        "std": 2487
+      },
+      {
+        "q": 1800,
+        "raw": 2441,
+        "std": 2471
+      },
+      {
+        "q": 1900,
+        "raw": 2385,
+        "std": 2321
+      },
+      {
+        "q": 2000,
+        "raw": 2051,
+        "std": 2131
+      },
+      {
+        "q": 2100,
+        "raw": 2722,
+        "std": 2605
+      }
+    ],
+    "referenceShare": {
+      "Div2": 0.5648397275426486,
+      "Div1+2": 0.29220690029384094,
+      "Div3": 0.00015415082516215866,
+      "Other": 0.044954866689273475,
+      "Special": 0.06772312943370289,
+      "Div1": 0.030121225215372062
+    },
+    "discrimination": {
+      "block": {
+        "from": 1675,
+        "to": 2025,
+        "span": 350,
+        "levelSeconds": 2403.51658828936,
+        "weight": 269229
+      },
+      "rawSpanSeconds": 95.1331109690268,
+      "rawMaxSeconds": 2438.150048294452,
+      "rawMinSeconds": 2343.0169373254253,
+      "lowNeighbour": {
+        "q": 1650,
+        "rawSeconds": 2387.067264319696
+      },
+      "highNeighbour": {
+        "q": 2050,
+        "rawSeconds": 2407.4071927746836
+      },
+      "neighbourSpanSeconds": 20.339928454987785,
+      "flatStepsSeconds": [
+        0,
+        0,
+        0
+      ],
+      "rampStepsSeconds": [
+        5.084982113746719,
+        5.084982113747174,
+        5.084982113746719
+      ],
+      "ramp": [
+        {
+          "q": 1700,
+          "flatSeconds": 2403.51658828936,
+          "rampSeconds": 2389.6097553765694
+        },
+        {
+          "q": 1800,
+          "flatSeconds": 2403.51658828936,
+          "rampSeconds": 2394.694737490316
+        },
+        {
+          "q": 1900,
+          "flatSeconds": 2403.51658828936,
+          "rampSeconds": 2399.7797196040633
+        },
+        {
+          "q": 2000,
+          "flatSeconds": 2403.51658828936,
+          "rampSeconds": 2404.86470171781
+        }
+      ]
+    }
+  }
+}

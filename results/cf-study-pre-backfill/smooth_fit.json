@@ -1,0 +1,196 @@
+{
+  "kind": "fitted",
+  "method": "weighted local-linear Gaussian smoother",
+  "selection": "minimum leave-one-rating-bin-out weighted MSE",
+  "weight": "effective sample size",
+  "inputBins": [
+    {
+      "q": 800,
+      "samples": 2281
+    },
+    {
+      "q": 900,
+      "samples": 837
+    },
+    {
+      "q": 1000,
+      "samples": 2688
+    },
+    {
+      "q": 1100,
+      "samples": 4076
+    },
+    {
+      "q": 1200,
+      "samples": 4777
+    },
+    {
+      "q": 1300,
+      "samples": 6556
+    },
+    {
+      "q": 1400,
+      "samples": 5991
+    },
+    {
+      "q": 1500,
+      "samples": 2871
+    },
+    {
+      "q": 1600,
+      "samples": 5492
+    },
+    {
+      "q": 1700,
+      "samples": 3233
+    },
+    {
+      "q": 1800,
+      "samples": 1997
+    },
+    {
+      "q": 1900,
+      "samples": 1313
+    },
+    {
+      "q": 2000,
+      "samples": 326
+    }
+  ],
+  "metrics": [
+    {
+      "model": "km",
+      "bandwidth": 75,
+      "loocvMseSeconds2": 173544.78282380692,
+      "loocvRmseSeconds": 416.58706511821384
+    },
+    {
+      "model": "km",
+      "bandwidth": 100,
+      "loocvMseSeconds2": 162602.76358665418,
+      "loocvRmseSeconds": 403.24032981170694
+    },
+    {
+      "model": "km",
+      "bandwidth": 125,
+      "loocvMseSeconds2": 148652.56857642683,
+      "loocvRmseSeconds": 385.55488400022483
+    },
+    {
+      "model": "km",
+      "bandwidth": 150,
+      "loocvMseSeconds2": 135677.3176283492,
+      "loocvRmseSeconds": 368.34402075824335
+    },
+    {
+      "model": "km",
+      "bandwidth": 200,
+      "loocvMseSeconds2": 126058.03307243972,
+      "loocvRmseSeconds": 355.04652240578235
+    },
+    {
+      "model": "km",
+      "bandwidth": 250,
+      "loocvMseSeconds2": 127344.83512108072,
+      "loocvRmseSeconds": 356.85408099261065
+    },
+    {
+      "model": "km",
+      "bandwidth": 300,
+      "loocvMseSeconds2": 130701.2285857649,
+      "loocvRmseSeconds": 361.5262488198677
+    },
+    {
+      "model": "km",
+      "bandwidth": 400,
+      "loocvMseSeconds2": 136192.48929949486,
+      "loocvRmseSeconds": 369.04266596085455
+    },
+    {
+      "model": "km",
+      "bandwidth": 500,
+      "loocvMseSeconds2": 139791.66171458532,
+      "loocvRmseSeconds": 373.8872312804829
+    },
+    {
+      "model": "km",
+      "bandwidth": 600,
+      "loocvMseSeconds2": 142579.47351405225,
+      "loocvRmseSeconds": 377.596972331681
+    },
+    {
+      "model": "success",
+      "bandwidth": 75,
+      "loocvMseSeconds2": 65096.357542736136,
+      "loocvRmseSeconds": 255.13987838583003
+    },
+    {
+      "model": "success",
+      "bandwidth": 100,
+      "loocvMseSeconds2": 61921.16321291722,
+      "loocvRmseSeconds": 248.8396335251224
+    },
+    {
+      "model": "success",
+      "bandwidth": 125,
+      "loocvMseSeconds2": 60028.44693924769,
+      "loocvRmseSeconds": 245.007034468906
+    },
+    {
+      "model": "success",
+      "bandwidth": 150,
+      "loocvMseSeconds2": 56963.03842151496,
+      "loocvRmseSeconds": 238.6693076654704
+    },
+    {
+      "model": "success",
+      "bandwidth": 200,
+      "loocvMseSeconds2": 52878.20596171686,
+      "loocvRmseSeconds": 229.95261677510186
+    },
+    {
+      "model": "success",
+      "bandwidth": 250,
+      "loocvMseSeconds2": 52352.96134232822,
+      "loocvRmseSeconds": 228.80769511169902
+    },
+    {
+      "model": "success",
+      "bandwidth": 300,
+      "loocvMseSeconds2": 53394.82794591805,
+      "loocvRmseSeconds": 231.07320906136664
+    },
+    {
+      "model": "success",
+      "bandwidth": 400,
+      "loocvMseSeconds2": 55915.75702661449,
+      "loocvRmseSeconds": 236.4651285636309
+    },
+    {
+      "model": "success",
+      "bandwidth": 500,
+      "loocvMseSeconds2": 57458.61514089451,
+      "loocvRmseSeconds": 239.7052672364429
+    },
+    {
+      "model": "success",
+      "bandwidth": 600,
+      "loocvMseSeconds2": 58398.46508480228,
+      "loocvRmseSeconds": 241.65774368888384
+    }
+  ],
+  "selected": {
+    "km": {
+      "model": "km",
+      "bandwidth": 200,
+      "loocvMseSeconds2": 126058.03307243972,
+      "loocvRmseSeconds": 355.04652240578235
+    },
+    "success": {
+      "model": "success",
+      "bandwidth": 250,
+      "loocvMseSeconds2": 52352.96134232822,
+      "loocvRmseSeconds": 228.80769511169902
+    }
+  }
+}

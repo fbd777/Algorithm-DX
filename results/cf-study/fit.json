@@ -1,0 +1,376 @@
+{
+  "kind": "fitted",
+  "method": "weighted polynomial selected by leave-one-rating-bin-out RMSE",
+  "weight": "effective sample size per rating bin",
+  "inputBins": [
+    {
+      "q": 800,
+      "n": 58284,
+      "effectiveSamples": 54918.32345742266
+    },
+    {
+      "q": 900,
+      "n": 20143,
+      "effectiveSamples": 19009.065658720305
+    },
+    {
+      "q": 1000,
+      "n": 31953,
+      "effectiveSamples": 30168.875626329926
+    },
+    {
+      "q": 1100,
+      "n": 35725,
+      "effectiveSamples": 33739.722427520355
+    },
+    {
+      "q": 1200,
+      "n": 43268,
+      "effectiveSamples": 40898.28216166459
+    },
+    {
+      "q": 1300,
+      "n": 33544,
+      "effectiveSamples": 31655.59554966049
+    },
+    {
+      "q": 1400,
+      "n": 27061,
+      "effectiveSamples": 25542.047985162026
+    },
+    {
+      "q": 1500,
+      "n": 17432,
+      "effectiveSamples": 16450.70367703112
+    },
+    {
+      "q": 1600,
+      "n": 16039,
+      "effectiveSamples": 15141.550583856693
+    },
+    {
+      "q": 1700,
+      "n": 9611,
+      "effectiveSamples": 9059.040019079861
+    },
+    {
+      "q": 1800,
+      "n": 6824,
+      "effectiveSamples": 6425.382249753934
+    },
+    {
+      "q": 1900,
+      "n": 5236,
+      "effectiveSamples": 4948.070910636085
+    },
+    {
+      "q": 2000,
+      "n": 3970,
+      "effectiveSamples": 3742.137049936922
+    },
+    {
+      "q": 2100,
+      "n": 2628,
+      "effectiveSamples": 2481.2363914160483
+    },
+    {
+      "q": 2200,
+      "n": 2098,
+      "effectiveSamples": 1978.8216155266073
+    },
+    {
+      "q": 2300,
+      "n": 1646,
+      "effectiveSamples": 1549.6915033539265
+    },
+    {
+      "q": 2400,
+      "n": 983,
+      "effectiveSamples": 927.4213040812817
+    }
+  ],
+  "metrics": [
+    {
+      "model": "km",
+      "degree": 1,
+      "loocvRmseSeconds": 469.93395688627754
+    },
+    {
+      "model": "km",
+      "degree": 2,
+      "loocvRmseSeconds": 418.5087561706589
+    },
+    {
+      "model": "km",
+      "degree": 3,
+      "loocvRmseSeconds": 502.8713336566384
+    },
+    {
+      "model": "success",
+      "degree": 1,
+      "loocvRmseSeconds": 265.790493185561
+    },
+    {
+      "model": "success",
+      "degree": 2,
+      "loocvRmseSeconds": 232.78858871839228
+    },
+    {
+      "model": "success",
+      "degree": 3,
+      "loocvRmseSeconds": 278.98942613853256
+    }
+  ],
+  "selected": {
+    "km": {
+      "model": "km",
+      "degree": 2,
+      "loocvRmseSeconds": 418.5087561706589
+    },
+    "success": {
+      "model": "success",
+      "degree": 2,
+      "loocvRmseSeconds": 232.78858871839228
+    }
+  },
+  "fitted": [
+    {
+      "model": "km",
+      "q": 800,
+      "observedSeconds": 1396,
+      "fittedSeconds": 1873.068111455109,
+      "residualSeconds": -477.0681114551089
+    },
+    {
+      "model": "km",
+      "q": 900,
+      "observedSeconds": 2185,
+      "fittedSeconds": 2142.0229618163057,
+      "residualSeconds": 42.977038183694276
+    },
+    {
+      "model": "km",
+      "q": 1000,
+      "observedSeconds": 2642,
+      "fittedSeconds": 2389.879256965945,
+      "residualSeconds": 252.12074303405507
+    },
+    {
+      "model": "km",
+      "q": 1100,
+      "observedSeconds": 2726,
+      "fittedSeconds": 2616.636996904025,
+      "residualSeconds": 109.36300309597482
+    },
+    {
+      "model": "km",
+      "q": 1200,
+      "observedSeconds": 3358,
+      "fittedSeconds": 2822.296181630547,
+      "residualSeconds": 535.7038183694531
+    },
+    {
+      "model": "km",
+      "q": 1300,
+      "observedSeconds": 2877,
+      "fittedSeconds": 3006.856811145511,
+      "residualSeconds": -129.85681114551107
+    },
+    {
+      "model": "km",
+      "q": 1400,
+      "observedSeconds": 3687,
+      "fittedSeconds": 3170.3188854489163,
+      "residualSeconds": 516.6811145510837
+    },
+    {
+      "model": "km",
+      "q": 1500,
+      "observedSeconds": 2825,
+      "fittedSeconds": 3312.6824045407634,
+      "residualSeconds": -487.6824045407634
+    },
+    {
+      "model": "km",
+      "q": 1600,
+      "observedSeconds": 3188,
+      "fittedSeconds": 3433.9473684210525,
+      "residualSeconds": -245.9473684210525
+    },
+    {
+      "model": "km",
+      "q": 1700,
+      "observedSeconds": 3496,
+      "fittedSeconds": 3534.113777089783,
+      "residualSeconds": -38.11377708978307
+    },
+    {
+      "model": "km",
+      "q": 1800,
+      "observedSeconds": 3570,
+      "fittedSeconds": 3613.181630546955,
+      "residualSeconds": -43.18163054695515
+    },
+    {
+      "model": "km",
+      "q": 1900,
+      "observedSeconds": 3219,
+      "fittedSeconds": 3671.150928792569,
+      "residualSeconds": -452.1509287925692
+    },
+    {
+      "model": "km",
+      "q": 2000,
+      "observedSeconds": 3618,
+      "fittedSeconds": 3708.0216718266247,
+      "residualSeconds": -90.0216718266247
+    },
+    {
+      "model": "km",
+      "q": 2100,
+      "observedSeconds": 3924,
+      "fittedSeconds": 3723.793859649122,
+      "residualSeconds": 200.20614035087783
+    },
+    {
+      "model": "km",
+      "q": 2200,
+      "observedSeconds": 3868,
+      "fittedSeconds": 3718.467492260061,
+      "residualSeconds": 149.53250773993886
+    },
+    {
+      "model": "km",
+      "q": 2300,
+      "observedSeconds": 4166,
+      "fittedSeconds": 3692.042569659442,
+      "residualSeconds": 473.95743034055795
+    },
+    {
+      "model": "km",
+      "q": 2400,
+      "observedSeconds": 3328,
+      "fittedSeconds": 3644.5190918472645,
+      "residualSeconds": -316.51909184726446
+    },
+    {
+      "model": "success",
+      "q": 800,
+      "observedSeconds": 1224,
+      "fittedSeconds": 1493.446852425181,
+      "residualSeconds": -269.4468524251811
+    },
+    {
+      "model": "success",
+      "q": 900,
+      "observedSeconds": 1649,
+      "fittedSeconds": 1661.1836945304444,
+      "residualSeconds": -12.183694530444427
+    },
+    {
+      "model": "success",
+      "q": 1000,
+      "observedSeconds": 2024,
+      "fittedSeconds": 1816.9164086687315,
+      "residualSeconds": 207.0835913312685
+    },
+    {
+      "model": "success",
+      "q": 1100,
+      "observedSeconds": 2003,
+      "fittedSeconds": 1960.644994840042,
+      "residualSeconds": 42.355005159957955
+    },
+    {
+      "model": "success",
+      "q": 1200,
+      "observedSeconds": 2432,
+      "fittedSeconds": 2092.3694530443763,
+      "residualSeconds": 339.6305469556237
+    },
+    {
+      "model": "success",
+      "q": 1300,
+      "observedSeconds": 2134,
+      "fittedSeconds": 2212.089783281735,
+      "residualSeconds": -78.08978328173498
+    },
+    {
+      "model": "success",
+      "q": 1400,
+      "observedSeconds": 2554,
+      "fittedSeconds": 2319.8059855521165,
+      "residualSeconds": 234.19401444788355
+    },
+    {
+      "model": "success",
+      "q": 1500,
+      "observedSeconds": 2130,
+      "fittedSeconds": 2415.518059855522,
+      "residualSeconds": -285.5180598555221
+    },
+    {
+      "model": "success",
+      "q": 1600,
+      "observedSeconds": 2364,
+      "fittedSeconds": 2499.2260061919515,
+      "residualSeconds": -135.22600619195146
+    },
+    {
+      "model": "success",
+      "q": 1700,
+      "observedSeconds": 2562,
+      "fittedSeconds": 2570.9298245614045,
+      "residualSeconds": -8.92982456140453
+    },
+    {
+      "model": "success",
+      "q": 1800,
+      "observedSeconds": 2574,
+      "fittedSeconds": 2630.629514963881,
+      "residualSeconds": -56.629514963880865
+    },
+    {
+      "model": "success",
+      "q": 1900,
+      "observedSeconds": 2437,
+      "fittedSeconds": 2678.3250773993814,
+      "residualSeconds": -241.32507739938137
+    },
+    {
+      "model": "success",
+      "q": 2000,
+      "observedSeconds": 2672,
+      "fittedSeconds": 2714.0165118679056,
+      "residualSeconds": -42.01651186790559
+    },
+    {
+      "model": "success",
+      "q": 2100,
+      "observedSeconds": 2872,
+      "fittedSeconds": 2737.703818369453,
+      "residualSeconds": 134.29618163054693
+    },
+    {
+      "model": "success",
+      "q": 2200,
+      "observedSeconds": 2919,
+      "fittedSeconds": 2749.3869969040247,
+      "residualSeconds": 169.61300309597527
+    },
+    {
+      "model": "success",
+      "q": 2300,
+      "observedSeconds": 2921,
+      "fittedSeconds": 2749.06604747162,
+      "residualSeconds": 171.9339525283799
+    },
+    {
+      "model": "success",
+      "q": 2400,
+      "observedSeconds": 2567,
+      "fittedSeconds": 2736.740970072239,
+      "residualSeconds": -169.74097007223918
+    }
+  ]
+}

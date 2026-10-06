@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algorithm DX · AC 记录</title>
+<meta name="color-scheme" content="dark">
+<link rel="icon" type="image/svg+xml" href="/algorithm-dx-icon.svg">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/ui.css">
+</head>
+<body class="ac-page">
+<header class="topbar site-header">
+  <a class="brand" href="/">
+    <img class="mark" src="/algorithm-dx-icon.svg" width="66" height="40" alt="" aria-hidden="true">
+    <div class="brand-text"><h1>Algorithm DX</h1><p>记录练习，查看进步</p></div>
+  </a>
+  <nav class="nav" aria-label="主导航">
+    <a class="btn btn-primary" href="/" aria-current="page">AC 记录</a>
+    <a class="btn btn-ghost" href="/circle.html">题友圈</a>
+    <a class="btn btn-ghost" href="/dx.html">DX Rating</a>
+    <a class="btn btn-ghost" href="/stats.html">练习数据</a>
+    <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
+    <a class="btn btn-ghost" href="/help.html">使用指南</a>
+  </nav>
+</header>
+<div class="app">
+
+  <div class="ac-page-heading"><div><span class="stats-eyebrow">PRACTICE JOURNAL</span><h2>每一次通过，都值得记录</h2><p>汇集各平台的解题足迹，回看尝试，也发现下一步。</p></div><div class="form-actions"><a class="btn btn-primary" href="/dx.html?view=history&amp;add=1">手动添加做题记录</a><a class="btn btn-ghost" href="/dx.html?view=history">练习历史 ↗</a><a class="btn btn-ghost" href="/dx.html">查看我的 DX Rating ↗</a></div></div>
+
+  <div class="page-toolbar" role="group" aria-label="页面操作">
+<div class="db-chip" id="dbChip" title="当前读取的数据库">—</div>
+      <button id="adminBtn" class="btn btn-ghost" type="button" aria-expanded="false" aria-controls="adminPanel">账号管理</button>
+      <button id="syncBtn" class="btn btn-ghost" type="button" title="从各平台拉取最新数据，再重新读取本机库">同步最新数据</button>
+  </div>
+
+  <div class="notice notice-ac" id="syncNotice" hidden></div>
+
+  <section class="admin" id="adminPanel" hidden aria-label="账号管理">
+    <div class="admin-head">
+      <h2>平台与用户</h2>
+      <span class="section-hint">管理自己和关注的人的平台账号。</span>
+      <button id="adminCloseBtn" class="btn btn-ghost" type="button">返回 AC 记录</button>
+    </div>
+    <p class="form-status" id="adminStatus" hidden></p>
+
+    <section class="cf-group-quick" aria-labelledby="cfGroupQuickTitle">
+      <div><h3 id="cfGroupQuickTitle">CF 自建比赛</h3><p class="field-hint">添加 Group 群组链接，自动发现比赛并同步做题记录。</p></div>
+      <div class="form-actions">
+        <label for="cfGroupAccount">CF 账号</label>
+        <select id="cfGroupAccount" class="select"></select>
+        <button id="cfGroupSetup" class="btn btn-primary" type="button">配置自建比赛</button>
+        <a class="btn btn-ghost" href="/help.html#cf-groups" target="_blank" rel="noopener">设置教程 ↗</a>
+      </div>
+      <p id="cfGroupNoAccount" class="field-hint" hidden>请先在下方添加 Codeforces 账号。</p>
+    </section>
+
+    <div class="admin-grid">
+
+      <div class="admin-block">
+        <h3>已绑定账号</h3>
+        <p class="field-hint">按归属整理，点击姓名查看平台账号与管理操作。</p>
+        <div id="accountList"></div>
+      </div>
+
+      <div class="admin-block">
+        <h3>添加平台账号</h3>
+        <p class="field-hint">无需注册 Algorithm DX。这里只记录你已有的平台账号；没有平台账号时，请先去对应网站注册。<a href="/help.html#start" target="_blank" rel="noopener">第一次使用：跟着步骤操作</a></p>
+        <form class="bind-form" id="bindForm" autocomplete="off">
+          <label class="field">
+            <span class="field-label">这个账号属于谁</span>
+            <select id="bindUser" class="select"></select>
+          </label>
+          <label class="field" id="bindNameField" hidden>
+            <span class="field-label">本地显示名称</span>
+            <input id="bindUserName" class="input" type="text" maxlength="40" placeholder="例如：我、同学小王" aria-describedby="localNameHint">
+          </label>
+          <p class="field-hint" id="localNameHint">名称由你起，只在本机显示。同一个人的多个平台账号选同一位用户；关注别人时新建一位用户。</p>
+          <label class="field field-inline" id="bindSelfField" hidden>
+            <input id="bindUserSelf" type="checkbox">
+            <span>标记为「我」</span>
+          </label>
+          <label class="field">
+            <span class="field-label">平台</span>
+            <select id="bindPlatform" class="select"></select>
+          </label>
+          <label class="field">
+            <span class="field-label" id="bindHandleLabel">平台用户名 / 用户 ID</span>
+            <input id="bindHandle" aria-describedby="bindHandleHint" class="input" type="text" placeholder="—">
+          </label>
+          <p class="field-hint" id="bindHandleHint"></p>
+          <div class="help-inline" id="luoguScopeHint" hidden>
+            <strong>绑定填 UID，同步需配置你自己的 Cookie。</strong>
+            <p>Cookie 配置一次即可用于所有关注的账号，无需好友的 Cookie。默认同步最近 100 条提交，更早记录可用「回补历史」。</p>
+            <a href="/help.html#luogu" target="_blank" rel="noopener">查看数据范围与配置说明 ↗</a>
+          </div>
+          <label class="field" id="bindCookieField" hidden>
+            <span class="field-label">登录 Cookie（不是密码，可稍后填写）</span>
+            <input id="bindCookie" aria-describedby="bindCookieHint" class="input" type="password" autocomplete="new-password" placeholder="—">
+          </label>
+          <p class="field-hint" id="bindCookieHint"></p>
+          <div id="matijiIdentityField" class="help-inline" hidden>
+            <button id="matijiIdentityBtn" class="btn btn-ghost" type="button">识别我的账号</button>
+            <p>填昵称或留空后直接「保存账号」，会自动识别并开始同步，无需查找数字 ID。首次使用只需粘贴一次 Cookie，已有配置会自动沿用。也可先点「识别我的账号」查看登录身份；绑定他人请填写数字 ID 或他人主页链接。</p>
+          </div>
+          <details class="help-inline" id="cookieGuide" hidden>
+<summary>如何获取登录 Cookie？（通用教程）</summary>
+<p>适用于 Chrome、Edge、Firefox 等电脑浏览器。前五步在<strong>平台网站</strong>操作，最后回本应用粘贴。</p>
+<ol>
+<li><strong>登录平台。</strong>在电脑浏览器打开要同步的网站，登录自己的账号，进入个人信息或做题记录页。</li>
+<li><strong>打开网络面板。</strong>在平台网页空白处右键选「检查」，切到「网络 / Network」，然后刷新网页。</li>
+<li><strong>点开请求。</strong>在请求列表的「名称 / Name」列，点击一条个人信息或做题记录相关的请求，打开详情。不要点击列标题。</li>
+<li><strong>找到 Cookie。</strong>在打开的详情中点击「标头 / Headers」，确认请求网址属于该平台。向下滚动，展开「请求标头 / Request Headers」，找到 <code>Cookie</code>；没有就换一条请求。</li>
+<li><strong>复制完整值。</strong>复制 Cookie 右侧的全部内容，保留名称、等号和分号。不要带 <code>Cookie:</code> 前缀，也不要复制 <code>Set-Cookie</code>。</li>
+<li><strong>保存并同步。</strong>回到本应用，在对应平台的「登录 Cookie」框粘贴并保存。未自动获取时，点击「同步最新数据」或「回补历史」。</li>
+</ol><p>格式：<code>name=实际值; other=实际值</code>，不加引号或换行。Cookie 是登录凭据，请只在本机填写。已有有效配置时可留空沿用。</p>
+<a href="/help.html#cookie" target="_blank" rel="noopener">查看浏览器说明、请求示例与故障排查</a>
+          </details>
+          <div class="form-actions">
+            <button id="bindSubmit" class="btn btn-primary" type="submit">保存账号</button>
+            <span class="form-status" id="bindStatus"></span>
+          </div>
+        </form>
+      </div>
+
+      <div class="admin-block">
+        <h3>用户</h3>
+        <div id="userList"></div>
+      </div>
+
+      <div class="admin-block">
+        <h3>同步</h3>
+        <p class="field-hint">绑定只是把账号记进本地库，要看到数据还得抓一次。日常抓取用顶栏的「同步最新数据」（全部账号、最近窗口）；这里的「回补历史」仅处理支持历史抓取的平台；仅支持近期记录或文件导入的平台会跳过。</p>
+        <div class="form-actions">
+          <button id="syncBackfillBtn" class="btn btn-ghost" type="button">回补历史</button>
+        </div>
+        <p class="form-status" id="syncStatus" hidden></p>
+        <div id="syncRuns"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="stat-row" id="statRow" aria-label="练习量概览"></section>
+
+  <section class="filters" id="filters" aria-label="筛选">
+    <div class="ac-filter-heading"><h2>查找练习记录</h2><span>平台可多选</span><button id="resetFilters" class="btn btn-ghost btn-small" type="button">重置筛选</button></div>
+    <div class="filter-group">
+      <span class="filter-label">平台</span>
+      <div class="chips" id="platformChips"></div>
+    </div>
+    <div class="filter-group">
+      <label class="filter-label" for="userSelect">用户</label>
+      <select id="userSelect" class="select"></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">状态</span>
+      <div class="tabs" id="statusTabs" role="tablist">
+        <button class="tab is-active" data-status="all" role="tab" type="button">全部</button>
+        <button class="tab" data-status="ac" role="tab" type="button">已 AC</button>
+        <button class="tab" data-status="unac" role="tab" type="button">未 AC</button>
+      </div>
+    </div>
+    <div class="filter-group filter-search">
+      <label class="filter-label" for="searchInput">搜索题目</label><input id="searchInput" class="input" type="search" placeholder="输入题目名或题号…" autocomplete="off">
+    </div>
+  </section>
+
+  <div class="notice" id="coverageNotice" hidden></div>
+
+  <section class="section" id="acSection">
+    <div class="section-head">
+      <h2>已 AC 题目<span class="section-count" id="acCount"></span></h2>
+      <span class="section-hint" id="acHint"></span>
+    </div>
+    <div class="cards" id="acCards"></div>
+  </section>
+
+  <section class="section" id="unacSection">
+    <div class="section-head">
+      <button class="collapse-toggle" id="unacToggle" type="button" aria-expanded="false">
+        <span class="caret" aria-hidden="true">▸</span>
+        未 AC 记录<span class="section-count" id="unacCount"></span>
+      </button>
+      <span class="section-hint" id="unacHint"></span>
+    </div>
+    <div class="cards cards-dense" id="unacCards" hidden></div>
+  </section>
+
+  <div class="pager" id="pager" hidden>
+    <button id="moreBtn" class="btn" type="button">加载更多</button>
+    <span class="pager-hint" id="pagerHint"></span>
+  </div>
+
+  <div class="placeholder" id="placeholder">
+    <div class="spinner" aria-hidden="true"></div>
+    <p>正在读取本地数据…</p>
+  </div>
+
+  <div class="empty" id="empty" hidden>
+    <h3 id="emptyTitle">这个筛选条件下没有记录</h3>
+    <p id="emptyBody">尝试放宽平台、用户或状态筛选。</p>
+    <p class="empty-hint" id="emptyHint"></p>
+  </div>
+
+  <footer class="foot">
+    <span id="footInfo"></span>
+    <span class="foot-note"><a href="/help.html#sync">数据范围与同步说明</a></span>
+  </footer>
+
+</div>
+<script src="/app.js" type="module"></script>
+</body>
+</html>

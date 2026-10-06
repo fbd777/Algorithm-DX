@@ -1,0 +1,110 @@
+{
+  "kind": "empirical_descriptive",
+  "finiteBins": 13,
+  "pearson": -0.17980572805832198,
+  "spearman": -0.14835164835164835,
+  "normalizedMaxCdfRange": 0.4998313249636882,
+  "normalizedMaxAt": 0.5,
+  "significance": "not_established",
+  "productionReady": true,
+  "productionReadyBasis": "三条预注册判据（跑之前就定好，见 VALIDATION.md）：主推优于常数基线、平滑与单调约束的代价可接受、时间留出方向一致。三条全过才置 true。",
+  "validation": {
+    "generatedAt": "2026-09-21T06:19:02.959Z",
+    "groupingUnit": "contest",
+    "folds": 5,
+    "repeats": 8,
+    "observations": 546,
+    "gates": {
+      "beatsConstant": true,
+      "notWorseThanRaw": true,
+      "temporalAgrees": true
+    },
+    "gatesDetail": {
+      "beatsConstant": {
+        "value": true,
+        "detail": "主推 5.83 分钟 vs 常数 10.01 分钟；配对区间 [3.652, 4.640] 分钟"
+      },
+      "notWorseThanRaw": {
+        "value": true,
+        "detail": "主推 5.83 分钟 vs 训练档位经验点 6.09 分钟（上限 6.70）"
+      },
+      "temporalAgrees": {
+        "value": true,
+        "detail": "2026 留出：主推 5.25 分钟 vs 常数 7.18 分钟"
+      }
+    },
+    "rmseSeconds": {
+      "constant": 600.5848871717536,
+      "raw": 365.2119711657654,
+      "smooth": 349.8424658827725,
+      "monotone": 349.50966205837915
+    },
+    "robustDecreases": [
+      "1200–1300",
+      "1400–1500",
+      "2300–2400"
+    ],
+    "bandwidthCounts": {
+      "100": 7,
+      "125": 19,
+      "150": 12,
+      "200": 2
+    },
+    "coverage": {
+      "constant": {
+        "covered": 38,
+        "total": 71,
+        "rate": 0.5352112676056338
+      },
+      "raw": {
+        "covered": 50,
+        "total": 71,
+        "rate": 0.704225352112676
+      },
+      "smooth": {
+        "covered": 52,
+        "total": 71,
+        "rate": 0.7323943661971831
+      },
+      "monotone": {
+        "covered": 52,
+        "total": 71,
+        "rate": 0.7323943661971831
+      }
+    },
+    "topBandBias": [
+      {
+        "q": 2400,
+        "records": 24,
+        "meanTargetSeconds": 2528.25,
+        "biasSeconds": 312.8081532517312,
+        "relativeBias": 0.12372516691455797
+      },
+      {
+        "q": 1400,
+        "records": 31,
+        "meanTargetSeconds": 2588.483870967742,
+        "biasSeconds": -259.3817606251025,
+        "relativeBias": -0.10020605634607602
+      },
+      {
+        "q": 1200,
+        "records": 39,
+        "meanTargetSeconds": 2437.153846153846,
+        "biasSeconds": -205.19975165497766,
+        "relativeBias": -0.08419647039468199
+      }
+    ],
+    "temporal": {
+      "trainContests": 77,
+      "testContests": 13,
+      "bands": 10,
+      "rmseSeconds": {
+        "constant": 431.04995411118034,
+        "raw": 288.97595055644337,
+        "smooth": 315.15021001721453,
+        "monotone": 315.15021001721453
+      }
+    }
+  }
+}
