@@ -689,6 +689,12 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           return feed(ctx, params);
         case '/api/problem':
           return problemDetail(ctx, params);
+        case '/api/cf-extension/status': {
+          const accountId=parseIntOrNull(params.get('accountId'),1,Number.MAX_SAFE_INTEGER,'accountId');
+          const records=accountId===null?null:ctx.db.prepare("SELECT COUNT(*) AS submissions, COALESCE(SUM(status='AC'),0) AS accepted, COUNT(DISTINCT CASE WHEN status='AC' THEN problem_id END) AS solved FROM submissions WHERE account_id=? AND platform='codeforces' AND problem_url LIKE 'https://codeforces.com/group/%'").get(accountId);
+          const lastSync=accountId===null?null:ctx.db.prepare('SELECT status,message,finished_at FROM sync_runs WHERE account_id=? ORDER BY id DESC LIMIT 1').get(accountId)??null;
+          return {status:200,body:{...cfExtensionBridge.status(),records,lastSync}};
+        }
         case '/api/sync/status':
           return syncStatus(ctx);
         default:

@@ -25,7 +25,7 @@ function sameCfPage(actual,requested){
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
  if(sender.id!==chrome.runtime.id)return;
  if(message?.type==='cf-ready'){
-  reply({ready:document.readyState!=='loading',challenge:cfChallenge(document),loggedIn:cfLoggedIn(document)});return;
+  reply({actualUrl:location.href,ready:document.readyState!=='loading',challenge:cfChallenge(document),loggedIn:cfLoggedIn(document)});return;
  }
  if(message?.type!=='read-cf-group')return;
  try{

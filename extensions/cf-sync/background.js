@@ -47,12 +47,12 @@ async function readThroughTab(task,anchor){
  for(let i=0;i<50;i++){
   if(!(await chrome.storage.local.get('enabled')).enabled)throw Error('扩展已断开');
   const current=await chrome.tabs.get(tab.id);
-  if(current.status!=='loading'){
+  if(current.status!=='loading'&&!current.pendingUrl){
    try{
     const ready=await chrome.tabs.sendMessage(tab.id,{type:'cf-ready'});
     if(ready?.challenge)return {error:'浏览器读取页面出现安全验证。点击扩展「打开读取页面」手动完成后重连；没有再次发起 fetch 请求'};
     if(ready?.ready){
-     if(!sameTaskPage(current.url,task.url))return {error:'CF 跳转到了其他页面，请打开读取页面确认登录或比赛权限'};
+     if(!sameTaskPage(current.url,task.url)||(ready.actualUrl&&!sameTaskPage(ready.actualUrl,task.url))){lastError='期望 '+new URL(task.url).pathname+'，实际 '+new URL(ready.actualUrl||current.url).pathname;await pause(400);continue;}
      return await chrome.tabs.sendMessage(tab.id,{type:'read-cf-group',url:task.url});
     }
    }catch(error){
@@ -78,7 +78,7 @@ async function start(){
    let task;
    try{({task}=await post(config,'/api/cf-extension/poll',{}));}catch(error){await status(error.message||'连接中断');break;}
    if(!(await chrome.storage.local.get('enabled')).enabled)break;
-   if(!task){await status('已连接，等待同步');continue;}
+   if(!task){const state=await chrome.storage.local.get('lastReadError');await status(state.lastReadError?'已连接；上次读取失败：'+state.lastReadError:'已连接，等待同步');continue;}
    let payload;
    try{
     tab=await findCfTab();
@@ -87,7 +87,8 @@ async function start(){
     if(!payload)throw Error('页面未响应，请刷新 CF 标签页后重连');
    }catch(error){payload={error:error.message||'CF 标签页不可用'};}
    try{await post(config,'/api/cf-extension/result',{id:task.id,...payload});}catch(error){await status(error.message);break;}
-   if(payload.error){await chrome.storage.local.set({enabled:false});await status(payload.error);break;}
+   await chrome.storage.local.set({lastReadError:payload.error||''});
+   if(payload.error){await status('读取失败，连接保留：'+payload.error);continue;}
    await status('已读取，等待下一页');
   }
  }finally{running=false;}

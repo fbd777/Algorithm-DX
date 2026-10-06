@@ -566,6 +566,7 @@ test('extension pairing requires dashboard origin and transport requires a valid
  assert.equal((await post('/api/cf-extension/result',{id:'unknown'}, {Origin:'https://example.com',Authorization:'Bearer '+paired.body.token})).status,403);
  const accepted=await post('/api/cf-extension/result',{id:'unknown'}, {Origin:origin,Authorization:'Bearer '+paired.body.token});assert.equal(accepted.status,200);assert.equal(accepted.body.accepted,false);
  const meta=await get('/api/meta');assert.ok(!JSON.stringify(meta.body).includes(paired.body.token));
+ const health=await get('/api/cf-extension/status?accountId=1');assert.equal(health.status,200);assert.equal(typeof health.body.connected,'boolean');assert.equal(typeof health.body.records.submissions,'number');assert.ok(!JSON.stringify(health.body).includes(paired.body.token));
  const rotated=await post(endpoint,{});assert.notEqual(rotated.body.token,paired.body.token);
  assert.equal((await post('/api/cf-extension/result',{id:'unknown'}, {Origin:origin,Authorization:'Bearer '+paired.body.token})).status,401);
 });

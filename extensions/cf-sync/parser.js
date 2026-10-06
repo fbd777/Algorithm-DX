@@ -33,7 +33,7 @@ function parseCfDocument(doc,url,status,originalTime){
  const group=path.match(/^\/group\/([A-Za-z0-9]+)\/contests(?:\/page\/\d+)?\/?$/)?.[1];
  const visibleContests=Boolean(group&&links.some(link=>{const match=cfPath(link.href).match(/^\/group\/([A-Za-z0-9]+)\/contest\/\d+(?:\/|$)/);return match?.[1]===group;}));
  return {url,status,title:text(doc.querySelector('title')),
-   viewer:cfProfileHandles(doc.querySelector('#header')||doc)[0]||null,
+   viewer:((doc.querySelector('#header,.lang-chooser'))?cfProfileHandles(doc.querySelector('#header,.lang-chooser'))[0]:null)||null,
    loggedIn:cfLoggedIn(doc),
    challenge:cfChallenge(doc),
    contestTable:visibleContests||Boolean(doc.querySelector('.contests-table,[class*="contestList"]')),

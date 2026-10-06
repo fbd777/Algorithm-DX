@@ -8,6 +8,9 @@ export function validExtensionToken(expected:string|undefined,provided:string|un
 }
 type Pending={id:string;url:string;leasedAt:number;resolve:(value:PageSnapshot)=>void;reject:(error:Error)=>void;cleanup:()=>void};
 export class CfExtensionBridge{
+ private lastPage:{url:string;state:string;rows:number;at:number;message?:string}|null=null;
+ private pagesRead=0;
+ status(){return {connected:this.lastSeen>0&&Date.now()-this.lastSeen<60000,lastSeen:this.lastSeen||null,pending:[...this.pending.values()].map(p=>({url:p.url,reading:Boolean(p.leasedAt)})),pagesRead:this.pagesRead,lastPage:this.lastPage};}
  pending=new Map<string,Pending>();lastSeen=0;wake:(()=>void)|undefined;
  async poll(signal?:AbortSignal):Promise<{id:string;url:string}|null>{
   this.lastSeen=Date.now();
@@ -27,7 +30,7 @@ export class CfExtensionBridge{
    const id=randomUUID();
    const cleanup=()=>{clearTimeout(timer);signal?.removeEventListener('abort',abort);this.pending.delete(id);};
    const abort=()=>{cleanup();reject(signal?.reason??new Error('已取消'));};
-   const timer=setTimeout(()=>{cleanup();reject(new FetchError('Edge 扩展读取超时，请检查扩展连接和 CF 标签页',false,'CF_EXTENSION_TIMEOUT'));},60000);
+   const timer=setTimeout(()=>{this.lastPage={url,state:'failed',rows:0,at:Date.now(),message:'页面读取超时'};cleanup();reject(new FetchError('Edge 扩展读取超时，请检查扩展连接和 CF 标签页',false,'CF_EXTENSION_TIMEOUT'));},60000);
    this.pending.set(id,{id,url,leasedAt:0,resolve,reject,cleanup});
    signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();else this.wake?.();
   });
@@ -35,12 +38,13 @@ export class CfExtensionBridge{
  complete(id:string,result:any,error?:string):boolean{
   const task=this.pending.get(id);if(!task)return false;
   task.cleanup();
-  if(error){task.reject(new FetchError('Edge 扩展：'+String(error).slice(0,300),false,'CF_EXTENSION_READ_FAILED'));return true;}
+  if(error){this.lastPage={url:task.url,state:'failed',rows:0,at:Date.now(),message:String(error).slice(0,300)};task.reject(new FetchError('Edge 扩展：'+String(error).slice(0,300),false,'CF_EXTENSION_READ_FAILED'));return true;}
   // Extension output is untrusted: validate before the existing parser consumes it.
   if(!result||result.url!==task.url||!Number.isInteger(result.status)||typeof result.loggedIn!=='boolean'||typeof result.challenge!=='boolean'||!Array.isArray(result.links)||!Array.isArray(result.rows)||result.links.length>20000||result.rows.length>5000){task.reject(new FetchError('Edge 扩展返回的数据格式异常',false,'SCHEMA_CHANGED'));return true;}
   if(result.links.some((l:any)=>typeof l?.href!=='string')||result.rows.some((r:any)=>!r||!Array.isArray(r.handles)||r.handles.some((h:any)=>typeof h!=='string')||['id','problem','title','time','verdict','verdictText','language','execution','memory'].some(k=>typeof r[k]!=='string'))){task.reject(new FetchError('Edge 扩展返回的记录格式异常',false,'SCHEMA_CHANGED'));return true;}
+  this.pagesRead++;this.lastPage={url:task.url,state:'read',rows:result.rows.length,at:Date.now()};
   task.resolve(result);return true;
  }
- reset(){for(const task of this.pending.values()){task.cleanup();task.reject(new FetchError('扩展连接码已更新，请重新连接',false,'CF_EXTENSION_REQUIRED'));}this.lastSeen=0;this.wake?.();}
+ reset(){this.lastPage=null;this.pagesRead=0;for(const task of this.pending.values()){task.cleanup();task.reject(new FetchError('扩展连接码已更新，请重新连接',false,'CF_EXTENSION_REQUIRED'));}this.lastSeen=0;this.wake?.();}
 }
 export const cfExtensionBridge=new CfExtensionBridge();

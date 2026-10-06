@@ -25,3 +25,11 @@ test('pending poll wakes for a new task and rotating pairing cancels outstanding
  const b=new CfExtensionBridge();const poll=b.poll();const r=b.read(url,'');const task=await poll;assert.ok(task);
  const rejected=assert.rejects(r,/连接码已更新/);b.reset();await rejected;assert.equal(b.lastSeen,0);
 });
+
+ test('read-only diagnostics distinguish connection, page read and failure without returning page contents',async()=>{
+ const b=new CfExtensionBridge();assert.equal(b.status().connected,false);b.lastSeen=Date.now();
+ const reading=b.read(url,'');const task=await b.poll();assert.equal(b.status().pending[0].reading,true);
+ b.complete(task!.id,snapshot);await reading;assert.equal(b.status().pagesRead,1);assert.equal(b.status().lastPage?.state,'read');assert.equal(b.status().pending.length,0);
+ const failed=b.read(url,'');const pending=await b.poll();b.complete(pending!.id,null,'页面权限不足');await assert.rejects(failed);
+ assert.equal(b.status().lastPage?.message,'页面权限不足');assert.equal(b.status().pagesRead,1);b.reset();assert.equal(b.status().connected,false);assert.equal(b.status().lastPage,null);
+ });

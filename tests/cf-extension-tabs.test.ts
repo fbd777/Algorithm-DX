@@ -29,7 +29,7 @@ test('CF login and profile detection handles absolute links, queries and relativ
 });
 test('content script can detect login once DOM is interactive, without waiting for external resources',()=>{
  let listener:any;
- const context={URL,MutationObserver:class{observe(){} disconnect(){}},document:{addEventListener:()=>{},readyState:'interactive',title:'Codeforces',querySelector:()=>null,querySelectorAll:()=>[{getAttribute:()=> 'https://codeforces.com/logout?session=example'}]},chrome:{runtime:{id:'test',onMessage:{addListener:(fn:any)=>{listener=fn;}}}}};
+ const context={URL,location:{href:'https://codeforces.com/'},MutationObserver:class{observe(){} disconnect(){}},document:{addEventListener:()=>{},readyState:'interactive',title:'Codeforces',querySelector:()=>null,querySelectorAll:()=>[{getAttribute:()=> 'https://codeforces.com/logout?session=example'}]},chrome:{runtime:{id:'test',onMessage:{addListener:(fn:any)=>{listener=fn;}}}}};
  runInNewContext(readFileSync(new URL('../extensions/cf-sync/parser.js',import.meta.url),'utf8')+'\n'+readFileSync(new URL('../extensions/cf-sync/reader.js',import.meta.url),'utf8'),context);
  let result:any;listener({type:'cf-ready'},{id:'test'},(r:any)=>{result=r;});assert.equal(result.ready,true);assert.equal(result.loggedIn,true);assert.equal(result.challenge,false);
 });
@@ -64,7 +64,7 @@ function navigationHarness(initialTabs:any[],challenge=false,missingScripts:numb
   sendMessage:async(id:number,message:any)=>{if(missingScripts.includes(id))throw Error('Could not establish connection. Receiving end does not exist.');return message.type==='cf-ready'?{ready:true,loggedIn:true,challenge}:{result:{source:'rendered-page',url:message.url,rows:[]}};}
  }};
  const read=runInNewContext(source+';readThroughTab',{chrome,URL,setTimeout:(f:any)=>{f();return 0;}});
- return {read,operations,session};
+ return {read,operations,session,chrome};
 }
 test('rendered reader reuses matching page without navigating user tab or sending CF HTTP requests',async()=>{
  const url='https://codeforces.com/group/abc/contests';const h=navigationHarness([{id:1,url,windowId:1,status:'complete'}]);
@@ -99,4 +99,14 @@ test('a filtered status page is not reused for an unfiltered task',async()=>{
  const h=navigationHarness([],false,[10],false);
  await assert.rejects(h.read({url:'https://codeforces.com/group/abc/contest/720850/status/page/2'},{id:1,windowId:1}),/720850.*Receiving end/);
  assert.deepEqual(h.operations.filter(op=>op[0]==='reload'),[['reload',10]]);
+ });
+
+ test('navigation waits for pending URL instead of rejecting the previous document',async()=>{
+ const url='https://codeforces.com/group/abc/contests';const h=navigationHarness([]);let calls=0;const get=h.chrome.tabs.get;
+ h.chrome.tabs.get=async id=>{const tab=await get(id);return ++calls<3?{...tab,url:'https://codeforces.com/group/abc/contest/720850/status',pendingUrl:url}:tab;};
+ assert.equal((await h.read({url},{id:1,windowId:1})).result.source,'rendered-page');assert.ok(calls>=3);
+ });
+ test('real redirect retains expected and actual paths in diagnostics',async()=>{
+ const h=navigationHarness([]);const get=h.chrome.tabs.get;h.chrome.tabs.get=async id=>({...await get(id),url:'https://codeforces.com/enter'});
+ await assert.rejects(h.read({url:'https://codeforces.com/group/abc/contests'},{id:1,windowId:1}),/期望.*contests.*实际.*enter/);
  });

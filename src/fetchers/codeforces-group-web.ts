@@ -75,8 +75,10 @@ export function parseWebRows(page:PageSnapshot,contest:GroupContest,handle:strin
 }
 export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
  groups:GroupContest[];read:PageReader;
+ private viewers=new Map<string,string>();
  constructor(cache:Cache,http:HttpClient,groups:GroupContest[],read:PageReader=readCfPage){super(cache,http);this.groups=groups;this.read=read;}
  async discover(signal?:AbortSignal){
+  this.viewers.clear();
   const contests=new Map<string,GroupContest>();
   for(const group of this.groups){
    if(group.id){contests.set(group.id,group);continue;}
@@ -85,6 +87,7 @@ export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
     if(count>=100)throw new FetchError('群组比赛列表超过本轮分页上限',false,'PAGINATION_LIMIT');
     const url='https://codeforces.com'+base+(pageNumber===1?'':'/page/'+pageNumber)+'?locale=en';
     const page=await this.read(url,CF_GROUP_SNAPSHOT,signal);validatePage(page,url);
+    if(page.loggedIn&&page.viewer)this.viewers.set(group.group,page.viewer.toLowerCase());
     const found=new Map<string,GroupContest>();
     for(const link of page.links){const u=new URL(link.href,'https://codeforces.com');const m=u.pathname.match(/^\/group\/([A-Za-z0-9]+)\/contest\/(\d+)(?:\/|$)/);
       if(u.origin==='https://codeforces.com'&&m&&m[1]===group.group)found.set(m[2],{group:group.group,id:m[2],url:'https://codeforces.com/group/'+group.group+'/contest/'+m[2]});}
@@ -108,10 +111,10 @@ export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
  }
  private async fetchGroupedBatch(handle:string,options:FetchOptions):Promise<FetchBatch>{
   const opts=optionsOf(options),backfill=opts.mode==='backfill';
-  let progress:{version:number;public:string|null;groups:Record<string,number|null>}={version:2,public:'1',groups:{}};
+  let progress:{version:number;public:string|null;groups:Record<string,number|null>;paths:Record<string,string>}={version:3,public:'1',groups:{},paths:{}};
   if(backfill&&opts.cursor){
-   try{const old=JSON.parse(opts.cursor);if(old?.version===2){
-    if(!(old.public===null||/^[1-9]\d*$/.test(old.public))||!old.groups||typeof old.groups!=='object'||Array.isArray(old.groups)||Object.values(old.groups).some(n=>n!==null&&(!Number.isSafeInteger(n)||Number(n)<1)))throw Error();progress=old;
+   try{const old=JSON.parse(opts.cursor);if(old?.version===2||old?.version===3){
+    if(!(old.public===null||/^[1-9]\d*$/.test(old.public))||!old.groups||typeof old.groups!=='object'||Array.isArray(old.groups)||Object.values(old.groups).some(n=>n!==null&&(!Number.isSafeInteger(n)||Number(n)<1)))throw Error();if(old.version===3&&(!old.paths||typeof old.paths!=='object'||Array.isArray(old.paths)||Object.values(old.paths).some(p=>p!=='my'&&p!=='status')))throw Error();progress={...old,version:3,paths:old.paths??Object.fromEntries(Object.keys(old.groups).map(id=>[id,'status']))};
    }else if(old?.version===1){progress.public=old.public;}else if(Number.isSafeInteger(old)&&old>0){progress.public=String(old);}else throw Error();
    }catch{throw new FetchError('CF 网页回补进度无效，请重新回补历史');}
   }
@@ -119,29 +122,33 @@ export class CodeforcesGroupWebFetcher extends CodeforcesSyncFetcher{
   if(!backfill||progress.public!==null){const batch=await super.fetch_batch(handle,{...options,cursor:backfill?progress.public:null});rows.push(...batch.submissions);progress.public=batch.complete?null:batch.nextCursor;}
   for(const contest of contests){
    if(backfill&&progress.groups[contest.id]===null)continue;
-   let base='/group/'+contest.group+'/contest/'+contest.id+'/status';
+   const own=this.viewers.get(contest.group)===handle.toLowerCase();
+   let path=backfill&&progress.paths[contest.id]?progress.paths[contest.id]:(own?'my':'status');
+   let base='/group/'+contest.group+'/contest/'+contest.id+'/'+path;
    let pageNumber=backfill?progress.groups[contest.id]??1:1,complete=false;const seen=new Set<string>();
    for(let count=0;count<opts.maxPages;count++){
     options.signal?.throwIfAborted();
     let url='https://codeforces.com'+base+(pageNumber===1?'':'/page/'+pageNumber)+'?locale=en&order=BY_ARRIVED_DESC';
     let page=await this.read(url,CF_GROUP_SNAPSHOT,options.signal);
-    // Some private contests disable common status but allow the participant's own submissions.
-    if(!page.challenge&&page.loggedIn&&!page.statusTable&&base.endsWith('/status')&&page.viewer?.toLowerCase()===handle.toLowerCase()){
+    // Prefer own submissions once the visible page confirms the account identity.
+    if(!page.challenge&&page.loggedIn&&pageNumber===1&&base.endsWith('/status')&&page.viewer?.toLowerCase()===handle.toLowerCase()&&(!backfill||!progress.paths[contest.id])){
       base=base.slice(0,-7)+'/my';
       url='https://codeforces.com'+base+(pageNumber===1?'':'/page/'+pageNumber)+'?locale=en&order=BY_ARRIVED_DESC';
       page=await this.read(url,CF_GROUP_SNAPSHOT,options.signal);
     }
     validatePage(page,url);
+    if(base.endsWith('/my')&&page.viewer?.toLowerCase()!==handle.toLowerCase())throw new FetchError('CF 登录账号发生变化或无法确认，请使用待同步账号登录后重试',false,'AUTH_REQUIRED');
     if(!page.statusTable)throw new FetchError('CF 比赛提交列表不可见或页面格式已变化',false,'GROUP_ACCESS_FAILED');
     const signature=page.rows.map(row=>row.id).join(',');if(seen.has(signature))throw new FetchError('CF 提交分页没有前进',false,'PAGINATION_STALLED');seen.add(signature);
     rows.push(...parseWebRows(page,contest,handle));
     const next=nextPage(page,base,pageNumber);if(next===null){complete=true;break;}pageNumber=next;
    }
    // One-page overlap prevents ordinary page shifts during backfill from skipping submissions.
+   progress.paths[contest.id]=base.endsWith('/my')?'my':'status';
    progress.groups[contest.id]=complete?null:Math.max(1,pageNumber-(opts.maxPages>1?1:0));
   }
   const complete=progress.public===null&&contests.every(c=>progress.groups[c.id]===null);
   return {submissions:unique(rows),source:'https://codeforces.com/group',scope:backfill?'history':'window',acceptedOnly:false,complete,nextCursor:backfill&&!complete?JSON.stringify(progress):null,
-   note:'公开提交与登录账号可见的 Group 提交；近期读取每场前 '+opts.maxPages+' 页，完整可见记录请回补历史。'};
+   note:'公开提交与登录账号可见的 Group 提交；已读取 '+contests.length+' 场 Group 比赛、'+unique(rows).filter(row=>row.problem_url?.includes('/group/')).length+' 条本账号群组提交。'+(complete?'本轮可见记录已遍历完成。':'本轮最多读取每场 '+opts.maxPages+' 页，完整可见记录请继续回补历史。')};
  }
 }

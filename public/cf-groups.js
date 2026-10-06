@@ -14,6 +14,9 @@ export function openCfGroups(account,onSaved) {
       <label class="cf-dialog-field"><span>获取方式</span><select class="input mode"><option value="extension">普通 Edge 扩展（推荐）</option><option value="browser">专用浏览器（兼容方式）</option><option value="api">API Key</option></select></label>
       <section class="extension-auth">
         <p class="cf-dialog-hint">在普通 Edge 安装项目扩展后，可使用已有的 CF 登录同步。<a href="/help.html#cf-extension" target="_blank" rel="noopener">安装与连接教程 ↗</a></p>
+        <p class="extension-status cf-dialog-hint" role="status">正在检查扩展连接…</p>
+        <button class="btn btn-ghost extension-check" type="button">检查连接</button>
+        <button class="btn btn-ghost extension-sync" type="button">保存并获取群组历史</button>
         <button class="btn btn-ghost extension-pair" type="button">生成连接码</button>
         <label class="cf-dialog-field pair-field" hidden><span>连接码（粘贴到扩展中）</span><input class="input pair-code" type="password" readonly autocomplete="off"><button type="button" class="btn btn-ghost pair-copy">复制连接码</button></label>
         <p class="cf-dialog-hint">首次生成后连接一次即可；重新生成会使旧连接码失效。同步时保持普通 Edge 和已登录的 CF 标签页开启。</p>
@@ -40,7 +43,7 @@ export function openCfGroups(account,onSaved) {
   dialog.querySelector('.account').textContent='提交账号：'+account.handle;
   dialog.querySelector('.links').value=(account.cfGroups??[]).join('\n');
   dialog.querySelector('.credential-note').textContent=account.cfAuthorized?'已保存授权，Key 和 Secret 留空可沿用。':'授权仅保存在本机，各 CF 账号共用。';
-  const status=dialog.querySelector('[role=status]'),button=dialog.querySelector('.save');
+  const status=dialog.querySelector('.cf-dialog-status'),button=dialog.querySelector('.save');
   const mode=dialog.querySelector('.mode'),login=dialog.querySelector('.browser-login');
   mode.value=account.cfGroupMode||'extension';
   const showMode=()=>{dialog.querySelector('.extension-auth').hidden=mode.value!=='extension';dialog.querySelector('.cf-dialog-auth').hidden=mode.value!=='api';dialog.querySelector('.browser-auth').hidden=mode.value!=='browser';};
@@ -60,7 +63,28 @@ export function openCfGroups(account,onSaved) {
     }catch(error){status.textContent=error.message;}finally{login.disabled=false;}
   };
   dialog.querySelector('.close').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>dialog.remove());
+  let closed=false;
+  const checkConnection=async()=>{
+    try{const r=await fetch('/api/cf-extension/status?accountId='+encodeURIComponent(account.id));if(!r.ok)throw Error('连接状态暂不可用');const state=await r.json();if(closed)return;
+      const text=(state.connected?'扩展已连接':'扩展未连接：请打开 Edge 中的扩展并点击连接')+(state.records?'；已保存 Group 提交 '+state.records.submissions+' 条，AC '+state.records.solved+' 题':'');
+      const pending=state.pending?.[0];const last=state.lastPage;
+      dialog.querySelector('.extension-status').textContent=text+(pending?'；正在读取 '+new URL(pending.url).pathname:last?.state==='failed'?'；上次读取失败：'+last.message:last?'；最近读取 '+new URL(last.url).pathname+'（'+last.rows+' 条页面记录）':'')+(state.lastSync?.status==='failed'?'；上次同步失败：'+state.lastSync.message:'');
+    }catch(e){if(!closed)dialog.querySelector('.extension-status').textContent=e.message;}
+  };
+  dialog.querySelector('.extension-check').onclick=checkConnection;
+  const timer=setInterval(checkConnection,3000);checkConnection();
+  dialog.addEventListener('close',()=>{closed=true;clearInterval(timer);dialog.remove();});
+  dialog.querySelector('.extension-sync').onclick=async()=>{
+    const sync=dialog.querySelector('.extension-sync');sync.disabled=true;
+    try{
+      if(!dialog.querySelector('.links').value.trim())throw Error('请先填写至少一个群组或比赛链接。');
+      const health=await fetch('/api/cf-extension/status');const connection=await health.json();if(!health.ok||!connection.connected)throw Error('扩展尚未连接，请先在 Edge 中连接，再点击这里。');
+      const saved=await fetch('/api/accounts/cf-groups',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountId:account.id,mode:'extension',links:dialog.querySelector('.links').value})});const config=await saved.json();if(!saved.ok)throw Error(config.error||'保存失败');
+      if(!config.groups?.length)throw Error('请先填写至少一个群组或比赛链接。');
+      const response=await fetch('/api/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountId:account.id,mode:'backfill',force:true})});const body=await response.json();if(!response.ok)throw Error(body.error||'启动失败');
+      status.textContent='已开始获取此账号的群组历史。保持 Edge 开启，完成后 AC 会进入 AC 记录，填写用时后进入练习历史；连接成功本身不代表已同步。';await onSaved();
+    }catch(e){status.textContent=e.message;}finally{sync.disabled=false;}
+  };
   button.onclick=async()=>{
     button.disabled=true;status.textContent='正在保存…';
     try {

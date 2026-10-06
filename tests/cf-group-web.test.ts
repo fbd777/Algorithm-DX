@@ -4,7 +4,10 @@ import { CodeforcesGroupWebFetcher, cfServerTime, parseWebRows, nextPage, CF_GRO
 import { validateCfPageUrl, requireCfReady, CF_LOGIN_STATE } from '../src/fetchers/cf-browser.ts';
 import { parseGroupLinks } from '../src/fetchers/codeforces-group.ts';
 import { createFactory } from '../src/fetchers/registry.ts';
-import { openDatabase } from '../src/db/database.ts';
+import { SyncService } from '../src/sync/service.ts';
+import { listProblems, listDxEntries } from '../src/server/queries.ts';
+import { listPractice, recordPractice } from '../src/dx/practice.ts';
+import { openDatabase, Repository } from '../src/db/database.ts';
 import { FetchError } from '../src/fetchers/base.ts';
 const root='https://codeforces.com/group/abc';
 const contest=parseGroupLinks(root+'/contest/720850')[0];
@@ -83,7 +86,7 @@ test('factory defaults configured groups to browser and allows explicit API mode
 test('private contests can fall back to own submissions only for the logged-in user',async()=>{
  const visits:string[]=[];
  const f=new CodeforcesGroupWebFetcher(cache,http,[contest],async(url)=>{
-  visits.push(url);return url.includes('/my?')?page(url,{rows:[row('1')]}):page(url,{statusTable:false,viewer:'Tester'});
+  visits.push(url);return url.includes('/my?')?page(url,{rows:[row('1')],viewer:'Tester'}):page(url,{statusTable:false,viewer:'Tester'});
  });
  const result=await f.fetch_batch('Tester');assert.equal(result.submissions.length,1);assert.equal(visits.length,2);
  await assert.rejects(f.fetch_batch('Other'),/不可见/);
@@ -101,3 +104,40 @@ test('valid visible submission tables are accepted even when header login detect
  const f=new CodeforcesGroupWebFetcher(cache,http,[contest],async(url)=>page(url,{loggedIn:false,rows:[row('1')]}));
  assert.equal((await f.fetch_batch('Tester')).submissions[0].status,'AC');
 });
+
+ test('own account uses my pages directly after group discovery and retains source across backfill',async()=>{
+ const visits:string[]=[];
+ const f=new CodeforcesGroupWebFetcher(cache,http,parseGroupLinks(root+'/contests'),async url=>{
+ visits.push(url);if(url.includes('/contests'))return page(url,{viewer:'Tester',links:[{href:contest.url,text:'Contest'}]});
+ assert.match(url,/\/my/);const second=url.includes('/page/2');return page(url,{viewer:'Tester',rows:[row(second?'2':'1')],links:second?[]:[{href:contest.url+'/my/page/2',text:'2'}]});
+ });
+ const first=await f.fetch_batch('Tester',{mode:'backfill',maxPages:1});const cursor=JSON.parse(first.nextCursor!);assert.equal(cursor.paths['720850'],'my');
+ const second=await f.fetch_batch('Tester',{mode:'backfill',maxPages:1,cursor:first.nextCursor});assert.equal(second.complete,true);assert.equal(second.submissions[0].submission_id,'2');
+ assert.equal(visits.some(url=>url.includes('/status')),false);
+ });
+ test('following another user keeps full status pages and filters their records',async()=>{
+ const f=new CodeforcesGroupWebFetcher(cache,http,parseGroupLinks(root+'/contests'),async url=>{
+ if(url.includes('/contests'))return page(url,{viewer:'Tester',links:[{href:contest.url,text:'Contest'}]});
+ assert.match(url,/\/status/);return page(url,{viewer:'Tester',rows:[row('1'),row('2','Other')]});
+ });const batch=await f.fetch_batch('Other');assert.deepEqual(batch.submissions.map(s=>s.submission_id),['2']);
+ });
+ test('changing logged-in account mid-sync cannot turn own history into empty success',async()=>{
+ const f=new CodeforcesGroupWebFetcher(cache,http,parseGroupLinks(root+'/contests'),async url=>url.includes('/contests')?page(url,{viewer:'Tester',links:[{href:contest.url,text:'Contest'}]}):page(url,{viewer:'Other'}));
+ await assert.rejects(f.fetch_batch('Tester'),{code:'AUTH_REQUIRED'});
+ });
+
+ test('group sync reaches AC records and DX entries, then saved timing appears in practice history',async()=>{
+ const db=openDatabase(':memory:');try{
+ const repo=new Repository(db),user=repo.createUser('Group reader',true),account=repo.addAccount(user,'codeforces','Tester');
+ const f=new CodeforcesGroupWebFetcher(cache,http,[contest],async url=>page(url,{rows:[row('1'),row('2','Other')]}));
+ f.fetch_problem_releases=async()=>[];f.fetch_problem_ratings=async()=>[];
+ const sync=new SyncService(db,()=>f,{});const result=await sync.sync(account,{force:true});assert.equal(result[0].status,'success');assert.equal(result[0].inserted,1);
+ const ac=listProblems(db,{platforms:['codeforces'],userId:user,scope:'me',status:'ac',q:null,since:null,until:null,tzOffsetMinutes:480},50,0);
+ assert.equal(ac.total,1);assert.equal(ac.items[0].problem_id,'720850:A');assert.equal(ac.items[0].problem_url,contest.url+'/problem/A');
+ assert.equal(listDxEntries(db,user,'codeforces').length,1);
+ assert.equal(listPractice(db,user).length,0,'sync must not invent a practice duration');
+ recordPractice(db,{userId:user,platform:'codeforces',problemId:'720850:A',seconds:120,outcome:'ac',practiceKind:'first',timingSource:'manual',attemptedAt:null});
+ assert.equal(listPractice(db,user)[0].problem_title,'Test');assert.equal(listPractice(db,user)[0].problem_rating,null);
+ assert.equal((await sync.sync(account,{force:true}))[0].inserted,0,'repeat sync must not duplicate submissions');
+ }finally{db.close();}
+ });
