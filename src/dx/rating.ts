@@ -233,8 +233,8 @@ export function rankOf(achievement: number): string {
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 
 /**
- * 查题目 Rating 对应的 T97。网格是 25 一档，档间线性插值。
- * 超出拟合范围时按端点取值并标记 `extrapolated` —— 不抛错，但调用方要把这件事显示出来。
+ * 解析模型直接求 T97；旧网格模型档间线性插值。
+ * 超出启用范围时夹取端点并标记 extrapolated；实际拟合输入范围由 calibrationMinQ/MaxQ 说明。
  */
 export function lookupT97(
   problemRating: number,
@@ -249,6 +249,12 @@ export function lookupT97(
   }
   if (problemRating >= last[0]) {
     return { seconds: last[1], extrapolated: problemRating > last[0] ? 'above' : null };
+  }
+  if (curve.formula) {
+    const f = curve.formula;
+    const delta = problemRating - f.originQ;
+    return { seconds: 60 * (f.baselineMinutes + f.slopeMinutesPerRating * delta -
+      f.gainMinutes * Math.expm1(-delta / f.scaleRating)), extrapolated: null };
   }
   let lo = 0;
   let hi = points.length - 1;
@@ -590,6 +596,8 @@ export function curveInfo(curve: DxCurve = DX_CURVE): {
   model: string;
   fitMinQ: number;
   fitMaxQ: number;
+  calibrationMinQ: number;
+  calibrationMaxQ: number;
   productionReady: boolean;
   productionReadyBasis: string;
 } {
@@ -600,6 +608,8 @@ export function curveInfo(curve: DxCurve = DX_CURVE): {
     model: curve.model,
     fitMinQ: curve.fitMinQ,
     fitMaxQ: curve.fitMaxQ,
+    calibrationMinQ: curve.calibrationMinQ ?? curve.fitMinQ,
+    calibrationMaxQ: curve.calibrationMaxQ ?? curve.fitMaxQ,
     productionReady: curve.productionReady,
     productionReadyBasis: curve.productionReadyBasis,
   };

@@ -10,6 +10,7 @@
  * 历史回补可中止近期任务，等待其释放锁后再启动；其余冲突保持互斥。
  */
 import { randomUUID } from 'node:crypto';
+import { TimerSubmissionChecker } from './timer-check.ts';
 import { HttpClient } from '../fetchers/http.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import { createFactory } from '../fetchers/registry.ts';
@@ -71,9 +72,13 @@ export class SyncJobRunner {
   /** 显式声明而不是 `constructor(private getDb: …)`：Node 的 strip-only 模式不支持参数属性。 */
   private getDb: () => DatabaseSync;
   private envFile: string;
+  private timerChecker: TimerSubmissionChecker;
+  checkTimer(accountId: number) { return this.timerChecker.check(accountId); }
+  timerCheckState(accountId: number) { return this.timerChecker.state(accountId); }
   constructor(getDb: () => DatabaseSync, envFile: string) {
     this.getDb = getDb;
     this.envFile = envFile;
+    this.timerChecker = new TimerSubmissionChecker(getDb, () => this.markDataChanged());
   }
 
   state(): SyncJobState | null {

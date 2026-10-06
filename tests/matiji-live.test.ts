@@ -29,8 +29,8 @@ test('Matiji accepts login nickname, blank and own URL without guessing other id
 
 test('binding a Matiji nickname reuses stored login and persists the numeric identity', async t => {
   const db = openDatabase(':memory:');
-  const previous = process.env.ALGO_COOKIE_MATIJI;
-  process.env.ALGO_COOKIE_MATIJI = 'session=test';
+  const previous = process.env.ALGORITHM_DX_COOKIE_MATIJI;
+  process.env.ALGORITHM_DX_COOKIE_MATIJI = 'session=test';
   try {
     const repo = new Repository(db), userId = repo.createUser('self');
     t.mock.method(MatijiLiveFetcher.prototype, 'currentAccount', async function() {
@@ -48,8 +48,8 @@ test('binding a Matiji nickname reuses stored login and persists the numeric ide
     assert.equal(db.prepare('SELECT count(*) n FROM accounts').get()!.n, 1);
     assert.ok(!JSON.stringify(result).includes('session=test'));
   } finally {
-    if (previous === undefined) delete process.env.ALGO_COOKIE_MATIJI;
-    else process.env.ALGO_COOKIE_MATIJI = previous;
+    if (previous === undefined) delete process.env.ALGORITHM_DX_COOKIE_MATIJI;
+    else process.env.ALGORITHM_DX_COOKIE_MATIJI = previous;
     db.close();
   }
 });
@@ -146,7 +146,7 @@ test('Matiji failure cannot commit earlier pages; cancellation is propagated', a
     const repo = new Repository(db), user = repo.createUser('test'), id = repo.addAccount(user, 'matiji', '123');
     let calls = 0;
     const http = new HttpClient(db, async () => Response.json(++calls === 1 ? { error_no: 0, data: { total: 51, datas: Array.from({ length: 50 }, (_, i) => row(i+1)) } } : { error_no: 2 }), async () => {});
-    const env = { ALGO_COOKIE_MATIJI: 'session=test' };
+    const env = { ALGORITHM_DX_COOKIE_MATIJI: 'session=test' };
     const result = await new SyncService(db, createFactory(db, env, http), env).sync(id, { mode: 'backfill' });
     assert.equal(result[0].status, 'failed');
     assert.equal(db.prepare('SELECT COUNT(*) n FROM submissions').get()!.n, 0);

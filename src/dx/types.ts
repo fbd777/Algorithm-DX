@@ -12,6 +12,18 @@ export interface DxCurve {
   fitMaxQ: number;
   /** 相邻网格点的 Rating 间距（25）。 */
   gridStepQ: number;
+  /** 实际拟合输入范围；超出部分是已启用的模型外推。 */
+  calibrationMinQ?: number;
+  calibrationMaxQ?: number;
+  /** 解析模型直接求值；网格供展示与旧模型兼容。 */
+  formula?: {
+    kind: 'saturation-linear';
+    originQ: number;
+    baselineMinutes: number;
+    slopeMinutesPerRating: number;
+    gainMinutes: number;
+    scaleRating: number;
+  };
   /**
    * 统计实验的 `productionReady` 标记：三条预注册判据（主推优于常数基线、
    * 平滑与单调约束的代价可接受、时间留出方向一致）全过才置 `true`。

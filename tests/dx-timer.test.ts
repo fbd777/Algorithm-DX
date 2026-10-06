@@ -6,6 +6,7 @@ import { listPractice, voidPractice, recordPractice } from '../src/dx/practice.t
 import { submission } from '../src/fetchers/common.ts';
 import { handleApi, WRITE_ROUTES } from '../src/server/api.ts';
 import { createTimerSync } from '../src/server/timer-sync.ts';
+import { TimerSubmissionChecker, fetchTimerWindow } from '../src/server/timer-check.ts';
 import { SyncService } from '../src/sync/service.ts';
 import { BaseFetcher } from '../src/fetchers/base.ts';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -22,6 +23,19 @@ function setup() {
     submission_id:id,problem_id:problemId,problem_title:'Timed practice',status,submitted_at:at,difficulty:1400})]);
   return {db,repo,user,account,other,otherAccount,now,start,add};
 }
+
+test('small public responses expand when needed to preserve the complete timed verdict window',async()=>{
+ const calls:number[]=[];
+ const rows=Array.from({length:10},(_,i)=>submission('codeforces',{submission_id:String(i),problem_id:'1:A',status:i?'WA':'AC',submitted_at:200-i}));
+ const fetcher={fetch_batch:async(_handle:string,options:any)=>{calls.push(options.limit);return {submissions:rows} as any;}};
+ await fetchTimerWindow(fetcher,'fixture',195);
+ assert.deepEqual(calls,[10]);calls.length=0;
+ await fetchTimerWindow(fetcher,'fixture',100);
+ assert.deepEqual(calls,[10,100]);calls.length=0;
+ rows.splice(1);
+ await fetchTimerWindow(fetcher,'fixture',100);
+ assert.deepEqual(calls,[10]);
+});
 
 test('track counts distinct daily AC problems in completion-day order, including untimed solves',()=>{
  const s=setup();try {
@@ -124,16 +138,48 @@ test('sync transaction records AC and timer atomically; repeated sync remains id
   }finally{s.db.close();}
 });
 
-test('background scheduler is idle without timers, respects busy jobs and throttles active-account polling',()=>{
+test('background timer checks ignore group-job cooldown and check every fifteen seconds',()=>{
   const s=setup();try {
     let busy=false;const requests:any[]=[];
-    const tick=createTimerSync(s.db,()=>s.db,{busy:()=>busy,autoAvailableAt:()=>0,start:(request:any)=>requests.push(request)} as any);
-    tick(0);assert.equal(requests.length,0);s.start();busy=true;tick(1000);assert.equal(requests.length,0);
+    const tick=createTimerSync(s.db,()=>s.db,{busy:()=>busy,autoAvailableAt:()=>Infinity,checkTimer:(accountId:number)=>requests.push(accountId)} as any);
+    tick(0);assert.equal(requests.length,0);s.start();busy=true;tick(1000);assert.equal(requests.length,1);
     busy=false;tick(2000);tick(3000);assert.equal(requests.length,1);
-    assert.deepEqual(requests[0],{accountId:s.account,mode:'recent',force:true,automatic:true});
-    tick(32000);assert.equal(requests.length,2);
+    assert.equal(requests[0],s.account);
+    tick(16000);assert.equal(requests.length,2);
     cancelTimer(s.db,s.user,'timer-test-1');tick(70000);assert.equal(requests.length,2);
   }finally{s.db.close();}
+});
+
+test('dedicated public check settles AC atomically and coalesces simultaneous checks',async()=>{
+ const s=setup();try {
+  s.start();let calls=0,changed=0;
+  let deliver:any;
+  const pending=new Promise<any>(resolve=>{deliver=resolve;});
+  const checker=new TimerSubmissionChecker(()=>s.db,()=>changed++,async()=>{calls++;return pending;});
+  const first=checker.check(s.account);
+  await checker.check(s.account);
+  assert.equal(calls,1);assert.equal(checker.state(s.account)?.running,true);
+  deliver({submissions:[submission('codeforces',{submission_id:'public-ac',problem_id:'2259:A',problem_title:'Public',status:'AC',submitted_at:s.now+50,difficulty:1400})]});
+  await first;
+  assert.equal(timerState(s.db,s.user).timer?.status,'completed');
+  assert.equal(timerState(s.db,s.user).result?.seconds,50);
+  assert.equal(changed,1);assert.equal(checker.state(s.account)?.error,null);
+ }finally{s.db.close();}
+});
+
+test('public check exposes failures and does not save results after an account identity changes',async()=>{
+ const s=setup();try {
+  s.start();const failed=new TimerSubmissionChecker(()=>s.db,()=>{},async()=>{throw Error('network unavailable');});
+  await failed.check(s.account);
+  assert.match(failed.state(s.account)?.error??'',/network unavailable/);
+  assert.equal(timerState(s.db,s.user).timer?.status,'running');
+  const changed=new TimerSubmissionChecker(()=>s.db,()=>{},async()=>{
+   s.db.prepare('UPDATE accounts SET handle_key=? WHERE id=?').run('replacement',s.account);
+   return {submissions:[submission('codeforces',{submission_id:'stale-ac',problem_id:'2259:A',status:'AC',submitted_at:s.now+60})]} as any;
+  });
+  await changed.check(s.account);
+  assert.equal(s.db.prepare("SELECT count(*) n FROM submissions WHERE submission_id='stale-ac'").get()!.n,0);
+ }finally{s.db.close();}
 });
 
 test('timer read endpoint is read-only; writes are allowlisted and score library exposes server scores beyond B50',async()=>{

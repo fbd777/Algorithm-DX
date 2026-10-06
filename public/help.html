@@ -72,7 +72,7 @@
 <ol><li>在「账号管理 → CF 自建比赛」选择要统计的用户名，粘贴群组列表链接或单场比赛链接。</li><li>获取方式选择「浏览器登录」，点击「打开 CF 登录窗口」。程序会打开独立的 Edge / Chrome 窗口；在里面登录已加入该群组的 CF 账号。普通 Edge 窗口里的登录不会自动复制过来。</li><li>在这个专用窗口确认可以查看群组及比赛的 Status（提交记录）页面。如果 CF 要求人机验证，请在窗口里手动完成。</li><li>返回面板「保存配置」，再同步。同步期间保持专用窗口开启（可以最小化）；关闭后需重新点击登录按钮。登录状态保存在本机，下次打开可继续使用，失效时重新登录。</li></ol>
 <p>程序自动遍历群组比赛和提交分页，只保存所选用户名的提交，不读取源码。近期同步读取每场前若干页；更早的记录请使用「回补历史」。权限不足、验证页和格式异常会报错，不会当作空记录覆盖已有数据。只有榜单、看不到提交页的比赛仍无法获取提交明细。</p>
 <p>未指定方式的旧配置默认使用扩展方式，不必重新创建 API Key。网页回补首次使用时重新扫描群组历史，按提交编号去重。已验证 API 可用的账号可手动选择下方 API 方式。</p>
-<p>登录资料保存在项目 data/cf-browser 目录（已排除版本控制），请勿分享此目录。不需要上传 Cookie 或密码。Windows 自动查找 Edge；其他系统需安装 Edge / Chrome / Chromium，也可以在 .env 用 ALGO_CF_BROWSER_EXECUTABLE 指定路径。本功能需要部署机器有图形桌面；远程无桌面服务器请使用 API 方式。</p>
+<p>登录资料保存在项目 data/cf-browser 目录（已排除版本控制），请勿分享此目录。不需要上传 Cookie 或密码。Windows 自动查找 Edge；其他系统需安装 Edge / Chrome / Chromium，也可以在 .env 用 ALGORITHM_DX_CF_BROWSER_EXECUTABLE 指定路径。本功能需要部署机器有图形桌面；远程无桌面服务器请使用 API 方式。</p>
 <details><summary>安全验证一直加载怎么办？</summary><p>先在普通 Edge 窗口确认 codeforces.com 能否正常打开。若普通窗口也失败，请检查网络连接、浏览器版本及是否有扩展阻止验证脚本；不要反复点击同步。专用窗口的验证完成前，程序会停止网页抓取，遇到验证页会保留标签页供你手动处理。自动化浏览器不保证能通过 CF 的安全验证；普通窗口正常而专用窗口持续失败时，请使用上方普通 Edge 扩展方式，或选择已有权限的 API 方式。不要反复创建密钥或重试验证。</p></details><h3>API Key 方式（可选）</h3>
 <p>选择 API 方式时使用 CF 的 <strong>API Key 签名授权</strong>。尚未实现 OAuth 登录；两种凭据不能混用。</p>
 <h3>1. 先确认打开的是哪种页面</h3>
@@ -114,4 +114,16 @@
 <p>在 DX 页面「更多 → 本地回测 / 导出」可以查看当前与旧版完成度模型的对比，并下载汇总 JSON。回测会区分计时来源、练习类型和未完成次数；未知练习日期不进入训练过程分析，未满 B35／B15 不能代表充分训练。报告不自动调整评分参数，练习数据不会自动上传。</p>
 <p>实现及研究记录保存在项目 docs/cf-maimai-study.md、docs/backtesting.md；界面中的参数和验证状态来自服务端当前模型。</p>
 </section>
+<footer class="project-support">
+<details>
+<summary>支持项目 <span>· 感谢你的使用与反馈</span></summary>
+<div class="project-support-content">
+<p>如果 Algorithm DX 对你有帮助，欢迎自愿赞赏，支持后续维护与更新。点个 Star、反馈问题或分享给朋友，也同样是支持。</p>
+<a class="project-support-image" href="/support-code.png" target="_blank" rel="noopener" aria-label="打开赞赏码原图">
+<img src="/support-code.png" alt="纤墨.fbd 的微信赞赏码，感谢你对 Algorithm DX 的支持" width="1152" height="1152" loading="lazy" decoding="async">
+</a>
+<p class="project-support-note">使用微信扫一扫；点击图片可查看或保存原图。</p>
+</div>
+</details>
+</footer>
 </main><script src="/help.js" type="module"></script></body></html>

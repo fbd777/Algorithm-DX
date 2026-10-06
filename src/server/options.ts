@@ -1,6 +1,6 @@
 export function parseDashboardArgs(argv: string[], env: NodeJS.ProcessEnv = process.env) {
-  let port = Number(env.ALGO_DASHBOARD_PORT ?? 8787);
-  let dbPath = env.ALGO_DB_PATH ?? 'data/algo-observer.sqlite';
+  let port = Number(env.ALGORITHM_DX_DASHBOARD_PORT ?? 8787);
+  let dbPath = env.ALGORITHM_DX_DB_PATH ?? 'data/algorithm-dx.sqlite';
   let open = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];

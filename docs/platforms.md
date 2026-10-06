@@ -16,7 +16,7 @@
 
 账号用 `/u/<slug>/` 中的 slug，与国际站分别绑定。普通「同步最新数据」仍使用公开 `recentACSubmissions`，最多 20 条 AC；空列表不证明没有练习。
 
-**历史回补（含失败提交，无源码）：** 在账号管理中选择力扣中国站，填写本人登录 Cookie 并保存，然后点击该账号的「回补历史」。也可以在本机 `.env` 设置 `ALGO_COOKIE_LEETCODE_CN="LEETCODE_SESSION=…; csrftoken=…"`，再运行 `npm run sync -- <账号ID> --backfill --pages 100`。Cookie 不要粘贴到聊天或提交到版本库。
+**历史回补（含失败提交，无源码）：** 在账号管理中选择力扣中国站，填写本人登录 Cookie 并保存，然后点击该账号的「回补历史」。也可以在本机 `.env` 设置 `ALGORITHM_DX_COOKIE_LEETCODE_CN="LEETCODE_SESSION=…; csrftoken=…"`，再运行 `npm run sync -- <账号ID> --backfill --pages 100`。Cookie 不要粘贴到聊天或提交到版本库。
 
 每批首先用 `userStatus` 校验登录状态和 `userSlug`，不匹配立即停止，防止把 Cookie 本人的数据写到其他账号。查询 `/graphql/` 的 `userProgressQuestionList`，分页收集 SOLVED 与 ATTEMPTED；然后逐题分页读 `submissionList`，不筛选状态或语言。只保存提交 ID、题目、时间、语言和判题结果，不请求源码。未知结果保留原值。
 
@@ -32,9 +32,9 @@
 
 ## 洛谷 · `luogu`
 
-账号用数字 UID（**不是昵称**，即使昵称看起来像账号名）。2026-09-16 实测：未登录访问 [提交列表](https://www.luogu.com.cn/record/list) 返回 401，而个人主页 `/user/<uid>` 公开可读。添加账号后，把**观测者自己**的登录 Cookie 放在本地 `.env` 的 `ALGO_COOKIE_LUOGU` 中（**按平台一份，不按账号**；旧写法 `ALGO_COOKIE_<本地账号ID>` 仍兼容）。洛谷登录态只需两个键：`__client_id`（真正的凭据，务必保密）与 `_uid`（你自己的数字 uid，公开无妨），不必复制整行 Cookie。Cookie 只发送到洛谷固定域名。无需把 Cookie 发给助手。
+账号用数字 UID（**不是昵称**，即使昵称看起来像账号名）。2026-09-16 实测：未登录访问 [提交列表](https://www.luogu.com.cn/record/list) 返回 401，而个人主页 `/user/<uid>` 公开可读。添加账号后，把**观测者自己**的登录 Cookie 放在本地 `.env` 的 `ALGORITHM_DX_COOKIE_LUOGU` 中（**按平台一份，不按账号**；旧写法 `ALGORITHM_DX_COOKIE_<本地账号ID>` 仍兼容）。洛谷登录态只需两个键：`__client_id`（真正的凭据，务必保密）与 `_uid`（你自己的数字 uid，公开无妨），不必复制整行 Cookie。Cookie 只发送到洛谷固定域名。无需把 Cookie 发给助手。
 
-**绑定与凭据一步完成。** 不想手工编辑 `.env` 时，可以把凭据交给 `account add --cookie "<值>"`，它会就地更新 `.env`（保留注释与其他行），输出里只回报写进了哪个变量、**不回显凭据本身**。值里含引号或换行会被拒 —— 换行会让它凭空造出一个新变量（例如 `ALGO_DB_PATH`），把「填 Cookie」变成「改写程序配置」。该选项只对需要凭据的平台开放（`luogu`、`matiji`），用在公开接口平台上会直接报错。
+**绑定与凭据一步完成。** 不想手工编辑 `.env` 时，可以把凭据交给 `account add --cookie "<值>"`，它会就地更新 `.env`（保留注释与其他行），输出里只回报写进了哪个变量、**不回显凭据本身**。值里含引号或换行会被拒 —— 换行会让它凭空造出一个新变量（例如 `ALGORITHM_DX_DB_PATH`），把「填 Cookie」变成「改写程序配置」。该选项只对需要凭据的平台开放（`luogu`、`matiji`），用在公开接口平台上会直接报错。
 
 账号**已经绑过**时再执行一次也只更新凭据：输出带 `"existing": true`、不重复建账号。唯一会被拒的情况是这个 handle 已绑在别的用户名下（`accounts` 上是 `UNIQUE(platform, handle_key)`，不含 `user_id`，所以必须显式挡住越权接管）。
 
@@ -92,7 +92,7 @@
 }
 ```
 
-`submitTime` 可为 Unix 秒或毫秒；`account_handle` 必须与绑定账号一致；提交 ID、题目 ID、时间必填。只放记录字段，不放 Cookie、Token 或源代码。旧配置 `ALGO_MATIJI_SNAPSHOT_<本地账号ID>=data/matiji-records.json` 显式指定文件来源，优先于 Cookie；改用网络同步时需移除此项。网页备用导入不会设置此项。文件上限 10 MB。`sync` 会读取并去重入库，`--limit` 控制导入条数；文件更新后用 `--force` 绕过 60 秒缓存。定时任务可以重读文件，但不会替你从码蹄集更新文件。
+`submitTime` 可为 Unix 秒或毫秒；`account_handle` 必须与绑定账号一致；提交 ID、题目 ID、时间必填。只放记录字段，不放 Cookie、Token 或源代码。旧配置 `ALGORITHM_DX_MATIJI_SNAPSHOT_<本地账号ID>=data/matiji-records.json` 显式指定文件来源，优先于 Cookie；改用网络同步时需移除此项。网页备用导入不会设置此项。文件上限 10 MB。`sync` 会读取并去重入库，`--limit` 控制导入条数；文件更新后用 `--force` 绕过 60 秒缓存。定时任务可以重读文件，但不会替你从码蹄集更新文件。
 
 ## 同步与登录凭据
 
@@ -119,4 +119,4 @@ CF Group 默认使用独立 Edge / Chrome 登录窗口读取比赛列表和提�
 
 Group 配置现在支持群组首页或 /contests 链接，通过带 groupCode 的授权 contest.list 查询普通比赛及 gym 并去重。每轮重新发现比赛（仍受现有短时同步缓存影响），仅抓取绑定用户名的提交。单场配置保持兼容，历史回补继续使用分比赛游标。此功能仍使用 API key 签名，尚未实现 OAuth。
 
-CF Group 普通浏览器扩展：extensions/cf-sync 为 MV3 Edge 扩展。模式 ALGO_CF_GROUP_MODE_<账号ID>=extension，面板生成 ALGO_CF_EXTENSION_TOKEN 配对；扩展经本机鉴权通道领取群组页面读取任务，已登录 CF 标签页读取后返回结构化记录。扩展权限限 CF 和本机面板，不传递 Cookie / 密码 / 源码。接口仅扩展来源和有效令牌可访问；网页写接口保持原同源限制。需通过面板同步，CLI 无扩展任务通道。
+CF Group 普通浏览器扩展：extensions/cf-sync 为 MV3 Edge 扩展。模式 ALGORITHM_DX_CF_GROUP_MODE_<账号ID>=extension，面板生成 ALGORITHM_DX_CF_EXTENSION_TOKEN 配对；扩展经本机鉴权通道领取群组页面读取任务，已登录 CF 标签页读取后返回结构化记录。扩展权限限 CF 和本机面板，不传递 Cookie / 密码 / 源码。接口仅扩展来源和有效令牌可访问；网页写接口保持原同源限制。需通过面板同步，CLI 无扩展任务通道。

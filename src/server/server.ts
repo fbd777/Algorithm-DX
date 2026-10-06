@@ -9,7 +9,7 @@ import { envFor } from '../credentials.ts';
  * - 写路径（POST）只开放给 api.ts 里列明的几个端点，且必须先过同源校验；写连接是惰性打开的。
  * - 静态资源只从 public/ 目录读取，做路径穿越校验。
  *
- * 用法：npm run dashboard [-- --port 8787] [--db data/algo-observer.sqlite]
+ * 用法：npm run dashboard [-- --port 8787] [--db data/algorithm-dx.sqlite]
  */
 import { spawn } from 'node:child_process';
 import { parseDashboardArgs } from './options.ts';
@@ -167,12 +167,12 @@ function serveStatic(req: IncomingMessage, res: ServerResponse, pathname: string
 }
 
 function main(): void {
-  // 与 cli.ts 保持一致：面板同样要认 .env 里的 ALGO_DB_PATH / ALGO_DASHBOARD_PORT。
+  // 与 cli.ts 保持一致：面板同样要认 .env 里的 ALGORITHM_DX_DB_PATH / ALGORITHM_DX_DASHBOARD_PORT。
   // 命令行参数仍然优先，loadEnvFile 不会覆盖已经存在的环境变量。
   if (existsSync(ENV_FILE)) process.loadEnvFile(ENV_FILE);
 
   if (process.argv.slice(2).some(arg => arg === '--help' || arg === '-h')) {
-    console.log('Usage: npm run dashboard -- [--port 8787] [--db data/algo-observer.sqlite] [--open]');
+    console.log('Usage: npm run dashboard -- [--port 8787] [--db data/algorithm-dx.sqlite] [--open]');
     return;
   }
   const options = parseDashboardArgs(process.argv.slice(2));
@@ -224,7 +224,7 @@ function main(): void {
       if(method==='OPTIONS'){res.setHeader('Access-Control-Allow-Methods','POST');res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');res.writeHead(204);res.end();return;}
       if(method!=='POST'){sendJson(res,405,{error:'仅接受 POST'});return;}
       const token=String(req.headers.authorization??'').replace(/^Bearer /,'');
-      if(!validExtensionToken(envFor(envFile).ALGO_CF_EXTENSION_TOKEN,token)){sendJson(res,401,{error:'扩展连接码无效'});return;}
+      if(!validExtensionToken(envFor(envFile).ALGORITHM_DX_CF_EXTENSION_TOKEN,token)){sendJson(res,401,{error:'扩展连接码无效'});return;}
       let input:any;try{input=await readJsonBody(req,2*1024*1024);}catch{sendJson(res,400,{error:'扩展数据格式无效或过大'});return;}
       if(url.pathname.endsWith('/poll')){
         cfExtensionBridge.version=typeof input?.version==='string'&&/^\d+\.\d+\.\d+$/.test(input.version)?input.version:null;

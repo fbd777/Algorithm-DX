@@ -2,9 +2,13 @@
   "name": "algorithm-dx",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "engines": { "node": ">=24.15.0" },
   "scripts": {
+    "config:migrate": "node scripts/migrate-brand-config.mjs",
+    "start": "node scripts/start-local.mjs",
+    "desktop:shortcut": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1",
     "study:backtest": "node --max-old-space-size=8192 scripts/cf-study/backtest.mjs",
     "backtest:merge": "node scripts/merge-backtests.ts",
     "study:fetch": "node scripts/cf-study/fetch.mjs",

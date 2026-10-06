@@ -6,7 +6,7 @@ const UNSAFE=/["'\\\r\n]/;
 
 /**
  * 校验一个准备写进 .env 的值。
- * 换行是这里最危险的字符：它能凭空造出一个新变量（比如 `ALGO_DB_PATH`），
+ * 换行是这里最危险的字符：它能凭空造出一个新变量（比如 `ALGORITHM_DX_DB_PATH`），
  * 把「填 Cookie」变成「改写程序配置」。引号与反斜杠则会让解析结果超出预期。
  */
 export function assertSafeEnvValue(key:string,value:string):string{

@@ -56,7 +56,7 @@ scoreProblem 排除无评级的题；buildPending 排除已经填写用时的题
 ## 本轮更名
 
 包名 algorithm-dx；首页及 DX 页品牌、浏览器标题、CLI/服务启动提示、Windows 启动窗口标题和 README 定位统一为 Algorithm DX。
-保留目录 Algo-Observer、默认数据库 data/algo-observer.sqlite 和 ALGO_* 环境变量，避免破坏已有启动脚本和历史数据。原始 prompt0.md 保留历史原貌。
+保留目录 Algo-Observer、默认数据库 data/algorithm-dx.sqlite 和 ALGORITHM_DX_* 环境变量，避免破坏已有启动脚本和历史数据。原始 prompt0.md 保留历史原貌。
 
 建议讨论顺序：1 → 2 → 3 → 4 → 5，再确定跨平台 B50 口径。
 

@@ -25,7 +25,8 @@ function optionValue(name: string): string | null {
   return value && !value.startsWith('--') ? value : null;
 }
 
-const dbPath = resolve(process.env.ALGO_DB_PATH ?? 'data/algo-observer.sqlite');
+if (existsSync('.env')) process.loadEnvFile('.env');
+const dbPath = resolve(process.env.ALGORITHM_DX_DB_PATH ?? 'data/algorithm-dx.sqlite');
 if (!existsSync(dbPath)) {
   console.error(`找不到数据库：${dbPath}`);
   console.error('先运行 npm run db:init 建库、npm run sync 抓取数据，再备份。');

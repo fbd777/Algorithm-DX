@@ -28,17 +28,17 @@ export function validateAccount(platform:string,handle:string):void{
  * 所以新增被观测账号时不需要再配一份 Cookie。
  */
 export function credentialKey(platform:string):string{
-  return `ALGO_COOKIE_${platform.toUpperCase().replace(/[^A-Z0-9]+/g,'_')}`;
+  return `ALGORITHM_DX_COOKIE_${platform.toUpperCase().replace(/[^A-Z0-9]+/g,'_')}`;
 }
 /**
  * 取某个平台要用的凭据。
- * 优先 `ALGO_COOKIE_<平台>`（一份服务该平台全部账号）；找不到再回退到旧写法
- * `ALGO_COOKIE_<本地账号ID>`，让已经配好的 .env 继续可用。
+ * 优先 `ALGORITHM_DX_COOKIE_<平台>`（一份服务该平台全部账号）；找不到再回退到旧写法
+ * `ALGORITHM_DX_COOKIE_<本地账号ID>`，让已经配好的 .env 继续可用。
  */
 export function resolveCredential(env:NodeJS.ProcessEnv,account:Pick<Account,'id'|'platform'>):string|undefined{
   const perPlatform=env[credentialKey(account.platform)];
   if(typeof perPlatform==='string'&&perPlatform.trim())return perPlatform.trim();
-  const perAccount=env[`ALGO_COOKIE_${account.id}`];
+  const perAccount=env[`ALGORITHM_DX_COOKIE_${account.id}`];
   return typeof perAccount==='string'&&perAccount.trim()?perAccount.trim():undefined;
 }
 /**
@@ -64,7 +64,7 @@ export interface PlatformPrerequisite{
  */
 export function missingPrerequisite(env:NodeJS.ProcessEnv,account:Pick<Account,'id'|'platform'>,mode:'recent'|'backfill'='recent'):PlatformPrerequisite|null{
   if(account.platform==='leetcode-cn'&&mode==='recent')return null;
-  if(account.platform==='matiji'&&String(env[`ALGO_MATIJI_SNAPSHOT_${account.id}`]??'').trim())return null;
+  if(account.platform==='matiji'&&String(env[`ALGORITHM_DX_MATIJI_SNAPSHOT_${account.id}`]??'').trim())return null;
   if((credentialPlatforms as readonly string[]).includes(account.platform)&&!resolveCredential(env,account)){
     return{kind:'credential',variable:credentialKey(account.platform),detail:'没有配置登录凭据，这次没有发起抓取'};
   }
@@ -75,13 +75,13 @@ export function createFactory(db:DatabaseSync,env:NodeJS.ProcessEnv=process.env,
     const cookie=resolveCredential(env,account);
     switch(account.platform){
       case 'codeforces': {
-        const groups=parseGroupLinks(env['ALGO_CF_GROUPS_'+account.id]??'');
-        if(groups.length && env['ALGO_CF_GROUP_MODE_'+account.id]!=='api'){
-          const fetcher=new CodeforcesGroupWebFetcher(new Repository(db),http,groups,env['ALGO_CF_GROUP_MODE_'+account.id]==='browser'?undefined:cfExtensionBridge.read.bind(cfExtensionBridge));
-          if(env.ALGO_CF_API_KEY&&env.ALGO_CF_API_SECRET)fetcher.metadata=signal=>fetchGroupReleases(http,groups,env.ALGO_CF_API_KEY!,env.ALGO_CF_API_SECRET!,signal);
+        const groups=parseGroupLinks(env['ALGORITHM_DX_CF_GROUPS_'+account.id]??'');
+        if(groups.length && env['ALGORITHM_DX_CF_GROUP_MODE_'+account.id]!=='api'){
+          const fetcher=new CodeforcesGroupWebFetcher(new Repository(db),http,groups,env['ALGORITHM_DX_CF_GROUP_MODE_'+account.id]==='browser'?undefined:cfExtensionBridge.read.bind(cfExtensionBridge));
+          if(env.ALGORITHM_DX_CF_API_KEY&&env.ALGORITHM_DX_CF_API_SECRET)fetcher.metadata=signal=>fetchGroupReleases(http,groups,env.ALGORITHM_DX_CF_API_KEY!,env.ALGORITHM_DX_CF_API_SECRET!,signal);
           return fetcher;
         }
-        return groups.length ? new CodeforcesGroupFetcher(new Repository(db),http,groups,env.ALGO_CF_API_KEY??'',env.ALGO_CF_API_SECRET??'') : new CodeforcesSyncFetcher(new Repository(db),http);
+        return groups.length ? new CodeforcesGroupFetcher(new Repository(db),http,groups,env.ALGORITHM_DX_CF_API_KEY??'',env.ALGORITHM_DX_CF_API_SECRET??'') : new CodeforcesSyncFetcher(new Repository(db),http);
       }
       case 'leetcode':return new LeetCodeFetcher(http);
       case 'leetcode-cn':return new LeetCodeFetcher(http,true,cookie);
@@ -89,7 +89,7 @@ export function createFactory(db:DatabaseSync,env:NodeJS.ProcessEnv=process.env,
       case 'atcoder':return new AtCoderFetcher(http);
       case 'luogu':return new LuoguFetcher(http,cookie);
       // 显式的旧快照配置保持原行为；网页导入不设置此配置。
-      case 'matiji':return env[`ALGO_MATIJI_SNAPSHOT_${account.id}`] ? new MatijiFetcher(env[`ALGO_MATIJI_SNAPSHOT_${account.id}`]) : new MatijiLiveFetcher(http,cookie);
+      case 'matiji':return env[`ALGORITHM_DX_MATIJI_SNAPSHOT_${account.id}`] ? new MatijiFetcher(env[`ALGORITHM_DX_MATIJI_SNAPSHOT_${account.id}`]) : new MatijiLiveFetcher(http,cookie);
       default:throw new FetchError('Unsupported platform',false,'UNSUPPORTED');
     }
   };

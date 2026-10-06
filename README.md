@@ -1,10 +1,17 @@
 # Algorithm DX
 
-面向 GitHub 开源的个人算法 Dashboard：汇总自己的全平台做题记录，追踪在本应用内添加的关注对象，并通过填写做题用时生成受 maimai DX 启发的 B50 榜单。B50 是项目的核心特色；当前计分实现仅覆盖 Codeforces，其他平台的计分规则尚待设计。
+这是一个面向算法竞赛爱好者开源的个人算法 Dashboard，在这里，你可以：
+1. 汇总自己的多平台做题记录；
+2. 在“题友圈”追踪关注的人的做题动态；
+3. 使用内置计时器、比赛用时或手动计时 Codeforces AC 用时，来得到你的完成率，进而生成你的 B50，通过练习提高你的你的DX Rating；
 
-品牌已更名；为兼容已有数据，默认数据库文件仍为 `data/algo-observer.sqlite`，现有 `ALGO_*` 环境变量保持有效。
+基于 maimai DX B50机制启发的 B50 榜单是项目的核心特色；当前计分实现仅覆盖 Codeforces。
 
-Phase 3 新增本地的 **做题动态面板**：`npm run dashboard` 启动一个只绑定回环地址的 HTTP 服务，用原生 HTML/CSS/JS 展示 AC 优先的题目卡片、默认收起的未 AC 记录和多维筛选。**没有引入任何第三方运行依赖，也没有构建步骤**；浏览数据时以 `PRAGMA query_only` 打开数据库；只有顶栏的「同步最新数据」与「账号管理」里的写操作会改库，且必须由本机发起的同源 POST 才能触发。Windows 下也可以直接双击 `dashboard.cmd` 一键启动并自动打开浏览器。
+默认数据库为 `data/algorithm-dx.sqlite`，项目环境变量统一使用 `ALGORITHM_DX_*` 前缀。
+
+项目采用 [MIT 许可证](LICENSE)。欢迎使用、修改及提交 Pull Request；是否合并到本仓库由维护者决定。
+
+本地的 **做题动态面板** 使用原生 HTML/CSS/JS 展示 AC 记录、练习统计、计时和 B50。**没有第三方运行依赖，也没有构建步骤**。HTTP 服务仅监听本机回环地址；浏览查询使用只读连接，同步、账号管理和练习记录等操作使用写连接。面板写请求校验同源，CF 扩展接口另外校验扩展来源与连接码。Windows 下双击 `dashboard.cmd` 即可启动并打开浏览器。
 
 另有一条独立的 **Codeforces × maimai 统计实验**：见 [实验方案与运行说明](docs/cf-maimai-study.md)。使用真实比赛提交、赛前 rating 和历史参赛次数，输出含右删失的加权 KM、成功者分位数及九组敏感性分析；T97 曲线在核平滑之上再做一层加权保序回归以保证单调，并与未约束版本并排列出（见 `results/cf-study/T97_TABLE.md` 与 `MONOTONE.md`）。统计实验线本身仍不做前端，不预设完成度曲线。
 
@@ -14,11 +21,15 @@ Phase 3 新增本地的 **做题动态面板**：`npm run dashboard` 启动一�
 
 选择 **Node.js 24.15+ / TypeScript / SQLite**。当前使用 Node 内置 SQLite、fetch 和测试运行器，零第三方运行依赖，不需要安装 Python 或数据库服务。TypeScript 由 Node 直接去除类型后执行；当前没有静态类型检查构建步骤。数据库采用显式 SQL 映射，便于检查约束和后续迁移。
 
-Phase 3 计划中的 React + Tailwind CSS + Lucide 尚未引入；面板先做成原生实现，后端 JSON API 与前端解耦，将来换成 React 时改动只在前端。HTTP API 层后续如需独立服务可引入 Express，复用当前领域类型、Repository 和 Fetcher。
+前端采用原生 HTML/CSS/JavaScript，通过本地 JSON API 访问数据。
 
 已加入账号管理、多平台适配、手动同步、可恢复的历史回补、本地定时同步和 Dashboard。Codeforces、力扣国际站/中国站、AtCoder 公开接口已实测；洛谷的账号昵称解析与**登录态记录列表**都已实测跑通（全量 653 条入库，见下文「洛谷的挑战 Cookie」）；码蹄集已接入共享 Cookie 的用户记录同步与分页回补，保留 JSON 备用导入（已实测账号识别、近期同步和可见历史回补）。
 
 ## 运行
+
+**Windows 首次使用：** 安装 Node.js 24.15+ → 将完整项目解压到固定目录 → 双击 `create-desktop-shortcut.cmd` → 双击桌面的 **Algorithm DX**。首次启动自动创建本地数据库及「我」用户，再在页面「账号管理」中绑定自己的平台账号。无需管理员权限，无需安装数据库或运行 `npm install`。完整说明见 [本地安装与桌面快捷方式](docs/local-install.md)。
+
+macOS / Linux 或终端用户可运行 `npm start`，首次启动同样自动建库；需要自动打开浏览器时运行 `npm start -- --open`。
 
 AC 记录（`/`）与练习数据（`/stats.html`）分别展示，可从顶部导航切换。统计维度参考 [Codeforces Analytics](https://greasyfork.org/en/scripts/465176/code)，使用本地已同步数据，无图表 CDN 或新依赖。
 
@@ -45,13 +56,13 @@ npm run algo -- status
 npm run watch -- --interval 300
 ```
 
-`user add` 和 `account add` 会输出 ID，后续命令使用实际返回的 ID。`sync` 抓取所有绑定账号并写入 SQLite；`watch` 立即同步一次，然后在每轮完成后等待 300 秒，按 Ctrl+C 停止。默认数据库位于 `data/algo-observer.sqlite`；旧库（v1 / v2）会在打开时自动迁移到当前版本，不删除记录。数据库路径与面板端口都能用命令行 `--db` / `--port` 或本地 `.env` 指定，命令行优先。数据库和 `.env` 已加入 Git 忽略。
+`user add` 和 `account add` 会输出 ID，后续命令使用实际返回的 ID。`sync` 抓取所有绑定账号并写入 SQLite；`watch` 立即同步一次，然后在每轮完成后等待 300 秒，按 Ctrl+C 停止。默认数据库位于 `data/algorithm-dx.sqlite`；旧库（v1 / v2）会在打开时自动迁移到当前版本，不删除记录。数据库路径与面板端口都能用命令行 `--db` / `--port` 或本地 `.env` 指定，命令行优先。数据库和 `.env` 已加入 Git 忽略。
 
 做题面板单独启动，与同步命令互不干扰。Windows 下双击 `dashboard.cmd` 即可，它会依次检查 Node 与数据库、在当前窗口启动服务，并在监听成功后才打开浏览器：
 
 ```powershell
 npm run dashboard                                            # 默认 http://127.0.0.1:8787
-npm run dashboard -- --port 8900 --db data/algo-observer.sqlite
+npm run dashboard -- --port 8900 --db data/algorithm-dx.sqlite
 ```
 
 只监听 `127.0.0.1`，不对外暴露；同步时会访问对应平台接口；数据库不存在时直接报错并提示先初始化，不会替你建库。Schema 版本与代码不一致时也会指出该跑哪条命令，而不是笼统报「不支持」。筛选条件会写进地址栏，刷新后保持。面板把「一条都没同步过」和「同步了但未回补完」分开标注，不会把前者的空库说成「已抓到的部分」。
@@ -170,7 +181,7 @@ data/backups/               npm run backup 生成的快照目录
 
 时间统一存 UTC Unix 秒；执行时间为毫秒，内存为字节；缺失值为 NULL。删除用户或账号会级联删除相关提交，未来 UI 必须明确告知这一行为。
 
-Schema 以 `PRAGMA user_version` 标记（当前 v5），初始化可重复运行；升级只能增量追加迁移，不重建数据库。`openDatabase()` 在版本高于代码支持时拒绝打开、低于时按顺序补齐；只读面板则要求版本完全一致，不一致时直接说明该跑哪条命令。迁移步骤与目标版本号只在 `database.ts` 里定义一处，服务端不再各自维护一份。
+Schema 以 `PRAGMA user_version` 标记，当前版本由 `src/db/database.ts` 的迁移列表决定。初始化可重复运行；升级通过增量迁移保留记录。`openDatabase()` 在版本高于代码支持时拒绝打开、低于时按顺序补齐；只读面板则要求版本完全一致，并提示所需命令。
 
 ## 练习量与鼓励的统计口径
 
@@ -230,7 +241,7 @@ Schema 以 `PRAGMA user_version` 标记（当前 v5），初始化可重复运�
 - 同一账号改名：`npm run algo -- account rename <id> <new-handle> --same-identity`
 - 换绑：`npm run algo -- account replace <id> <new-handle> --yes`
 
-旧数据库先运行 `npm run db:init` 升级到 v9，再重启 Dashboard。
+旧数据库先备份，再运行 `npm run db:init` 升级到当前版本，最后重启 Dashboard。
 
 **顶栏只有一个动作：同步最新数据。** 它是一次抓取 + 一次重绘 —— 只抓一次不发请求的「刷新」是误导：这一页显示的是本机 SQLite，刚在 CF / 洛谷上交的题根本不在库里，点了也看不到变化。点击后顶部给一条回执（抓了多少条、新增多少条；跳过与失败分开报），同步范围是**全部账号**、最近窗口。回补全部历史仍然只在「账号管理」里，唯一入口。筛选区那个「重置」也一并去掉了：清空筛选跟抓取不是一回事，把它摆在旁边只会让人以为那也是同步的一部分（筛选条件本来就会写进地址栏，去掉参数即可重新开始）。
 
@@ -291,7 +302,7 @@ S 及以上六档的用时门槛按**等效选手 Rating** 锚定：取 `q × �
 
 **完成度是「用时 ÷ T97」的连续函数，理论极限为 101%**。档间按线性插值算（0.98 × T97 拿到的是 **97.33%**，不是 97 或 98），显示到小数点后 4 位。2026-09-22 起，比 SSS+ 门槛还快改走独立尾段 `A = 101 − 0.5 × (用时 ÷ T97) / 0.646`，正用时在数学上始终小于 101%，不再把所有 ≤0.56×T97 的成绩显示成 101%。例如 0.323×T97 对应 100.7500%，0.1292×T97 对应 100.9000%。**评分仍按 100.5 封顶**，本次不改变单题 Rating、Rank 和 B50 排序；尾段是产品设计候选，尚未以训练充分人群的 B50 分布校准。总分按**各格已取整到 1 位小数的值**相加，所以界面上的数字加起来就等于总分。
 
-**这条曲线现在是可上线的估计（`productionReady = true`）。** 三条预注册判据全部通过：主推 5.83 分钟 vs 常数基线 10.01 分钟、vs 不平滑的经验点 6.09 分钟、2026 时间留出 5.25 分钟 vs 常数 7.18 分钟（逐次明细见 [results/cf-study/VALIDATION.md](results/cf-study/VALIDATION.md)）。曲线覆盖题目 Rating **800–2400**（2026-09-21 从 800–2100 扩展：新抓 18 场 Div.1 / Div.1+2 / Global Round，把 2200 / 2300 / 2400 三档各补到 15 场）。⚠️ **超出 2400 的题仍是平夹**：`lookupT97` 返回端点 47.07 分钟并标记 `extrapolated: 'above'`，即 2500 和 3400 的题共用同一个 T97 —— 对强用户是系统性低估。它仍是**探索性**口径 —— 页面顶部会显示 `exploratory` 与曲线指纹，让你知道面板上这条曲线是哪次实验的。曲线的唯一产物是 `src/dx/curve.ts`，由 `npm run study:export-dx` 从 `results/cf-study/t97_monotone.csv` 生成，内嵌源文件指纹与诊断状态；手改会被下次导出覆盖，面板上没有第二份数字。
+**当前正式 T97（2026-10-06）采用指数趋缓加线性增长模型，覆盖 800–3500。** 参数保存在 `results/cf-study/t97-production.json`，`npm run study:export-dx` 导出 `src/dx/curve.ts`；实际评分直接求公式值。2500 / 3000 / 3500 的 T97 分别为 48.06 / 52.09 / 56.12 分钟，完整值见 [正式 T97 表](results/cf-study/T97_PRODUCTION_TABLE.md)。拟合使用 800–2000 的七个旧曲线代表值，2000 以上为用户确认采用的外推，尚无独立比赛验证，故统计验证标记 `productionReady=false`，不影响启用。帮助页区分启用范围与拟合输入范围。原 800–2400 经验曲线和验证报告保留作研究对照，不能把旧曲线的验证结论用于新模型；需要切回时显式运行 `npm run study:export-dx -- --empirical`。超过 3500 继续按端点夹取并标记。修改参数、重新导出并重启面板即可更新评分，不改原始耗时记录。
 
 换算与取榜规则只有一处实现（`src/dx/rating.ts`），写操作只有一处实现（`src/dx-admin.ts`），前端只负责显示与回写。
 
@@ -308,7 +319,7 @@ S 及以上六档的用时门槛按**等效选手 Rating** 锚定：取 `q × �
 | 关心的问题 | 实况 |
 |---|---|
 | 服务绑定在哪 | `server.listen(port, '127.0.0.1')`，只监听回环地址，从不监听 `0.0.0.0` |
-| 数据存在哪 | 单个 SQLite 文件，默认 `data/algo-observer.sqlite`（WAL 模式下还有同目录的 `-wal` / `-shm`） |
+| 数据存在哪 | 单个 SQLite 文件，默认 `data/algorithm-dx.sqlite`（WAL 模式下还有同目录的 `-wal` / `-shm`） |
 | 什么时候出网 | 只在你主动跑 `sync` / `watch`，或在面板里点「同步」时访问各平台 API；光浏览面板不出网 |
 | 前端依赖 | `public/` 无 CDN、无外部字体、无统计脚本，断网可用 |
 | 第三方依赖 | 零。没有 `node_modules`，不需要跑 `npm install` |
@@ -320,9 +331,9 @@ S 及以上六档的用时门槛按**等效选手 Rating** 锚定：取 `q × �
 
 **删数据。** 删除用户或账号会级联删除它名下的全部提交和同步历史，不可撤销 —— 删之前先 `npm run backup`。
 
-**关于 Cookie。** 洛谷和码蹄集的登录凭据按**平台**存在 `.env`（`ALGO_COOKIE_LUOGU` / `ALGO_COOKIE_MATIJI`）。**一份 Cookie 就能读该平台的所有公开账号**，包括你要观察的其他人 —— 新增被观察账号不需要再配一份凭据。旧写法 `ALGO_COOKIE_<账号ID>` 仍然兼容，已有配置不用改。
+**关于 Cookie。** 洛谷和码蹄集的登录凭据按**平台**存在 `.env`（`ALGORITHM_DX_COOKIE_LUOGU` / `ALGORITHM_DX_COOKIE_MATIJI`）。**一份 Cookie 就能读该平台的所有公开账号**，包括你要观察的其他人 —— 新增被观察账号不需要再配一份凭据。旧写法 `ALGORITHM_DX_COOKIE_<账号ID>` 仍然兼容，已有配置不用改。
 
-洛谷不必复制整行 Cookie，只要两个键：`__client_id`（真正的凭据，务必保密）和 `_uid`（你的数字 uid，公开无妨）。例如 `ALGO_COOKIE_LUOGU="__client_id=…; _uid=1000001"`（`1000001` 只是占位，换成你自己的 uid）。凭据只发往对应平台的固定域名，不写入 SQLite、不写进错误日志，也不会自动从浏览器读取。不要提交进版本库，也不要粘贴到对话里。
+洛谷不必复制整行 Cookie，只要两个键：`__client_id`（真正的凭据，务必保密）和 `_uid`（你的数字 uid，公开无妨）。例如 `ALGORITHM_DX_COOKIE_LUOGU="__client_id=…; _uid=1000001"`（`1000001` 只是占位，换成你自己的 uid）。凭据只发往对应平台的固定域名，不写入 SQLite、不写进错误日志，也不会自动从浏览器读取。不要提交进版本库，也不要粘贴到对话里。
 
 **绑账号时顺手填。** 不必手工编辑 `.env`，把凭据交给 `account add` 即可，它会在同一步里写进去：
 
@@ -343,7 +354,7 @@ npm run algo -- account add 1 luogu 1000001 --cookie "__client_id=…; _uid=1000
 | `/user/<uid>` | `302` → 带挑战 Cookie 重试 → `200` | 个人主页公开可读，昵称能解析出来 |
 | `/record/list?user=<uid>` | `401` | 记录列表确实必须登录，不是反爬误伤 |
 
-因此**只填数字 uid 就能确认绑对了账号**：`account add 1 luogu <uid>` 会在绑定后解析昵称并写入 `display_name`，输出与面板都显示成 `昵称（1000001）`。解析失败只告警、不阻断绑定。记录列表的抓取仍需你自己配 Cookie（`ALGO_COOKIE_LUOGU`），这部分已实测：`sync --backfill` 把 653 条记录全量拉了回来（`?page=N` 分页有效，`perPage=20`）。
+因此**只填数字 uid 就能确认绑对了账号**：`account add 1 luogu <uid>` 会在绑定后解析昵称并写入 `display_name`，输出与面板都显示成 `昵称（1000001）`。解析失败只告警、不阻断绑定。记录列表的抓取仍需你自己配 Cookie（`ALGORITHM_DX_COOKIE_LUOGU`），这部分已实测：`sync --backfill` 把 653 条记录全量拉了回来（`?page=N` 分页有效，`perPage=20`）。
 
 **观察他人。** 洛谷的记录页本身就是「查找记录」，支持按用户名或 uid 搜索，所以**登录后可以查看他人**（对方开启「完全隐私保护」时例外 —— 那时对任何用户都不可见，只显示为匿名用户）。这意味着一份你自己的 Cookie 就能观察多个人的记录，**不需要向每个人索要凭据**。未登录时该页一律 `401`，与目标账号是谁无关。
 
@@ -365,7 +376,7 @@ Codeforces 使用 [user.status 官方接口](https://codeforces.com/apiHelp/meth
 
 下载完整项目后，双击根目录的 `create-desktop-shortcut.cmd`，即可在当前用户桌面创建带图标的 **Algorithm DX** 快捷方式，无需管理员权限。工具会自动识别当前项目位置和 Windows 桌面位置（包括重定向桌面），同一路径重复运行会更新图标。
 
-项目移动后，先删除旧桌面快捷方式，再在新目录重新运行。若同名快捷方式指向其他项目位置，工具会提示而不覆盖。快捷方式启动仍需先安装 Node.js 24.15+ 并完成数据库初始化；首次部署请按上面的启动步骤操作。此工具仅适用于 Windows。
+项目移动后，先删除旧桌面快捷方式，再在新目录重新运行。若同名快捷方式指向其他项目位置，工具会提示而不覆盖。快捷方式启动需先安装 Node.js 24.15+；首次启动自动创建数据库和「我」用户，已有数据库保持不变。快捷方式工具仅适用于 Windows，也可运行 `npm run desktop:shortcut`。多份项目可指定不同快捷方式名称，详见 [本地安装说明](docs/local-install.md)。
 
 ### DX 页面与练习检索
 
@@ -375,7 +386,7 @@ DX 页面默认打开 B50，第二栏为练习历史，第三栏保留已填用�
 
 需要 Node.js 24.15+；Windows、macOS、Linux 均可在项目根目录运行上述 npm 命令。没有第三方运行依赖，无需 npm install。Windows 的双击启动器和桌面快捷方式为可选入口。
 
-可将 `.env.example` 复制为 `.env`，填写自己的数据库路径、端口和平台凭据。Dashboard 配置优先级为命令行参数 > 系统环境变量 > `.env` > 默认值；相对路径相对于命令运行目录。含空格的路径请加引号。CLI 与同步、备份命令使用 `ALGO_DB_PATH`；`--db` / `--port` 是 Dashboard 的参数。新建用户和账号后请使用命令实际返回的 ID，不要假设本人 ID 为 1。
+可将 `.env.example` 复制为 `.env`，填写自己的数据库路径、端口和平台凭据。Dashboard 配置优先级为命令行参数 > 系统环境变量 > `.env` > 默认值；相对路径相对于命令运行目录。含空格的路径请加引号。CLI 与同步、备份命令使用 `ALGORITHM_DX_DB_PATH`；`--db` / `--port` 是 Dashboard 的参数。新建用户和账号后请使用命令实际返回的 ID，不要假设本人 ID 为 1。
 
 `npm run dashboard -- --open` 会在服务监听成功后打开浏览器；`dashboard.cmd` 使用相同配置，保持窗口开启即可持续运行。无桌面环境时直接运行 `npm run dashboard`。
 
@@ -384,3 +395,16 @@ DX 页面默认打开 B50，第二栏为练习历史，第三栏保留已填用�
 测试夹具只允许写入不存在的新文件；重复生成请另选 `--db` 路径，避免覆盖自定义数据库。
 
 上传时使用 Git 的文件选择机制，勿将整个工作目录压缩上传：`.env`、`data/`、`output/`、数据库、日志、凭据文件及助手工作记录均已忽略。统计实验输出保留在 `results/cf-study*`，普通 Dashboard 不依赖这些实验产物；个人回测默认输出 `results/local-*.json` 已忽略。
+
+## 支持项目
+
+如果 Algorithm DX 对你有帮助，点个 Star、反馈问题或分享给朋友，都是对本项目的支持。
+
+<details>
+<summary>自愿赞赏 · 支持后续维护与更新</summary>
+
+感谢你的使用与支持。
+
+<a href="public/support-code.png"><img src="public/support-code.png" alt="纤墨.fbd 的微信赞赏码" width="400"></a>
+
+</details>

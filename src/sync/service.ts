@@ -94,7 +94,7 @@ export class SyncService {
         message:`${missing.detail}（缺 ${missing.variable}）`,prerequisite:missing};
     }
     const mode=options.mode??'recent';
-    if(account.platform==='matiji'&&mode==='backfill'&&this.env[`ALGO_MATIJI_SNAPSHOT_${account.id}`])return {accountId:account.id,status:'skipped',fetched:0,inserted:0,message:'此账号仍使用旧快照配置；移除 ALGO_MATIJI_SNAPSHOT 配置并设置码蹄集登录后可回补'};
+    if(account.platform==='matiji'&&mode==='backfill'&&this.env[`ALGORITHM_DX_MATIJI_SNAPSHOT_${account.id}`])return {accountId:account.id,status:'skipped',fetched:0,inserted:0,message:'此账号仍使用旧快照配置；移除 ALGORITHM_DX_MATIJI_SNAPSHOT 配置并设置码蹄集登录后可回补'};
     const capability=historyCapability(account.platform);
     if(mode==='backfill'&&!capability.supported)return {accountId:account.id,status:'skipped',fetched:0,inserted:0,message:capability.detail};
     this.db.prepare('INSERT INTO sync_state(account_id,last_attempt_at) VALUES (?,unixepoch()) ON CONFLICT(account_id) DO UPDATE SET last_attempt_at=excluded.last_attempt_at').run(account.id);
@@ -102,6 +102,16 @@ export class SyncService {
     const runId=this.db.prepare("INSERT INTO sync_runs(account_id,status,mode) VALUES (?,'running',?)").run(account.id,mode).lastInsertRowid;
     try{
       const effective={...options,cursor:mode==='backfill'?(options.force?null:state.history_cursor as string|null):null};
+      // Use the last completed sync's frontier, not timer imports which may leave gaps.
+      // Revisit a day for recent verdict changes, and include every known pending verdict.
+      if(account.platform==='codeforces'&&mode==='recent'&&!options.force&&options.since===undefined){
+        const coverage=state.coverage_json?JSON.parse(String(state.coverage_json)):null;
+        if(Number.isSafeInteger(coverage?.newest)){
+          const pending=this.db.prepare("SELECT MIN(submitted_at) AS oldest FROM submissions WHERE account_id=? AND status='PENDING'").get(account.id);
+          const timer=this.db.prepare("SELECT MIN(started_at) AS oldest FROM practice_timers WHERE account_id=? AND status='running'").get(account.id);
+          effective.since=Math.max(0,Math.min(coverage.newest-86400,Number(pending?.oldest??coverage.newest),Number(timer?.oldest??coverage.newest)));
+        }
+      }
       // Revisit one day plus any pending verdicts, then stop paging old Luogu records.
       // Backfill and explicit force still traverse their full requested window.
       if(account.platform==='luogu'&&mode==='recent'&&!options.force&&options.since===undefined){
@@ -113,7 +123,8 @@ export class SyncService {
       const key=JSON.stringify([account.id,account.platform,account.handle,mode,effective.cursor,options.limit??100,options.maxPages??10,effective.since??null]);
       // Always revalidate the cookie owner for private LeetCode history, including retries.
       const privateHistory=account.platform==='leetcode-cn'&&mode==='backfill';
-      const cached=options.force||privateHistory?undefined:this.db.prepare('SELECT payload FROM response_cache WHERE cache_key=? AND expires_at>unixepoch()').get(key);
+      const freshPublic=account.platform==='codeforces'&&mode==='recent';
+      const cached=options.force||privateHistory||freshPublic?undefined:this.db.prepare('SELECT payload FROM response_cache WHERE cache_key=? AND expires_at>unixepoch()').get(key);
       const fetcher=this.factory(account);
       const batch:FetchBatch=cached?JSON.parse(String(cached.payload)):await fetcher.fetch_batch(account.handle,effective);
       assertLock();

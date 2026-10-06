@@ -1,5 +1,7 @@
 # Codeforces × maimai DX：统计实验与修订方案
 
+**当前正式模型（2026-10-06）**：用户已确认采用指数趋缓加线性增长的解析 T97，启用范围 800–3500，拟合输入范围 800–2000。参数唯一来源为 `results/cf-study/t97-production.json`，现行数值见 [T97_PRODUCTION_TABLE.md](../results/cf-study/T97_PRODUCTION_TABLE.md)。2000 以上为外推，不能沿用下文旧经验曲线的独立验证结论。下文统计实验、旧表和历史验证数字保留作为研究记录。当前 1400 档 T97 为 38.7787 分钟，75 分钟对应约 92.5561%。
+
 本阶段只实现数据抓取、清洗、生存统计和可导出的 PNG/SVG 图，不做前端。抓取与统计使用 Node.js 24，无新增 Node 运行依赖；科学绘图使用可选的 Python + matplotlib，不影响原有练习记录数据库。
 
 ## 补充方案的语义调整
@@ -137,11 +139,11 @@ F(A) = 1 + (上式 − 1) × K                   97 < A ≤ 100.5
 
 ### 曲线是导出的，不是抄的
 
-`npm run study:export-dx` 把 `results/cf-study/t97_monotone.csv` 的 `success`（成功者中位耗时）单调列导出成 `src/dx/curve.ts`，并嵌入源文件 SHA256、`diagnostics.json` 的 `productionReady` 与判据说明。导出时会断言：端点等于 `FIT_MIN_Q`/`FIT_MAX_Q`、步长 25、严格不下降、全为正 —— 任一条不满足就直接报错，不生成坏曲线。
+`npm run study:export-dx` 默认读取 `results/cf-study/t97-production.json` 并生成 `src/dx/curve.ts` 与正式 T97 表；参数、网格、源指纹和独立验证状态一起导出。实际评分直接计算解析公式，25 Rating 网格用于展示。参数与网格必须有限、正值、单调且范围一致。显式运行 `npm run study:export-dx -- --empirical` 可以切回原 `t97_monotone.csv` 的研究曲线。
 
-所以**改曲线只有一条路**：跑完统计链 → `npm run study:export-dx`。手改 `src/dx/curve.ts` 会在下次导出时被覆盖，而面板上没有第二份数字。
+调整正式模型时修改参数源 → `npm run study:export-dx` → 重启面板；不手改生成的 `src/dx/curve.ts`。原始耗时保持不变，读取时按新曲线计算完成度、单题贡献和 B50。
 
-`GET /api/dx` 会把 `productionReady`、源文件、生成时间、源指纹一并返回，页面顶部据此显示状态条：判据没过就是**黄底警示**（「这是探索性估计，别当实测点读」），全过就是**中性色**（「已通过三条判据」）—— 两种状态都留在页面上，因为曲线一改面板上所有读数都跟着变，指纹必须看得见。**当前是 `true`**（2026-09-18，题位冷启动口径修好之后第三条判据才通过）。
+API 返回启用范围、实际拟合输入范围、源指纹和验证说明。当前模型已正式启用，但 `productionReady=false`：该字段专指独立统计验证，不是启用开关。用户确认的外推方案尚未经过原研究曲线的独立比赛检验；界面帮助页明确区分 800–3500 启用范围与 800–2000 拟合输入范围。
 
 ### 数据
 

@@ -78,9 +78,9 @@ test('legacy API cursors restart group pages, new contests join history and abor
 test('factory defaults configured groups to browser and allows explicit API mode',()=>{
  const db=openDatabase(':memory:');try{
   const account={id:1,user_id:1,platform:'codeforces',handle:'Tester'};
-  const env={ALGO_CF_GROUPS_1:contest.url};
+  const env={ALGORITHM_DX_CF_GROUPS_1:contest.url};
   assert.ok(createFactory(db,env,http)(account) instanceof CodeforcesGroupWebFetcher);
-  assert.equal(createFactory(db,{...env,ALGO_CF_GROUP_MODE_1:'api'},http)(account).constructor.name,'CodeforcesGroupFetcher');
+  assert.equal(createFactory(db,{...env,ALGORITHM_DX_CF_GROUP_MODE_1:'api'},http)(account).constructor.name,'CodeforcesGroupFetcher');
  }finally{db.close();}
 });
 

@@ -67,7 +67,10 @@ test('导出的 T97 曲线单调、端点与步长符合约定', () => {
     assert.ok(points[i][1] >= points[i - 1][1] - 1e-9, `网格 ${points[i][0]} 处不单调`);
     assert.ok(points[i][1] > 0);
   }
-  assert.equal(curveInfo().sourceFile, 'results/cf-study/t97_monotone.csv');
+  assert.equal(curveInfo().sourceFile, 'results/cf-study/t97-production.json');
+  assert.equal(DX_CURVE.fitMaxQ, 3500);
+  assert.equal(curveInfo().calibrationMaxQ, 2000);
+  assert.equal(curveInfo().productionReady, false, '不能继承旧经验曲线的验证结论');
 });
 
 test('T97 查表：网格点取原值、档间线性插值、范围外夹取并标记外推', () => {
@@ -78,7 +81,8 @@ test('T97 查表：网格点取原值、档间线性插值、范围外夹取并�
   assert.equal(lookupT97(q0).seconds, s0);
   assert.equal(lookupT97(q0).extrapolated, null);
 
-  const mid = lookupT97((q0 + q1) / 2);
+  // 保留旧网格曲线的兼容性；生产解析模型另测。
+  const mid = lookupT97((q0 + q1) / 2, { ...DX_CURVE, formula: undefined });
   assert.ok(close(mid.seconds, (s0 + s1) / 2));
   assert.equal(mid.extrapolated, null);
 
@@ -88,6 +92,26 @@ test('T97 查表：网格点取原值、档间线性插值、范围外夹取并�
   assert.equal(lookupT97(last[0] + 500).extrapolated, 'above');
   // 正好落在端点上不算外推，否则 800 和 2100 两档会被标成「外推」。
   assert.equal(lookupT97(last[0]).extrapolated, null);
+});
+
+test('正式解析 T97 与已确认预览一致，高难度继续增长且非网格点直接求值', () => {
+  for (const [q, minutes] of [[800,20.541926043207138],[1400,38.77874498164551],
+    [2000,44.019488237180724],[2500,48.061225007686744],[3000,52.091671406419216],[3500,56.121506455294266]]) {
+    assert.ok(close(lookupT97(q).seconds / 60, minutes));
+    assert.equal(lookupT97(q).extrapolated, null);
+    assert.ok(close(achievementFromSeconds(minutes * 60, lookupT97(q).seconds), 97));
+  }
+  for (const [q, seconds] of DX_CURVE.points) assert.ok(close(lookupT97(q).seconds, seconds));
+  assert.notEqual(lookupT97(812.5).seconds, (lookupT97(800).seconds + lookupT97(825).seconds) / 2);
+  let previous = 0;
+  for (let q = 800; q <= 3500; q += 1) {
+    const seconds = lookupT97(q).seconds;
+    assert.ok(Number.isFinite(seconds) && seconds > previous);
+    previous = seconds;
+  }
+  const table = buildRankTimeTable();
+  assert.equal(table.rows.at(-1)!.q, 3500);
+  assert.ok(close(table.rows.at(-1)!.t97Seconds, lookupT97(3500).seconds));
 });
 
 test('用时等于 T97 时完成度 97、单题 rating 等于定数 ÷ 50', () => {
@@ -289,7 +313,7 @@ test('慢速段满足两倍与四倍目标；低于 50% 不计分，评分时完
   assert.ok(close(achievementFromSeconds(t97 * 1.5, t97), 93.97874388012035));
   assert.ok(close(achievementFromSeconds(t97 * 2, t97), 92.38375830159872));
   assert.ok(close(achievementFromSeconds(t97 * 4, t97), 89.32848535994844));
-  assert.ok(close(achievementFromSeconds(75 * 60, t97), 92.56997501260965));
+  assert.ok(close(achievementFromSeconds(75 * 60, t97), 92.55607337460677));
 
   assert.ok(scoreProblem(entry({ problemRating: 1400, recordedSeconds: t97 * 2 }))!.rating > 0);
   assert.equal(scoreProblem(entry({ problemRating: 1400, recordedSeconds: secondsForAchievement(1400, 49).seconds }))!.rating, 0);

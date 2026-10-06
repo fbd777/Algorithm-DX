@@ -92,6 +92,11 @@ export class CodeforcesSyncFetcher extends CodeforcesFetcher {
   override async fetch_batch(handle:string,options:FetchOptions={}):Promise<FetchBatch>{
     const opts=optionsOf(options),backfill=opts.mode==='backfill';
     if(!/^[A-Za-z0-9_.-]{3,24}$/.test(handle))throw new FetchError('Invalid Codeforces handle');
+    // Probe only public submissions; calling through this.fetch_batch would repeat Group work.
+    if(!backfill&&!opts.force&&opts.since!==undefined&&opts.limit>10){
+      const recent=await CodeforcesSyncFetcher.prototype.fetch_batch.call(this,handle,{...options,since:undefined,limit:10,maxPages:1});
+      if(recent.complete||Math.min(...recent.submissions.map(row=>row.submitted_at))<opts.since)return recent;
+    }
     let from=backfill?Number(opts.cursor??1):1,complete=false;
     if(!Number.isSafeInteger(from)||from<1)throw new FetchError('Invalid Codeforces cursor');
     const rows:Submission[]=[];

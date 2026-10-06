@@ -19,7 +19,7 @@ export class MatijiFetcher extends BaseFetcher{
   async fetch_batch(handle:string,options:FetchOptions={}):Promise<FetchBatch>{
     const opts=optionsOf(options);
     if(opts.mode==='backfill')throw new FetchError('Matiji currently supports local snapshot import only',false,'UNSUPPORTED');
-    if(!this.path)throw new FetchError('Matiji live account feed is not verified. Configure ALGO_MATIJI_SNAPSHOT_<accountId>; see docs/platforms.md',false,'SETUP_REQUIRED');
+    if(!this.path)throw new FetchError('Matiji live account feed is not verified. Configure ALGORITHM_DX_MATIJI_SNAPSHOT_<accountId>; see docs/platforms.md',false,'SETUP_REQUIRED');
     let body:any;
     try{
       if(statSync(this.path).size>10*1024*1024)throw new Error('too large');

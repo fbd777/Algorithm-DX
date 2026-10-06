@@ -37,7 +37,7 @@ test('China history resumes discovery and per-question pagination, keeps failed 
       }
       return Response.json({ data: { submissionList: { hasNext: false, lastKey: null, submissions: [row(v.questionSlug === 'second' ? 4 : 1, 'Time Limit Exceeded')] } } });
     }, async () => {});
-    const env = { ALGO_COOKIE_LEETCODE_CN: cookie };
+    const env = { ALGORITHM_DX_COOKIE_LEETCODE_CN: cookie };
     const service = new SyncService(db, createFactory(db, env, http), env);
     for (let i = 0; i < 7; i++) {
       const [result] = await service.sync(id, { mode: 'backfill', maxPages: 1, limit: 1 });
@@ -65,11 +65,11 @@ test('missing credentials only skip history; public recent synchronization remai
     const repo = new Repository(db), id = repo.addAccount(repo.createUser('me', true), 'leetcode-cn', 'tester');
     const account = { id, platform: 'leetcode-cn' };
     assert.equal(missingPrerequisite({}, account), null);
-    assert.equal(missingPrerequisite({}, account, 'backfill')?.variable, 'ALGO_COOKIE_LEETCODE_CN');
+    assert.equal(missingPrerequisite({}, account, 'backfill')?.variable, 'ALGORITHM_DX_COOKIE_LEETCODE_CN');
     const meta = await handleApi({ db, dbPath: ':memory:', envFile: 'missing-leetcode-test.env', platforms: ['leetcode-cn'], openWrite: () => db } as any,
       { method: 'GET', pathname: '/api/meta', params: new URLSearchParams() });
     assert.equal((meta.body as any).accounts[0].prerequisite, null);
-    assert.equal((meta.body as any).accounts[0].historyPrerequisite.variable, 'ALGO_COOKIE_LEETCODE_CN');
+    assert.equal((meta.body as any).accounts[0].historyPrerequisite.variable, 'ALGORITHM_DX_COOKIE_LEETCODE_CN');
     const [result] = await new SyncService(db, () => { throw Error('must not fetch'); }, {}).sync(id, { mode: 'backfill' });
     assert.equal(result.status, 'skipped');
     assert.equal(db.prepare('SELECT COUNT(*) n FROM sync_runs').get()!.n, 0);
@@ -100,7 +100,7 @@ test('malformed, stalled or rejected pages never advance the persisted cursor', 
       { errors: [{ message: 'private error' }] },
     ]) {
       const http = new HttpClient(db, async (_url, init) => Response.json(String(init?.body).includes('userStatus') ? { data: { userStatus: { isSignedIn: true, userSlug: 'tester' } } } : page), async () => {});
-      const env = { ALGO_COOKIE_LEETCODE_CN: cookie };
+      const env = { ALGORITHM_DX_COOKIE_LEETCODE_CN: cookie };
       const [result] = await new SyncService(db, createFactory(db, env, http), env).sync(id, { mode: 'backfill' });
       assert.equal(result.status, 'failed');
       const state = db.prepare('SELECT * FROM sync_state WHERE account_id=?').get(id)!;

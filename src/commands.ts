@@ -21,7 +21,7 @@ export const help=`Algorithm DX · Phase 2
   status | runs [accountId]
 Platforms: ${platforms.join(', ')}
 Luogu and Nowcoder use a numeric user ID; Luogu's public nickname is resolved automatically on add.
-Luogu fetching needs your own login Cookie in .env (ALGO_COOKIE_LUOGU).
+Luogu fetching needs your own login Cookie in .env (ALGORITHM_DX_COOKIE_LUOGU).
   Pass it to account add with --cookie to write that line for you, or edit .env yourself.
   Re-running account add --cookie on a bound account only rewrites the credential.
   One Cookie covers every account on that platform, so friends you watch need no extra credential.
@@ -31,7 +31,7 @@ account rename --same-identity keeps history only for the same platform identity
 account replace --yes archives the old account and starts a fresh account for the same local user.
 user follow/unfollow is a display flag only -- unfollowing hides a user from the main view, it deletes nothing.
 --force bypasses recent cache / restarts history. Ctrl+C stops watch after the current sync.
-Matiji: local snapshot import only; see docs/platforms.md.`;
+Matiji: live sync with your platform Cookie, or local snapshot import; see docs/platforms.md.`;
 /** cli.ts 也按相对路径加载 .env，两处必须一致。 */
 const ENV_FILE='.env';
 function id(value:string|undefined):number{
@@ -53,7 +53,7 @@ function print(value:unknown){console.log(JSON.stringify(value,null,2));}
 export async function runCommand(args:string[]):Promise<void>{
   const command=args.shift();
   if(!command||command==='help'||command==='--help'){console.log(help);return;}
-  const db=openDatabase(process.env.ALGO_DB_PATH);
+  const db=openDatabase(process.env.ALGORITHM_DX_DB_PATH);
   try{
     const repo=new Repository(db);
     if(command==='init'){if(args.length)throw new Error('init takes no arguments');console.log(`SQLite schema v${SCHEMA_VERSION} initialized.`);}

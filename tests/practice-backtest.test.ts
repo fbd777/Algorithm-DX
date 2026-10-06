@@ -196,7 +196,7 @@ test('a second account with only WA cannot preserve the replaced identity’s AC
 
 test('backtest deduplicates by problem, enforces fit/year boundaries, separates incomplete boards and weights people equally', () => {
   const rows = [...Array.from({ length: 36 }, (_, i) => entry(`old:${i}`, 10)), ...Array.from({ length: 16 }, (_, i) => entry(`new:${i}`, 100))];
-  const b = compareBoards([...rows, entry('old:0', 10, 1), entry('future', 200), entry('unrated', 10, 100, null), entry('extrapolated', 10, 1, 3000)], 100, 200);
+  const b = compareBoards([...rows, entry('old:0', 10, 1), entry('future', 200), entry('unrated', 10, 100, null), entry('extrapolated', 10, 1, 3600)], 100, 200);
   assert.equal(b.fullBoard, true); assert.equal(b.eligibleProblems, 52); assert.equal(b.oldCount, 35); assert.equal(b.newCount, 15);
   assert.deepEqual(b.excluded, { missingRating: 1, missingTime: 0, outsideFit: 1, futureRelease: 1, duplicate: 1 });
   assert.equal(b.variants[0].shareAt101, 1); assert.equal(b.variants[1].shareAt101, 0);
@@ -224,6 +224,16 @@ test('backtest keeps historic slow scoring and selects each version’s best pro
   assert.equal(old.counts[0], 0);
   assert.equal(current.counts[0], 1);
   assert.ok(current.rating > old.rating);
+});
+
+test('backtest includes the adopted 3500 range and scores its T97 as 97%', () => {
+  const board = compareBoards([entry('hard', 10, lookupT97(3500).seconds, 3500)], 100, 200);
+  assert.equal(board.excluded.outsideFit, 0);
+  assert.equal(board.oldCount, 1);
+  for (const variant of board.variants) {
+    assert.equal(variant.rating, 70);
+    assert.equal(variant.counts[1], 1);
+  }
 });
 
 test('summary excludes identity and separates undated, assisted and unfinished observations; merger rejects incompatible/malformed input', () => {

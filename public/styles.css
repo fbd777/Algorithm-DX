@@ -1027,6 +1027,25 @@ span.luogu-difficulty::before {
 .help-inline summary { cursor: pointer; font-weight: 600; }
 .help-inline li, .help-page li { margin: 8px 0; }
 .help-page { max-width: 960px; line-height: 1.8; }
+.project-support { margin: 48px 0 24px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+.project-support summary { cursor: pointer; width: fit-content; max-width: 100%; }
+.project-support summary:hover { color: var(--text); }
+.project-support summary:focus-visible { outline: 2px solid var(--accent, #79c0ff); outline-offset: 5px; border-radius: 3px; }
+.project-support summary span { margin-left: 6px; font-size: 12px; }
+.project-support-content { max-width: 540px; margin-top: 16px; }
+.project-support-image { display: block; width: min(100%, 400px); margin-top: 16px; }
+.project-support-image img { display: block; width: 100%; height: auto; border-radius: 10px; }
+.project-support-note { font-size: 12px; }
+.foot-links { display: inline-flex; align-items: center; gap: 18px; }
+.support-trigger { appearance: none; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.support-trigger:focus-visible { outline: 2px solid var(--accent, #79c0ff); outline-offset: 4px; }
+.support-dialog { box-sizing: border-box; width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; margin: auto; padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel, #151c2b); color: var(--text, #eef2fa); }
+.support-dialog::backdrop { background: #0009; }
+.support-dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.support-dialog-heading h2 { margin: 0; font-size: 16px; }
+.support-dialog p { color: var(--muted); font-size: 13px; line-height: 1.7; }
+.support-dialog img { display: block; width: 100%; height: auto; border-radius: 8px; }
+.support-dialog .support-dialog-note { margin-bottom: 0; font-size: 12px; }
 .help-page section { margin: 32px 0; scroll-margin-top: 20px; }
 .help-page pre { overflow-x: auto; padding: 16px; background: var(--panel); }
 .help-toc { display: flex; flex-wrap: wrap; gap: 10px 22px; }

@@ -42,8 +42,8 @@ let serverLog = '';
 
 function cleanEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
-  // 父进程里的 ALGO_* 绝不能漏进来：否则真凭据会被这个测试进程拿去用。
-  for (const key of Object.keys(env)) if (key.startsWith('ALGO_')) delete env[key];
+  // 父进程里的 ALGORITHM_DX_* 绝不能漏进来：否则真凭据会被这个测试进程拿去用。
+  for (const key of Object.keys(env)) if (key.startsWith('ALGORITHM_DX_')) delete env[key];
   return { ...env, ...extra };
 }
 
@@ -124,7 +124,7 @@ before(async () => {
   );
   writeFileSync(
     join(dir, '.env'),
-    `ALGO_DB_PATH=probe.sqlite\nALGO_MATIJI_SNAPSHOT_1=${slashed(snapshot)}\n`,
+    `ALGORITHM_DX_DB_PATH=probe.sqlite\nALGORITHM_DX_MATIJI_SNAPSHOT_1=${slashed(snapshot)}\n`,
     'utf8',
   );
 
@@ -172,7 +172,7 @@ test('meta 暴露凭据平台清单，但只回报「配了没有」', () => {
       assert.equal(typeof entry.variable, 'string');
     }
     // 响应里不能出现凭据值本身 —— 这个测试目录的 .env 里就没有凭据，这里主要是防将来回归。
-    assert.equal(JSON.stringify(reply.body).includes('ALGO_COOKIE_LUOGU='), false);
+    assert.equal(JSON.stringify(reply.body).includes('ALGORITHM_DX_COOKIE_LUOGU='), false);
     assert.equal(reply.body.users.length, 1);
     assert.equal(reply.body.accounts.length, 1);
   });
@@ -227,22 +227,22 @@ test('凭据写进 .env，值不回显；非法值必须连账号一起挡住', 
   const cookie = '__client_id=SECRETVALUE; _uid=999001';
   const reply = await post('/api/accounts', { userId: 1, platform: 'matiji', handle: '999001', cookie });
   assert.equal(reply.status, 201);
-  assert.equal(reply.body.credential.variable, 'ALGO_COOKIE_MATIJI');
+  assert.equal(reply.body.credential.variable, 'ALGORITHM_DX_COOKIE_MATIJI');
   assert.equal(reply.body.credential.action, 'appended');
   assert.equal(JSON.stringify(reply.body).includes('SECRETVALUE'), false, '凭据值绝不能出现在响应里');
-  assert.match(readFileSync(join(dir, '.env'), 'utf8'), /^ALGO_COOKIE_MATIJI="__client_id=SECRETVALUE; _uid=999001"$/m);
-  assert.equal(isEnvVarSet(join(dir, '.env'), 'ALGO_COOKIE_MATIJI'), true);
+  assert.match(readFileSync(join(dir, '.env'), 'utf8'), /^ALGORITHM_DX_COOKIE_MATIJI="__client_id=SECRETVALUE; _uid=999001"$/m);
+  assert.equal(isEnvVarSet(join(dir, '.env'), 'ALGORITHM_DX_COOKIE_MATIJI'), true);
 
   const meta = await get('/api/meta');
   assert.equal(meta.body.credentials.find((c: any) => c.platform === 'matiji').configured, true);
 
   // 换行能让它凭空造出一个新变量，等于把「填凭据」变成「改写程序配置」。
   const before = (await get('/api/meta')).body.accounts.length;
-  const injected = await post('/api/accounts', { userId: 1, platform: 'matiji', handle: '999002', cookie: 'x\nALGO_DB_PATH=/tmp/evil' });
+  const injected = await post('/api/accounts', { userId: 1, platform: 'matiji', handle: '999002', cookie: 'x\nALGORITHM_DX_DB_PATH=/tmp/evil' });
   assert.equal(injected.status, 400);
   assert.equal(injected.body.code, 'CREDENTIAL_INVALID');
   assert.equal((await get('/api/meta')).body.accounts.length, before, '凭据不合法时不能留下半个账号');
-  assert.equal(readFileSync(join(dir, '.env'), 'utf8').includes('ALGO_DB_PATH=/tmp/evil'), false);
+  assert.equal(readFileSync(join(dir, '.env'), 'utf8').includes('ALGORITHM_DX_DB_PATH=/tmp/evil'), false);
 
   // 公开接口平台不需要凭据，给了一律拒绝，而不是写进一个用不上的变量名。
   const wrongPlatform = await post('/api/accounts', { userId: 1, platform: 'atcoder', handle: 'WithCookie', cookie: 'x=1' });

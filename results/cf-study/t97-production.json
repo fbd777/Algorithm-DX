@@ -1,0 +1,23 @@
+{
+  "model": "success-saturation-linear-v1",
+  "adoptedOn": "2026-10-06",
+  "sourceDescription": "用户确认采用的七个成功者中位耗时代表值的等权拟合；2000 以上为外推。",
+  "fitMinQ": 800,
+  "fitMaxQ": 3500,
+  "calibrationMinQ": 800,
+  "calibrationMaxQ": 2000,
+  "gridStepQ": 25,
+  "formula": {
+    "kind": "saturation-linear",
+    "originQ": 800,
+    "baselineMinutes": 20.541926043207138,
+    "slopeMinutesPerRating": 0.008059600100956178,
+    "gainMinutes": 13.818662143084534,
+    "scaleRating": 171.46563587007702
+  },
+  "inputPointsMinutes": [[800,20.62],[1000,31.12],[1200,37.26],[1400,38.88],[1600,39.75],[1800,42.14],[2000,44.54]],
+  "mseMinutesSquared": 0.36280647691196827,
+  "rmseMinutes": 0.6023341903893289,
+  "productionReady": false,
+  "productionReadyBasis": "2026-10-06 经用户确认正式启用。拟合输入为 800–2000 的 7 个旧曲线代表值，2000–3500 为外推；本模型尚未经过独立比赛验证，不能沿用旧经验曲线的验证结论。"
+}

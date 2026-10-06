@@ -90,7 +90,7 @@ export class LuoguFetcher extends BaseFetcher{
   async fetch_batch(handle:string,options:FetchOptions={}):Promise<FetchBatch>{
     const opts=optionsOf(options),backfill=opts.mode==='backfill';
     if(!/^[1-9]\d*$/.test(handle))throw new FetchError('Luogu requires a numeric user ID');
-    if(!this.cookie)throw new FetchError('Luogu requires a login Cookie; set ALGO_COOKIE_LUOGU in .env (one Cookie covers every Luogu account you watch)',false,'AUTH_REQUIRED');
+    if(!this.cookie)throw new FetchError('Luogu requires a login Cookie; set ALGORITHM_DX_COOKIE_LUOGU in .env (one Cookie covers every Luogu account you watch)',false,'AUTH_REQUIRED');
     let page=backfill?Number(opts.cursor??1):1,complete=false;
     if(!Number.isSafeInteger(page)||page<1)throw new FetchError('Invalid Luogu page cursor');
     const rows:Submission[]=[];
@@ -99,7 +99,7 @@ export class LuoguFetcher extends BaseFetcher{
       // 401 既可能是 Cookie 过期，也可能是压根没配；两种都得说明「去哪儿修」。
       const records=await this.http.textFollowingChallenge(url,{headers:{Cookie:this.cookie,Accept:'text/html','user-agent':LUOGU_UA}})
         .then(parseLuogu)
-        .catch((error:unknown)=>hintCredential(error,'ALGO_COOKIE_LUOGU','Luogu'));
+        .catch((error:unknown)=>hintCredential(error,'ALGORITHM_DX_COOKIE_LUOGU','Luogu'));
       for(const r of records.result){
         if(r.user?.uid!=null&&String(r.user.uid)!==handle)throw new FetchError('Luogu returned records for another user',false,'ACCOUNT_MISMATCH');
       }

@@ -191,7 +191,7 @@ test('Luogu challenge cookie is replayed and the public nickname resolves from l
       return new Response('',{status:401});
     },fast);
     await assert.rejects(new LuoguFetcher(stale,'__client_id=stale-value').fetch_batch('1000001'),
-      (e:FetchError)=>e.code==='AUTH_REQUIRED'&&/ALGO_COOKIE_LUOGU/.test(e.message));
+      (e:FetchError)=>e.code==='AUTH_REQUIRED'&&/ALGORITHM_DX_COOKIE_LUOGU/.test(e.message));
   }finally{db.close();}
 });
 
@@ -215,7 +215,7 @@ class FakeFetcher extends BaseFetcher{
   override fetch_batch(_handle:string,o:FetchOptions={}):Promise<FetchBatch>{return this.getBatch(o);}
 }
 
-test('sync is idempotent, isolates failures, caches, supports force and atomically rolls back bad batches',async()=>{
+test('sync is idempotent, isolates failures, refreshes CF, supports force and atomically rolls back bad batches',async()=>{
   const db=openDatabase(':memory:');
   try{
     const repo=new Repository(db),user=repo.createUser('Me'),a=repo.addAccount(user,'codeforces','tourist'),b=repo.addAccount(user,'luogu','123');
@@ -225,9 +225,9 @@ test('sync is idempotent, isolates failures, caches, supports force and atomical
     const service=new SyncService(db,account=>new FakeFetcher(async()=>{
       calls++;if(account.id===b)throw new FetchError('login required',false,'AUTH_REQUIRED');
       return bad?{...batch,submissions:[{...row,submission_id:'2'},{...row,submission_id:'3',platform:'wrong'}]}:batch;
-    }),{ALGO_COOKIE_LUOGU:'__client_id=test'});
+    }),{ALGORITHM_DX_COOKIE_LUOGU:'__client_id=test'});
     const first=await service.sync();assert.deepEqual(first.map(r=>r.status),['success','failed']);assert.equal(first[0].inserted,1);
-    const second=await service.sync(a);assert.equal(second[0].inserted,0);assert.equal(calls,2);
+    const second=await service.sync(a);assert.equal(second[0].inserted,0);assert.equal(calls,3);
     bad=true;const third=await service.sync(a,{force:true});assert.equal(third[0].status,'failed');
     assert.equal(db.prepare('SELECT count(*) n FROM submissions').get()!.n,1);
     assert.ok(db.prepare('SELECT last_success_at FROM sync_state WHERE account_id=?').get(a)!.last_success_at);
@@ -275,9 +275,9 @@ test('missing prerequisites are skipped, not failed: nothing is fetched and no r
     assert.equal(calls,1, 'skipped accounts must not reach the fetcher');
     const byId=new Map(results.map(r=>[r.accountId,r]));
     assert.equal(byId.get(lq)!.prerequisite!.kind,'credential');
-    assert.equal(byId.get(lq)!.prerequisite!.variable,'ALGO_COOKIE_LUOGU');
+    assert.equal(byId.get(lq)!.prerequisite!.variable,'ALGORITHM_DX_COOKIE_LUOGU');
     assert.equal(byId.get(mj)!.prerequisite!.kind,'credential');
-    assert.equal(byId.get(mj)!.prerequisite!.variable,'ALGO_COOKIE_MATIJI');
+    assert.equal(byId.get(mj)!.prerequisite!.variable,'ALGORITHM_DX_COOKIE_MATIJI');
     assert.ok(!byId.get(cf)!.prerequisite,'a fetched account has no prerequisite gap');
     // 跳过不写 sync_runs、不写 sync_state：「抓取尝试」这三个字是这些字段的全部含义。
     assert.deepEqual(db.prepare('SELECT account_id FROM sync_runs ORDER BY id').all().map(r=>r.account_id),[cf]);
@@ -286,7 +286,7 @@ test('missing prerequisites are skipped, not failed: nothing is fetched and no r
     // FakeFetcher 固定报 codeforces，而 saveSubmissions 会拒绝平台对不上的提交，
     // 所以这里按账号换一份提交行 —— 否则测的是「平台校验」而不是「跳过可恢复」。
     const fixed=new SyncService(db,(account)=>new FakeFetcher(async()=>({...batch,submissions:[{...row,platform:account.platform}]})),
-      {ALGO_COOKIE_LUOGU:'__client_id=x',[`ALGO_MATIJI_SNAPSHOT_${mj}`]:'/tmp/snapshot.json'});
+      {ALGORITHM_DX_COOKIE_LUOGU:'__client_id=x',[`ALGORITHM_DX_MATIJI_SNAPSHOT_${mj}`]:'/tmp/snapshot.json'});
     const fixedResults=await fixed.sync();
     assert.deepEqual(fixedResults.map(r=>r.status),['success','success','success'],'prerequisites are not permanent: once configured, the account is fetched');
     assert.ok(!fixedResults.some(r=>r.prerequisite),'no prerequisite gap remains after configuring');
@@ -323,7 +323,7 @@ test('scheduler runs sequentially and stops after abort without another cycle',a
 test('CLI binds account, imports records, exposes status and refuses accidental deletion',()=>{
   const dir=mkdtempSync(join(tmpdir(),'algo-cli-')),path=join(dir,'db.sqlite'),snapshot=join(dir,'matiji.json');
   const entry=fileURLToPath(new URL('../src/cli.ts',import.meta.url));
-  const env={...process.env,ALGO_DB_PATH:path,ALGO_MATIJI_SNAPSHOT_1:snapshot};
+  const env={...process.env,ALGORITHM_DX_DB_PATH:path,ALGORITHM_DX_MATIJI_SNAPSHOT_1:snapshot};
   const run=(...args:string[])=>execFileSync(process.execPath,[entry,...args],{cwd:dir,env,encoding:'utf8'});
   try{
     writeFileSync(snapshot,JSON.stringify({account_handle:'123',records:[{submissionId:1,problemId:'MT1001',judgeResultSlug:'Accepted',submitTime:1700000000}]}));
@@ -341,7 +341,7 @@ test('CLI binds account, imports records, exposes status and refuses accidental 
 test('CLI 改标识保住历史、关注只是显示开关：两条命令都不删数据',()=>{
   const dir=mkdtempSync(join(tmpdir(),'algo-cli-')),path=join(dir,'db.sqlite'),snapshot=join(dir,'matiji.json');
   const entry=fileURLToPath(new URL('../src/cli.ts',import.meta.url));
-  const env={...process.env,ALGO_DB_PATH:path,ALGO_MATIJI_SNAPSHOT_1:snapshot};
+  const env={...process.env,ALGORITHM_DX_DB_PATH:path,ALGORITHM_DX_MATIJI_SNAPSHOT_1:snapshot};
   const run=(...args:string[])=>JSON.parse(execFileSync(process.execPath,[entry,...args],{cwd:dir,env,encoding:'utf8'}));
   const fail=(...args:string[])=>spawnSync(process.execPath,[entry,...args],{cwd:dir,env,encoding:'utf8'});
   try{
@@ -376,11 +376,11 @@ test('CLI 改标识保住历史、关注只是显示开关：两条命令都不�
 test('one platform credential serves every account on that platform, and legacy per-account names still work',()=>{
   const db=openDatabase(':memory:');
   try{
-    assert.equal(credentialKey('luogu'),'ALGO_COOKIE_LUOGU');
-    assert.equal(credentialKey('matiji'),'ALGO_COOKIE_MATIJI');
+    assert.equal(credentialKey('luogu'),'ALGORITHM_DX_COOKIE_LUOGU');
+    assert.equal(credentialKey('matiji'),'ALGORITHM_DX_COOKIE_MATIJI');
     // 平台名带连字符时不能直接当变量名，必须规整成下划线。
-    assert.equal(credentialKey('leetcode-cn'),'ALGO_COOKIE_LEETCODE_CN');
-    const env={ALGO_COOKIE_LUOGU:'  __client_id=abc; _uid=1000001  ',ALGO_COOKIE_7:'legacy-cookie'};
+    assert.equal(credentialKey('leetcode-cn'),'ALGORITHM_DX_COOKIE_LEETCODE_CN');
+    const env={ALGORITHM_DX_COOKIE_LUOGU:'  __client_id=abc; _uid=1000001  ',ALGORITHM_DX_COOKIE_7:'legacy-cookie'};
     const self={id:2,user_id:1,platform:'luogu',handle:'1000001'};
     const friend={id:9,user_id:1,platform:'luogu',handle:'1'};
     // 前后空白要清掉，否则拼进请求头会变成畸形 Cookie。
@@ -389,8 +389,8 @@ test('one platform credential serves every account on that platform, and legacy 
     assert.equal(resolveCredential(env,friend),'__client_id=abc; _uid=1000001');
     // 旧写法（按账号 ID）继续可用，但优先级低于按平台写法。
     assert.equal(resolveCredential(env,{...friend,id:7}),'__client_id=abc; _uid=1000001');
-    assert.equal(resolveCredential({ALGO_COOKIE_7:'legacy-cookie'},{...friend,id:7}),'legacy-cookie');
-    assert.equal(resolveCredential({ALGO_COOKIE_LUOGU:'   ',ALGO_COOKIE_7:'legacy-cookie'},{...friend,id:7}),'legacy-cookie');
+    assert.equal(resolveCredential({ALGORITHM_DX_COOKIE_7:'legacy-cookie'},{...friend,id:7}),'legacy-cookie');
+    assert.equal(resolveCredential({ALGORITHM_DX_COOKIE_LUOGU:'   ',ALGORITHM_DX_COOKIE_7:'legacy-cookie'},{...friend,id:7}),'legacy-cookie');
     assert.equal(resolveCredential({},friend),undefined);
     // 工厂真的要把它交给适配器，而不是只算出来不用。
     const factory=createFactory(db,env,new HttpClient(db,async()=>new Response(''),fast));
@@ -402,41 +402,41 @@ test('one platform credential serves every account on that platform, and legacy 
 test('loadEnvFile strips the surrounding quotes our .env template documents',()=>{
   const dir=mkdtempSync(join(tmpdir(),'algo-env-')),path=join(dir,'.env');
   try{
-    writeFileSync(path,'# 注释行\nALGO_COOKIE_LUOGU="__client_id=abc123; _uid=1000001"\n');
+    writeFileSync(path,'# 注释行\nALGORITHM_DX_COOKIE_LUOGU="__client_id=abc123; _uid=1000001"\n');
     process.loadEnvFile(path);
     // .env 模板教用户给值加双引号，这里确认引号不会混进 Cookie 值里。
-    assert.equal(process.env.ALGO_COOKIE_LUOGU,'__client_id=abc123; _uid=1000001');
-  }finally{delete process.env.ALGO_COOKIE_LUOGU;rmSync(dir,{recursive:true,force:true});}
+    assert.equal(process.env.ALGORITHM_DX_COOKIE_LUOGU,'__client_id=abc123; _uid=1000001');
+  }finally{delete process.env.ALGORITHM_DX_COOKIE_LUOGU;rmSync(dir,{recursive:true,force:true});}
 });
 
 test('a credential value cannot smuggle new variables or quotes into .env',()=>{
   const dir=mkdtempSync(join(tmpdir(),'algo-envwrite-')),file=join(dir,'.env');
   try{
     // 换行最危险：它能凭空造出一个新变量，把「填 Cookie」变成「改写程序配置」。
-    assert.throws(()=>assertSafeEnvValue('ALGO_COOKIE_LUOGU','abc\nALGO_DB_PATH=/tmp/evil'),/line breaks/);
-    assert.throws(()=>assertSafeEnvValue('ALGO_COOKIE_LUOGU','abc"def'),/line breaks/);
-    assert.throws(()=>assertSafeEnvValue('ALGO_COOKIE_LUOGU','   '),/empty/);
-    assert.equal(assertSafeEnvValue('ALGO_COOKIE_LUOGU','  __client_id=abc; _uid=1  '),'__client_id=abc; _uid=1');
+    assert.throws(()=>assertSafeEnvValue('ALGORITHM_DX_COOKIE_LUOGU','abc\nALGORITHM_DX_DB_PATH=/tmp/evil'),/line breaks/);
+    assert.throws(()=>assertSafeEnvValue('ALGORITHM_DX_COOKIE_LUOGU','abc"def'),/line breaks/);
+    assert.throws(()=>assertSafeEnvValue('ALGORITHM_DX_COOKIE_LUOGU','   '),/empty/);
+    assert.equal(assertSafeEnvValue('ALGORITHM_DX_COOKIE_LUOGU','  __client_id=abc; _uid=1  '),'__client_id=abc; _uid=1');
 
-    writeFileSync(file,'# 注释\nALGO_DB_PATH=data/x.sqlite\n# ALGO_COOKIE_LUOGU="模板"\n\n');
+    writeFileSync(file,'# 注释\nALGORITHM_DX_DB_PATH=data/x.sqlite\n# ALGORITHM_DX_COOKIE_LUOGU="模板"\n\n');
     // 命中注释模板行时替换它，而不是留下一份过期说明再另加一行。
-    assert.equal(upsertEnvVar(file,'ALGO_COOKIE_LUOGU','__client_id=abc'),'uncommented');
+    assert.equal(upsertEnvVar(file,'ALGORITHM_DX_COOKIE_LUOGU','__client_id=abc'),'uncommented');
     let text=readFileSync(file,'utf8');
-    assert.ok(text.includes('ALGO_COOKIE_LUOGU="__client_id=abc"')&&!text.includes('模板'));
+    assert.ok(text.includes('ALGORITHM_DX_COOKIE_LUOGU="__client_id=abc"')&&!text.includes('模板'));
     // 其余行与注释必须原样保留。
-    assert.ok(text.includes('# 注释')&&text.includes('ALGO_DB_PATH=data/x.sqlite'));
+    assert.ok(text.includes('# 注释')&&text.includes('ALGORITHM_DX_DB_PATH=data/x.sqlite'));
     // 已有活动行时是就地更新，不会追加第二行。
-    assert.equal(upsertEnvVar(file,'ALGO_COOKIE_LUOGU','__client_id=def'),'updated');
+    assert.equal(upsertEnvVar(file,'ALGORITHM_DX_COOKIE_LUOGU','__client_id=def'),'updated');
     text=readFileSync(file,'utf8');
-    assert.equal(text.match(/^ALGO_COOKIE_LUOGU=/gm)!.length,1);
+    assert.equal(text.match(/^ALGORITHM_DX_COOKIE_LUOGU=/gm)!.length,1);
     assert.ok(text.includes('__client_id=def')&&!text.includes('__client_id=abc'));
     // 全新变量追加到末尾，且结尾只留一个换行。
-    assert.equal(upsertEnvVar(file,'ALGO_COOKIE_MATIJI','x=1'),'appended');
-    assert.ok(readFileSync(file,'utf8').endsWith('ALGO_COOKIE_MATIJI="x=1"\n'));
+    assert.equal(upsertEnvVar(file,'ALGORITHM_DX_COOKIE_MATIJI','x=1'),'appended');
+    assert.ok(readFileSync(file,'utf8').endsWith('ALGORITHM_DX_COOKIE_MATIJI="x=1"\n'));
     // 文件不存在时直接创建。
     const fresh=join(dir,'fresh.env');
-    assert.equal(upsertEnvVar(fresh,'ALGO_COOKIE_LUOGU','v=1'),'appended');
-    assert.equal(readFileSync(fresh,'utf8'),'ALGO_COOKIE_LUOGU="v=1"\n');
+    assert.equal(upsertEnvVar(fresh,'ALGORITHM_DX_COOKIE_LUOGU','v=1'),'appended');
+    assert.equal(readFileSync(fresh,'utf8'),'ALGORITHM_DX_COOKIE_LUOGU="v=1"\n');
   }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -450,7 +450,7 @@ test('sync failures are redacted before they are persisted',async()=>{
     const repo=new Repository(db),user=repo.createUser('Me'),a=repo.addAccount(user,'luogu','123');
     const leak='Luogu failed: cookie: __client_id=SECRETVALUE; _uid=123, Authorization: Bearer TOKEN123';
     // 同上：洛谷要先过前置条件检查，才会走到「抓取失败并脱敏入库」这一步。
-    await new SyncService(db,()=>new FakeFetcher(async()=>{throw new Error(leak);}),{ALGO_COOKIE_LUOGU:'__client_id=test'}).sync(a);
+    await new SyncService(db,()=>new FakeFetcher(async()=>{throw new Error(leak);}),{ALGORITHM_DX_COOKIE_LUOGU:'__client_id=test'}).sync(a);
     const state=db.prepare('SELECT last_error FROM sync_state WHERE account_id=?').get(a)!;
     const run=db.prepare('SELECT message FROM sync_runs WHERE account_id=? ORDER BY id DESC LIMIT 1').get(a)!;
     // last_error 会出现在面板上，message 会随 npm run backup --csv 导出，两处都不能带凭据。
@@ -464,20 +464,20 @@ test('sync failures are redacted before they are persisted',async()=>{
 test('account add --cookie writes the credential into .env and never echoes it back',()=>{
   const dir=mkdtempSync(join(tmpdir(),'algo-cookie-')),path=join(dir,'db.sqlite');
   const entry=fileURLToPath(new URL('../src/cli.ts',import.meta.url));
-  const env={...process.env,ALGO_DB_PATH:path};
+  const env={...process.env,ALGORITHM_DX_DB_PATH:path};
   const run=(...args:string[])=>execFileSync(process.execPath,[entry,...args],{cwd:dir,env,encoding:'utf8'});
   const fail=(...args:string[])=>spawnSync(process.execPath,[entry,...args],{cwd:dir,env,encoding:'utf8'});
   try{
     run('user','add','我','--self');
     // 该测试绑定不会解析昵称，所以这条用例不依赖网络。
     const out=JSON.parse(run('account','add','1','matiji','12345','--cookie','__client_id=abc123; _uid=12345'));
-    assert.deepEqual(out.credential,{variable:'ALGO_COOKIE_MATIJI',file:'.env',action:'appended'});
+    assert.deepEqual(out.credential,{variable:'ALGORITHM_DX_COOKIE_MATIJI',file:'.env',action:'appended'});
     assert.ok(!JSON.stringify(out).includes('abc123'),'the credential itself must not be echoed');
-    assert.ok(readFileSync(join(dir,'.env'),'utf8').includes('ALGO_COOKIE_MATIJI="__client_id=abc123; _uid=12345"'));
+    assert.ok(readFileSync(join(dir,'.env'),'utf8').includes('ALGORITHM_DX_COOKIE_MATIJI="__client_id=abc123; _uid=12345"'));
     // 同一平台再配一次凭据是就地更新：两个不同 handle 会各自建账号，但 .env 里只该有一行。
     const again=JSON.parse(run('account','add','1','matiji','67890','--cookie','__client_id=def456'));
     assert.equal(again.credential.action,'updated');
-    assert.equal(readFileSync(join(dir,'.env'),'utf8').match(/^ALGO_COOKIE_MATIJI=/gm)!.length,1);
+    assert.equal(readFileSync(join(dir,'.env'),'utf8').match(/^ALGORITHM_DX_COOKIE_MATIJI=/gm)!.length,1);
     assert.equal(JSON.parse(run('account','list')).length,2);
     // 对已绑定的账号再跑一次 --cookie：只更新凭据，不重复建账号、也不报约束冲突。
     const rebound=JSON.parse(run('account','add','1','matiji','12345','--cookie','__client_id=ghi789'));

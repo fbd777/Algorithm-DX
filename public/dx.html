@@ -190,7 +190,10 @@
 
   <footer class="foot">
     <span id="footInfo"></span>
-    <a class="foot-note" id="scoringNote" href="/help.html#scoring">评分规则</a>
+    <span class="foot-links">
+      <a class="foot-note" id="scoringNote" href="/help.html#scoring">评分规则</a>
+      <button class="foot-note support-trigger" id="supportProject" type="button" aria-haspopup="dialog">支持项目</button>
+    </span>
   </footer>
 
 </div>
@@ -278,5 +281,15 @@
 </div>
 
 <script src="/dx.js" type="module"></script>
+<dialog class="support-dialog" id="supportDialog" aria-labelledby="supportTitle">
+  <div class="support-dialog-heading">
+    <h2 id="supportTitle">支持项目</h2>
+    <form method="dialog"><button class="btn btn-ghost" aria-label="关闭赞赏码" autofocus>关闭</button></form>
+  </div>
+  <p>感谢你的使用与支持，赞赏完全自愿。</p>
+  <a href="/support-code.png" target="_blank" rel="noopener" aria-label="打开赞赏码原图"><img src="/support-code.png" alt="纤墨.fbd 的微信赞赏码" width="1152" height="1152" loading="lazy"></a>
+  <p class="support-dialog-note">微信扫一扫，或点击图片查看原图。</p>
+</dialog>
+<script src="/support.js" type="module"></script>
 </body>
 </html>

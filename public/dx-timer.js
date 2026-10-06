@@ -1,10 +1,9 @@
 import { cfRatingColor } from './cf-rating-colors.js';
-import { timerSyncNotice } from './dx-timer-status.js';
 
 export function initDxTimer({ getUser, onComplete, onResultClose }) {
   const $ = id => document.getElementById(id);
   let timer = null, user = null, clockOffset = 0, requestId = null, busy = false, polling = false, revision = 0;
-  let result = null, boardRefresh = Promise.resolve();
+  let result = null, boardRefresh = Promise.resolve(), fastPollUntil = 0;
   const dialog = document.createElement('dialog');
   dialog.className = 'dx-result';
   dialog.setAttribute('aria-labelledby', 'dxResultTitle');
@@ -20,7 +19,7 @@ export function initDxTimer({ getUser, onComplete, onResultClose }) {
     <div class="dx-result-main"><div class="dx-result-performance"><div class="dx-result-rank" aria-label="本次评级"></div><div class="dx-result-badges"><div class="dx-result-award"><span class="dx-result-medal" aria-label="accepted"><b>AC</b><small>Accepted</small></span></div><div class="dx-result-award dx-result-award-cs"><span class="dx-result-medal dx-result-medal-cs" aria-label="clean solve"><b>CS</b><small>Clean Solve</small></span></div></div></div>
       <div class="dx-result-detail"><div class="dx-result-time"><small>PLAY TIME</small><strong></strong></div><div class="dx-result-verdicts" aria-label="本次提交判定"></div><div class="dx-result-rating"><small>Rating</small><strong></strong><span class="dx-result-single-delta"></span></div></div>
     </div>
-    <div class="dx-result-bottom"><div class="dx-result-total"><div class="dx-result-total-label">DX<span>RATING</span></div><div class="dx-result-total-score"><strong></strong></div><span class="dx-result-total-delta"></span></div>
+    <div class="dx-result-bottom"><div class="dx-result-total"><div class="dx-result-total-label"><b>DX</b><span>RATING</span></div><div class="dx-result-total-score"><strong></strong></div><span class="dx-result-total-delta"></span></div>
     <div class="dx-result-footer"><button class="dx-result-next" type="button">下一步 <span aria-hidden="true">›</span></button></div></div>
     </div>`;
   document.body.append(dialog);
@@ -51,7 +50,22 @@ export function initDxTimer({ getUser, onComplete, onResultClose }) {
     field('.dx-result-achievement-delta').dataset.direction = improvement!==null && improvement<0 ? 'down' : 'up';
     field('.dx-result-record').hidden = !comparison || !score || result.practiceKind==='assisted' || (previous && improvement<=0);
     field('.dx-result-single-delta').textContent = score && previous ? signed(score.rating-previous.rating,1) : '';
-    field('.dx-result-total-score strong').textContent = comparison ? comparison.ratingAfter.toFixed(1) : '—';
+    const totalText = comparison ? comparison.ratingAfter.toFixed(1) : '—';
+    const totalFrame = field('.dx-result-total');
+    const totalColor = cfRatingColor(comparison?.ratingAfter);
+    totalFrame.dataset.ratingTone = totalColor.tone;
+    totalFrame.title = 'DX Rating · '+totalColor.label+'（'+totalColor.range+'）';
+    const digits = field('.dx-result-total-score strong');
+    digits.setAttribute('aria-label', totalText);
+    digits.replaceChildren();
+    for (const character of totalText.padStart(Math.max(6, totalText.length), ' ')) {
+      const digit = document.createElement('span');
+      digit.className = character === '.' ? 'dx-rating-point' : 'dx-rating-digit';
+      digit.dataset.empty = String(character === ' ');
+      digit.setAttribute('aria-hidden', 'true');
+      digit.textContent = character === ' ' ? '\u00a0' : character;
+      digits.append(digit);
+    }
     field('.dx-result-total-delta').textContent = comparison ? signed(comparison.ratingDelta,1) : '—';
     const cleanSolve = result.verdicts.AC > 0 && Object.entries(result.verdicts).every(([verdict, count]) => verdict === 'AC' || count === 0);
     field('.dx-result-award-cs').hidden = !cleanSolve;
@@ -122,6 +136,10 @@ export function initDxTimer({ getUser, onComplete, onResultClose }) {
     } else if (timer?.status==='cancelled') $('timerStatus').textContent='上次计时已取消，没有生成成绩。账号发生变化时计时也会自动取消。';
     else if (timer?.status==='expired') $('timerStatus').textContent='已检查同步数据，24 小时内未发现对应 AC，本次计时已结束，未生成成绩。';
     else $('timerStatus').textContent='';
+    if (timer?.status === 'running') $('timerStatus').textContent = data.check?.running
+      ? '正在检查公开提交，确认 AC 后自动结算…'
+      : data.check?.error ? '公开提交检查失败：'+data.check.error
+      : '等待对应题目的 AC；每 15 秒自动检查公开提交。';
     render();
     if (completed) { boardRefresh = Promise.resolve().then(onComplete); showResult(); await boardRefresh; }
   }
@@ -132,13 +150,7 @@ export function initDxTimer({ getUser, onComplete, onResultClose }) {
     if (user!==capturedUser) { dialog.close();timer=null;result=null; user=capturedUser; requestId=null; $('timerStatus').textContent='正在恢复计时状态…'; render(); }
     const data=await request('/api/dx/timer?user='+capturedUser+'&tz='+(-new Date().getTimezoneOffset()));
     if(current===revision) await receive(data,capturedUser);
-    if (current === revision && capturedUser === getUser() && timer?.status === 'running') {
-      // A failed sync is different from a healthy timer still waiting for AC.
-      const syncStatus = await request('/api/sync/status').catch(() => null);
-      if (syncStatus && current === revision && capturedUser === getUser() && timer?.status === 'running') {
-        $('timerStatus').textContent = timerSyncNotice(syncStatus, timer);
-      }
-    }
+
   }
   $('timerForm').addEventListener('submit',async event=>{
     event.preventDefault();
@@ -154,13 +166,14 @@ export function initDxTimer({ getUser, onComplete, onResultClose }) {
   for (const id of ['timerProblem','timerKind']) $(id).addEventListener('input',()=>{requestId=null;});
   $('timerCheck').addEventListener('click',async()=>{
     if(busy || !timer) return;
-    const capturedUser=getUser(), accountId=timer.account_id;
+    const capturedUser=getUser();
+    fastPollUntil=Date.now()+60000;
+    nextPollAt=0;
     ++revision;busy=true;render();
     try {
       await receive(await request('/api/dx/timer/check',{userId:capturedUser}),capturedUser);
       if(capturedUser===getUser() && timer?.status==='running') {
-        await request('/api/sync',{accountId,mode:'recent',force:true});
-        $('timerStatus').textContent='正在拉取最新提交，发现对应 AC 后会自动保存。';
+        $('timerStatus').textContent='正在检查公开提交，确认 AC 后自动结算…';
       }
     } catch(error){$('timerStatus').textContent=error.message;}
     finally{busy=false;render();}
@@ -173,17 +186,17 @@ export function initDxTimer({ getUser, onComplete, onResultClose }) {
     catch(error){$('timerStatus').textContent=error.message;}
     finally{busy=false;render();}
   });
-  let clock, poll;
+  let clock, poll, nextPollAt = 0;
   async function check() {
-    if(polling || busy) return;
+    if(polling || busy || Date.now()<nextPollAt) return;
+    nextPollAt=Date.now()+(timer?.status==='running' && Date.now()<fastPollUntil ? 400 : 3000);
     polling=true;
     try{await refresh();}catch{ $('timerStatus').textContent='暂时无法连接服务。计时已保存在本机，连接恢复后将重新检查 AC。'; }
     finally{polling=false;}
   }
-  function startPolling() { clearInterval(clock);clearInterval(poll);clock=setInterval(tick,1000);poll=setInterval(check,3000); }
+  function startPolling() { clearInterval(clock);clearInterval(poll);clock=setInterval(tick,1000);nextPollAt=0;poll=setInterval(check,400); }
   startPolling();
   window.addEventListener('pageshow',event=>{if(event.persisted){startPolling();void check();}});
   window.addEventListener('pagehide',()=>{clearInterval(clock);clearInterval(poll);});
   return {refresh,running:()=>timer?.status==='running'};
 }
-

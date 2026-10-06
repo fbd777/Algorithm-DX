@@ -1,5 +1,6 @@
 /**
- * 把统计实验的主推 T97 曲线导出成应用能直接读的 TypeScript 模块。
+ * 默认导出 t97-production.json 中用户采用的解析 T97 模型。
+ * --empirical 显式恢复旧统计实验曲线；下面的 CSV 流程仅在该参数下执行。
  *
  * 为什么要有这一步：客户端算单题 rating 需要「某个题目 Rating 的 T97 是多少」，
  * 而那条曲线是 `scripts/cf-study/` 算出来的。如果客户端自己抄一份数字，
@@ -18,6 +19,11 @@ import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { FIT_MIN_Q, FIT_MAX_Q } from './core.mjs';
 
+// 默认导出用户已采用的解析模型；保留显式恢复旧经验曲线的入口。
+if (process.argv.slice(2).some(a => a !== '--empirical')) throw new Error('仅支持可选参数 --empirical');
+if (!process.argv.includes('--empirical')) {
+  await import('./export-production-dx-curve.mjs');
+} else {
 const root = 'results/cf-study';
 const outFile = 'src/dx/curve.ts';
 const MODEL = 'success';
@@ -98,3 +104,4 @@ console.log(`  ${points.length} 个网格点，${points[0][0]}–${points.at(-1)
 console.log(`  T97 范围 ${(points[0][1] / 60).toFixed(2)}–${(points.at(-1)[1] / 60).toFixed(2)} 分钟`);
 console.log(`  源 SHA256 ${sourceSha256.slice(0, 16)}…`);
 console.log(`  productionReady=${diagnostics.productionReady}`);
+}

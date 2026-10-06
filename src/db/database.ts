@@ -25,7 +25,7 @@ const MIGRATIONS: readonly { appliesWhenAtMost: number; file: string }[] = [
 ];
 export const SCHEMA_VERSION = MIGRATIONS.length;
 
-export function openDatabase(path = 'data/algo-observer.sqlite'): DatabaseSync {
+export function openDatabase(path = 'data/algorithm-dx.sqlite'): DatabaseSync {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   try {

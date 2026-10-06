@@ -8,7 +8,7 @@ if errorlevel 1 (
   exit /b 1
 )
 REM Share config with npm run dashboard; open only after successful listen.
-node src\server\server.ts --open %*
+node scripts\start-local.mjs --open %*
 if errorlevel 1 (
   pause
   exit /b 1

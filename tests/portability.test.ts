@@ -11,11 +11,11 @@ import { parseDashboardArgs } from '../src/server/options.ts';
 const root = fileURLToPath(new URL('../', import.meta.url));
 
 test('dashboard config validates environment and permits CLI overrides and spaced paths', () => {
-  assert.deepEqual(parseDashboardArgs([], { ALGO_DB_PATH: 'my data/test.sqlite', ALGO_DASHBOARD_PORT: '8900' }),
+  assert.deepEqual(parseDashboardArgs([], { ALGORITHM_DX_DB_PATH: 'my data/test.sqlite', ALGORITHM_DX_DASHBOARD_PORT: '8900' }),
     { dbPath: 'my data/test.sqlite', port: 8900, open: false });
-  assert.deepEqual(parseDashboardArgs(['--port', '9000', '--db', 'other data/db.sqlite', '--open'], { ALGO_DASHBOARD_PORT: 'bad' }),
+  assert.deepEqual(parseDashboardArgs(['--port', '9000', '--db', 'other data/db.sqlite', '--open'], { ALGORITHM_DX_DASHBOARD_PORT: 'bad' }),
     { dbPath: 'other data/db.sqlite', port: 9000, open: true });
-  for (const port of ['NaN', '0', '-1', '65536', '1.5']) assert.throws(() => parseDashboardArgs([], { ALGO_DASHBOARD_PORT: port }));
+  for (const port of ['NaN', '0', '-1', '65536', '1.5']) assert.throws(() => parseDashboardArgs([], { ALGORITHM_DX_DASHBOARD_PORT: port }));
   assert.throws(() => parseDashboardArgs(['--db'], {}));
   assert.throws(() => parseDashboardArgs(['--port'], {}));
 });
@@ -30,10 +30,10 @@ test('diagnostics work outside checkout with self ID other than 1 and never muta
     const self = repo.createUser('self', true);
     assert.notEqual(self, 1);
     db.close();
-    writeFileSync(join(dir, '.env'), 'ALGO_DB_PATH="custom database.sqlite"\n');
+    writeFileSync(join(dir, '.env'), 'ALGORITHM_DX_DB_PATH="custom database.sqlite"\n');
     const before = readFileSync(path);
     const env = { ...process.env };
-    delete env.ALGO_DB_PATH;
+    delete env.ALGORITHM_DX_DB_PATH;
     const probeUrl = pathToFileURL(join(root, 'scripts/probe-context.mjs')).href;
     const selected = spawnSync(process.execPath, ['--input-type=module', '-e',
       `import { openProbe } from ${JSON.stringify(probeUrl)};
@@ -49,6 +49,11 @@ test('diagnostics work outside checkout with self ID other than 1 and never muta
     }
     const explicit = spawnSync(process.execPath, [join(root, 'scripts/probe-duration-coverage.mjs'), '--db', path, '--user', '1'], { cwd: dir, env, encoding: 'utf8' });
     assert.equal(explicit.status, 0, explicit.stderr);
+    for (const script of ['cf-request-benchmark.ts', 'benchmark-timer-ui.ts']) {
+      const result = spawnSync(process.execPath, [join(root, 'scripts', script)], { cwd: dir, env, encoding: 'utf8' });
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /所选用户没有/);
+    }
     assert.deepEqual(readFileSync(path), before);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

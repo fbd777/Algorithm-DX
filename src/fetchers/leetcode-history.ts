@@ -45,7 +45,7 @@ function decode(raw: string | null | undefined, handle: string): Cursor {
 
 export async function fetchChinaHistory(http: HttpClient, handle: string, cookie: string | undefined, options: FetchOptions): Promise<FetchBatch> {
   const opts = optionsOf(options);
-  if (!cookie) throw new FetchError('力扣历史回补需要本人登录 Cookie：ALGO_COOKIE_LEETCODE_CN', false, 'AUTH_REQUIRED');
+  if (!cookie) throw new FetchError('力扣历史回补需要本人登录 Cookie：ALGORITHM_DX_COOKIE_LEETCODE_CN', false, 'AUTH_REQUIRED');
   const cursor = decode(opts.cursor, handle);
   const csrf = cookie.split(';').map(s => s.trim()).find(s => s.startsWith('csrftoken='))?.slice('csrftoken='.length);
   async function query(document: string, variables: object = {}) {

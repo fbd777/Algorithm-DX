@@ -4,7 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 // Run from the project root; CLI > environment > .env > defaults.
 export function openProbe(argv = process.argv.slice(2)) {
   if (existsSync('.env')) process.loadEnvFile('.env');
-  let dbPath = process.env.ALGO_DB_PATH ?? 'data/algo-observer.sqlite';
+  let dbPath = process.env.ALGORITHM_DX_DB_PATH ?? 'data/algorithm-dx.sqlite';
   let userId;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--db') {

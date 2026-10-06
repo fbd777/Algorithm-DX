@@ -284,8 +284,8 @@ function meta(ctx: ApiContext, params: URLSearchParams): ApiResult {
       // 每个账号缺哪个前置条件；齐了是 null。
       // 注意这是「当前环境就绪情况」，不是「上一次抓取结果」——所以它不需要跑一次同步才会更新，
       // 在面板里填好凭据后立刻就会变成 null。
-      accounts: base.accounts.map((account) => ({ ...account, cfGroupMode: account.platform === 'codeforces' ? (['api','browser'].includes(env['ALGO_CF_GROUP_MODE_'+account.id]??'')?env['ALGO_CF_GROUP_MODE_'+account.id]:'extension') : undefined, cfGroups: account.platform === 'codeforces' ? (env['ALGO_CF_GROUPS_'+account.id]??'').split(';').filter(Boolean) : undefined, cfAuthorized: account.platform === 'codeforces' ? Boolean(env.ALGO_CF_API_KEY && env.ALGO_CF_API_SECRET) : undefined, retired: !ctx.platforms.includes(account.platform),
-        history: account.platform === 'matiji' && env[`ALGO_MATIJI_SNAPSHOT_${account.id}`]
+      accounts: base.accounts.map((account) => ({ ...account, cfGroupMode: account.platform === 'codeforces' ? (['api','browser'].includes(env['ALGORITHM_DX_CF_GROUP_MODE_'+account.id]??'')?env['ALGORITHM_DX_CF_GROUP_MODE_'+account.id]:'extension') : undefined, cfGroups: account.platform === 'codeforces' ? (env['ALGORITHM_DX_CF_GROUPS_'+account.id]??'').split(';').filter(Boolean) : undefined, cfAuthorized: account.platform === 'codeforces' ? Boolean(env.ALGORITHM_DX_CF_API_KEY && env.ALGORITHM_DX_CF_API_SECRET) : undefined, retired: !ctx.platforms.includes(account.platform),
+        history: account.platform === 'matiji' && env[`ALGORITHM_DX_MATIJI_SNAPSHOT_${account.id}`]
           ? { supported: false, detail: '正在使用旧快照配置；切换网络同步需移除此配置并设置登录' } : historyCapability(account.platform),
         prerequisite: missingPrerequisite(env, account),
         historyPrerequisite: missingPrerequisite(env, account, 'backfill') })),
@@ -388,9 +388,9 @@ async function bind(ctx: ApiContext, body: unknown): Promise<ApiResult> {
   let handle = text(input, 'handle', platform === 'matiji' ? 512 : 120, platform !== 'matiji');
   let identity: { handle: string; displayName: string | null } | null = null;
   if (platform === 'matiji') {
-    const savedCookie = cookie || envFor(ctx.envFile).ALGO_COOKIE_MATIJI;
+    const savedCookie = cookie || envFor(ctx.envFile).ALGORITHM_DX_COOKIE_MATIJI;
     let safeCookie: string | undefined;
-    try { safeCookie = savedCookie ? assertSafeEnvValue('ALGO_COOKIE_MATIJI', savedCookie) : undefined; }
+    try { safeCookie = savedCookie ? assertSafeEnvValue('ALGORITHM_DX_COOKIE_MATIJI', savedCookie) : undefined; }
     catch (error) { throw new AdminError('CREDENTIAL_INVALID', error instanceof Error ? error.message : 'Invalid credential'); }
     try {
       identity = await resolveMatijiIdentity(handle, new HttpClient(ctx.openWrite()), safeCookie);
@@ -687,7 +687,8 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
         case '/api/dx/timer': {
           const user = parseIntOrNull(params.get('user'), 1, Number.MAX_SAFE_INTEGER, 'user');
           if (user === null) throw new BadRequest('缺少 user 参数');
-          return { status: 200, body: timerState(ctx.db, user, clampInt(params.get('tz'), DEFAULT_TZ_OFFSET_MINUTES, -840, 840, 'tz')) };
+          const state = timerState(ctx.db, user, clampInt(params.get('tz'), DEFAULT_TZ_OFFSET_MINUTES, -840, 840, 'tz'));
+          return { status: 200, body: { ...state, check: state.timer ? ctx.syncJobs.timerCheckState(state.timer.account_id) : null } };
         }
         case '/api/dx/attempts':
           return practiceHistory(ctx, params);
@@ -742,21 +743,21 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
         }
         case '/api/accounts/matiji/identity': {
           const input = objectBody(body);
-          const cookie = text(input, 'cookie', 4096, false) || envFor(ctx.envFile).ALGO_COOKIE_MATIJI;
+          const cookie = text(input, 'cookie', 4096, false) || envFor(ctx.envFile).ALGORITHM_DX_COOKIE_MATIJI;
           if (!cookie) throw new BadRequest('请先填写码蹄集登录 Cookie，再点击「识别我的账号」');
-          const safeCookie = assertSafeEnvValue('ALGO_COOKIE_MATIJI', cookie);
+          const safeCookie = assertSafeEnvValue('ALGORITHM_DX_COOKIE_MATIJI', cookie);
           const identity = await new MatijiLiveFetcher(new HttpClient(ctx.openWrite()), safeCookie).currentAccount();
           return { status: 200, body: identity };
         }
         case '/api/cf-extension/pair': {
           if(ctx.syncJobs.busy())throw new Conflict('请先等待同步完成或取消同步，再生成连接码');
           const token=randomBytes(32).toString('hex');
-          upsertEnvVars(ctx.envFile,{ALGO_CF_EXTENSION_TOKEN:token});cfExtensionBridge.reset();
+          upsertEnvVars(ctx.envFile,{ALGORITHM_DX_CF_EXTENSION_TOKEN:token});cfExtensionBridge.reset();
           return {status:200,body:{token}};
         }
         case '/api/accounts/cf-browser': {
           if(ctx.syncJobs.busy())throw new Conflict('请先等待同步完成或取消同步，再打开登录窗口');
-          await openCfBrowser(envFor(ctx.envFile).ALGO_CF_BROWSER_EXECUTABLE);
+          await openCfBrowser(envFor(ctx.envFile).ALGORITHM_DX_CF_BROWSER_EXECUTABLE);
           return {status:200,body:{opened:true}};
         }
         case '/api/accounts/cf-groups': {
@@ -770,19 +771,19 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           if(Boolean(key)!==Boolean(secret))throw new BadRequest('更新授权时需同时填写 API Key 和 Secret');
           if(key&&(!/^[A-Za-z0-9_-]+$/.test(key)||!/^[A-Za-z0-9_-]+$/.test(secret)))throw new BadRequest('API Key 或 Secret 格式无效');
           const env=envFor(ctx.envFile);
-          if(mode==='api'&&groups.length&&!(key&&secret)&&!(env.ALGO_CF_API_KEY&&env.ALGO_CF_API_SECRET))throw new BadRequest('请先填写 API Key 和 Secret');
+          if(mode==='api'&&groups.length&&!(key&&secret)&&!(env.ALGORITHM_DX_CF_API_KEY&&env.ALGORITHM_DX_CF_API_SECRET))throw new BadRequest('请先填写 API Key 和 Secret');
           const db=ctx.openWrite(), owner=acquireSyncLock(db);
           try {
             const current=db.prepare("SELECT 1 FROM accounts WHERE id=? AND platform='codeforces' AND is_archived=0").get(id);
             if(!current)throw new BadRequest('CF 账号已更改，请刷新后重试');
-            const values:Record<string,string>={['ALGO_CF_GROUPS_'+id]:groups.map(g=>g.url).join(';'),['ALGO_CF_GROUP_MODE_'+id]:mode};
-            if(key){values.ALGO_CF_API_KEY=key;values.ALGO_CF_API_SECRET=secret;}
+            const values:Record<string,string>={['ALGORITHM_DX_CF_GROUPS_'+id]:groups.map(g=>g.url).join(';'),['ALGORITHM_DX_CF_GROUP_MODE_'+id]:mode};
+            if(key){values.ALGORITHM_DX_CF_API_KEY=key;values.ALGORITHM_DX_CF_API_SECRET=secret;}
             upsertEnvVars(ctx.envFile,values);
             db.prepare('UPDATE sync_state SET history_cursor=NULL,history_complete=0 WHERE account_id=?').run(id);
             db.exec('DELETE FROM response_cache');
           } finally {db.prepare('DELETE FROM sync_lock WHERE id=1 AND owner=?').run(owner);}
           ctx.syncJobs.markDataChanged();
-          return {status:200,body:{saved:true,groups:groups.map(g=>g.url),configured:Boolean(key||(env.ALGO_CF_API_KEY&&env.ALGO_CF_API_SECRET))}};
+          return {status:200,body:{saved:true,groups:groups.map(g=>g.url),configured:Boolean(key||(env.ALGORITHM_DX_CF_API_KEY&&env.ALGORITHM_DX_CF_API_SECRET))}};
         }
         case '/api/accounts':
           return await bind(ctx, body);
@@ -825,7 +826,9 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           const input = objectBody(body);
           const user = positiveInt(input,'userId');
           reconcileTimers(ctx.openWrite());
-          return { status: 200, body: timerState(ctx.db,user) };
+          const state = timerState(ctx.db,user);
+          if (state.timer?.status === 'running') void ctx.syncJobs.checkTimer(state.timer.account_id);
+          return { status: 200, body: { ...state, check: state.timer ? ctx.syncJobs.timerCheckState(state.timer.account_id) : null } };
         }
         case '/api/dx/time/clear':
           return clearDxTime(ctx, body);

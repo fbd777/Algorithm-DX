@@ -179,7 +179,7 @@ for (const row of rows) {
   const noScoreLabel = row.noScoreShare
     ? `${row.noScoreShare.clamped === 'above' ? '≤' : row.noScoreShare.clamped === 'below' ? '≥' : ''}${pct(noScore)}` : '—';
   lines.push(
-    `| ${row.q} | ${row.samples.toLocaleString('en-US')} | ${cells.join(' | ')} | ${span.toFixed(1)} pp | ${noScoreLabel} |`,
+    `| ${row.q} | ${row.samples ? row.samples.toLocaleString('en-US') : '—'} | ${cells.join(' | ')} | ${Number.isFinite(span) ? span.toFixed(1) + ' pp' : '—'} | ${noScoreLabel} |`,
   );
 }
 lines.push('');
@@ -240,7 +240,7 @@ lines.push('');
 
 writeFileSync(OUT, lines.join('\n'), 'utf8');
 
-const spans = rows.map((r) => spanOf(r.ranks));
+const spans = rows.map((r) => spanOf(r.ranks)).filter(Number.isFinite);
 console.log(`已写出 ${OUT}`);
 console.log(`行数 ${rows.length}（${grid[0]}–${grid[grid.length - 1]} 步长 100）`);
 console.log(`六档跨度 ${Math.min(...spans).toFixed(1)}–${Math.max(...spans).toFixed(1)} pp`);

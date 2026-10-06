@@ -11,6 +11,7 @@ export const ACHIEVEMENT_BINS = ['<97', '[97,100)', '[100,100.5)', '[100.5,100.9
 export function modelMetadata() {
   return { algorithms: ALGORITHMS, curveSha256: DX_CURVE.sourceSha256,
     fitRange: [DX_CURVE.fitMinQ, DX_CURVE.fitMaxQ], ratingGain: TOP_FACTOR_GAIN,
+    calibrationRange: [DX_CURVE.calibrationMinQ ?? DX_CURVE.fitMinQ, DX_CURVE.calibrationMaxQ ?? DX_CURVE.fitMaxQ],
     legacyTail: { anchorRatio: 0.646, nextRatio: 0.732, displayCap: 101 },
     currentTail: { anchorRatio: 0.646, anchorAchievement: 100.5, limit: 101 },
     slowDecay: { version: 'gentle-decay-v3', linear: SLOW_DECAY_LINEAR, quadratic: SLOW_DECAY_QUADRATIC, floor: 0 } };

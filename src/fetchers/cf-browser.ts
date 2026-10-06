@@ -60,14 +60,14 @@ export async function openCfBrowser(executableOverride?:string):Promise<void>{
       if(existing)await cdp.call('Target.activateTarget',{targetId:existing.targetId});
       else await cdp.call('Target.createTarget',{url:'https://codeforces.com/enter?locale=en'});
     }finally{cdp.close();}return;}catch{}
-    const candidates=[executableOverride,process.env.ALGO_CF_BROWSER_EXECUTABLE,
+    const candidates=[executableOverride,process.env.ALGORITHM_DX_CF_BROWSER_EXECUTABLE,
       process.env['ProgramFiles(x86)']&&join(process.env['ProgramFiles(x86)']!,'Microsoft/Edge/Application/msedge.exe'),
       process.env.ProgramFiles&&join(process.env.ProgramFiles,'Microsoft/Edge/Application/msedge.exe'),
       process.env.LOCALAPPDATA&&join(process.env.LOCALAPPDATA,'Microsoft/Edge/Application/msedge.exe'),
       '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge','/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       '/usr/bin/microsoft-edge','/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'];
     const executable=candidates.find((p):p is string=>Boolean(p&&existsSync(p)));
-    if(!executable)throw new Error('未找到 Edge / Chrome。请安装浏览器，或在 .env 设置 ALGO_CF_BROWSER_EXECUTABLE 为浏览器可执行文件路径');
+    if(!executable)throw new Error('未找到 Edge / Chrome。请安装浏览器，或在 .env 设置 ALGORITHM_DX_CF_BROWSER_EXECUTABLE 为浏览器可执行文件路径');
     mkdirSync(profile(),{recursive:true});
     const child=spawn(executable,['--remote-debugging-address=127.0.0.1','--remote-debugging-port=0','--user-data-dir='+profile(),'--no-first-run','--no-default-browser-check','https://codeforces.com/enter?locale=en'],{detached:true,stdio:'ignore',windowsHide:true});
     let failed=false;child.on('error',()=>{failed=true;});child.unref();

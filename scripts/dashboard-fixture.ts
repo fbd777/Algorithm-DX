@@ -3,7 +3,7 @@
  *
  * 这是**假数据**，只用于在没有真实提交时验证界面与统计口径。
  * 安全约束：固定写入 data/dashboard-fixture.sqlite（可用 --db 覆盖），
- * 并且显式拒绝写到真实练习库 data/algo-observer.sqlite。
+ * 并且显式拒绝写到真实练习库 data/algorithm-dx.sqlite。
  *
  * 用法：npm run dashboard:fixture
  */
@@ -12,7 +12,7 @@ import { resolve } from 'node:path';
 import { openDatabase, Repository } from '../src/db/database.ts';
 import type { Submission, SubmissionStatus } from '../src/domain.ts';
 
-const REAL_DB = resolve('data/algo-observer.sqlite');
+const REAL_DB = resolve('data/algorithm-dx.sqlite');
 const DEFAULT_FIXTURE = 'data/dashboard-fixture.sqlite';
 
 const DAY = 86400;
@@ -121,7 +121,7 @@ function main(): void {
 
   const dbPath = resolve(target);
   if (dbPath === REAL_DB) {
-    console.error('拒绝执行：夹具不允许写入真实练习库 data/algo-observer.sqlite。');
+    console.error('拒绝执行：夹具不允许写入真实练习库 data/algorithm-dx.sqlite。');
     process.exit(1);
   }
   if (['', '-wal', '-shm'].some(suffix => existsSync(dbPath + suffix))) {

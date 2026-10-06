@@ -14,7 +14,7 @@ test('failed binding preserves credentials and rolls back account writes',async(
  const db=openDatabase(':memory:');const repo=new Repository(db);
  try {
   const owner=repo.createUser('owner'),other=repo.createUser('other');repo.addAccount(owner,'luogu','123');
-  const original='# comment\r\nALGO_COOKIE_LUOGU="old-test-value"\r\n';writeFileSync(envFile,original);
+  const original='# comment\r\nALGORITHM_DX_COOKIE_LUOGU="old-test-value"\r\n';writeFileSync(envFile,original);
   const input={userId:other,platform:'luogu',handle:'123',cookie:'new-test-value',envFile,reuseExisting:true,probe:false,resolveProfile:false};
   await assert.rejects(bindAccount(db,input),{code:'ACCOUNT_OWNED_BY_OTHER'});
   assert.equal(readFileSync(envFile,'utf8'),original);

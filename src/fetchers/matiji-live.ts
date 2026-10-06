@@ -52,7 +52,7 @@ export class MatijiLiveFetcher extends BaseFetcher {
     // Official getUserInfo action reads data.id from this read-only POST.
     const body = await this.http.json('https://www.matiji.net/exam-back/api/queryUserInfo.do', {
       method: 'POST', headers: { Cookie: this.cookie, Accept: 'application/json' },
-    }).catch(error => hintCredential(error, 'ALGO_COOKIE_MATIJI', '码蹄集'));
+    }).catch(error => hintCredential(error, 'ALGORITHM_DX_COOKIE_MATIJI', '码蹄集'));
     if (String(body?.error_no) === '2') throw new FetchError('码蹄集登录已失效，请更新 Cookie 后重试', false, 'AUTH_REQUIRED');
     if (String(body?.error_no) !== '0') throw new FetchError('码蹄集暂时无法识别登录账号，请稍后重试', false, 'API_ERROR');
     const id = body.data?.id;
@@ -79,7 +79,7 @@ export class MatijiLiveFetcher extends BaseFetcher {
       const limit = backfill ? 50 : Math.min(50, opts.limit - rows.length);
       const params = new URLSearchParams({ userId: handle, start: String(cursor.start), limit: String(limit), startDate: localDate(cursor.since), endDate: localDate(cursor.until) });
       const body = await this.http.json(ENDPOINT, { method: 'POST', headers: { Cookie: this.cookie, 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: params.toString(), signal: opts.signal })
-        .catch(error => hintCredential(error, 'ALGO_COOKIE_MATIJI', '码蹄集'));
+        .catch(error => hintCredential(error, 'ALGORITHM_DX_COOKIE_MATIJI', '码蹄集'));
       if (String(body?.error_no) === '2') throw new FetchError('码蹄集登录已失效，请在账号管理更新登录 Cookie', false, 'AUTH_REQUIRED');
       if (String(body?.error_no) !== '0') throw new FetchError('码蹄集拒绝了记录查询，请检查登录状态或稍后重试', false, 'API_ERROR');
       const data = body.data;
