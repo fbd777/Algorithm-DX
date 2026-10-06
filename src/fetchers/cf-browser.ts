@@ -82,7 +82,7 @@ export async function openCfBrowser(executableOverride?:string):Promise<void>{
 }
 export function validateCfPageUrl(value:string):URL{
   const url=new URL(value);
-  if(url.origin!=='https://codeforces.com'||url.username||url.password||!/^\/group\/[A-Za-z0-9]+\/(?:(?:contests|status)(?:\/page\/\d+)?|contest\/\d+\/(?:status|my)(?:\/page\/\d+)?)$/.test(url.pathname))throw new Error('无效的 CF 群组页面');
+  if(url.origin!=='https://codeforces.com'||url.username||url.password||!/^(?:\/group\/[A-Za-z0-9]+\/(?:(?:contests|status)(?:\/page\/\d+)?|contest\/\d+\/(?:(?:status|my)(?:\/page\/\d+)?|problem\/[A-Za-z0-9]+))|\/problemset\/problem\/\d+\/[A-Za-z0-9]+|\/(?:contest|gym)\/\d+\/problem\/[A-Za-z0-9]+)$/.test(url.pathname))throw new Error('无效的 CF 群组或原题页面');
   return url;
 }
 

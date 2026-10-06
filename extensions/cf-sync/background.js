@@ -87,7 +87,7 @@ async function start(){
    const config=await chrome.storage.local.get(['server','token','enabled']);if(!config.enabled||!configValid(config))break;
    let tab;try{tab=await findCfTab();}catch(error){await chrome.storage.local.set({enabled:false});await status(error.message);break;}
    let task;
-   try{({task}=await post(config,'/api/cf-extension/poll',{}));}catch(error){await status(error.message||'连接中断');break;}
+   try{({task}=await post(config,'/api/cf-extension/poll',{version:chrome.runtime.getManifest().version}));}catch(error){await status(error.message||'连接中断');break;}
    if(!(await chrome.storage.local.get('enabled')).enabled)break;
    if(!task){const state=await chrome.storage.local.get('lastReadError');await status(state.lastReadError?'已连接；上次读取失败：'+state.lastReadError:'已连接，等待同步');continue;}
    let payload;

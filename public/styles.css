@@ -1153,3 +1153,11 @@ span.luogu-difficulty::before {
 .import-dialog { max-width: 600px; width: calc(100% - 40px); max-height: 85vh; overflow: auto; padding: 24px; border: 1px solid #536078; border-radius: 16px; background: #151c2b; color: #eef2fa; }
 .import-dialog::backdrop { background: #0009; }
 .import-dialog input { max-width: 100%; }
+/* Group source review: keep long titles and URLs inside the dialog on small screens. */
+.cf-source-card{border-top:1px solid var(--border,#ddd);padding:12px 0;overflow-wrap:anywhere}
+.cf-source-card summary{cursor:pointer;font-weight:600}
+.cf-source-body{display:grid;gap:10px;padding-top:12px;min-width:0}
+.cf-source-body p{margin:0}
+.cf-source-body a{color:var(--accent,#76b7ff);text-underline-offset:3px}
+.cf-source-body input[type=url]{width:100%;min-width:0;box-sizing:border-box}
+.cf-source-actions{display:flex;flex-wrap:wrap;gap:8px}

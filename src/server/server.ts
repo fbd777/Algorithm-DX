@@ -227,6 +227,7 @@ function main(): void {
       if(!validExtensionToken(envFor(envFile).ALGO_CF_EXTENSION_TOKEN,token)){sendJson(res,401,{error:'扩展连接码无效'});return;}
       let input:any;try{input=await readJsonBody(req,2*1024*1024);}catch{sendJson(res,400,{error:'扩展数据格式无效或过大'});return;}
       if(url.pathname.endsWith('/poll')){
+        cfExtensionBridge.version=typeof input?.version==='string'&&/^\d+\.\d+\.\d+$/.test(input.version)?input.version:null;
         const controller=new AbortController();res.once('close',()=>controller.abort());
         const task=await cfExtensionBridge.poll(controller.signal);
         if(!res.destroyed)sendJson(res,200,{task});return;

@@ -1,5 +1,5 @@
 function validCfTask(value){
- try{const u=new URL(value);return u.origin==='https://codeforces.com'&&!u.username&&!u.password&&/^\/group\/[A-Za-z0-9]+\/(?:(?:contests|status)(?:\/page\/\d+)?|contest\/\d+\/(?:status|my)(?:\/page\/\d+)?)$/.test(u.pathname);}catch{return false;}
+ try{const u=new URL(value);return u.origin==='https://codeforces.com'&&!u.username&&!u.password&&/^(?:\/group\/[A-Za-z0-9]+\/(?:(?:contests|status)(?:\/page\/\d+)?|contest\/\d+\/(?:(?:status|my)(?:\/page\/\d+)?|problem\/[A-Za-z0-9]+))|\/problemset\/problem\/\d+\/[A-Za-z0-9]+|\/(?:contest|gym)\/\d+\/problem\/[A-Za-z0-9]+)$/.test(u.pathname);}catch{return false;}
 }
 // Capture server-rendered dates while HTML is being parsed, before CF's DOM-ready
 // formatter converts them to the visitor's local time. Never guess a timezone.
@@ -36,7 +36,7 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   // Read the actual document. No fetch/XHR, cookie export or extra CF HTTP request.
   const result=parseCfDocument(document,message.url,200,row=>cfRowTimes.get(row));
   result.source='rendered-page';result.actualUrl=location.href;
-  if(!result.contestTable&&!result.statusTable)throw Error('未识别到比赛/提交表格（'+String(document.title).slice(0,70)+'；'+location.pathname+'）。请打开读取页面确认内容');
+  if(!result.contestTable&&!result.statusTable&&!result.problem)throw Error('未识别到比赛、提交表格或题面（'+String(document.title).slice(0,70)+'；'+location.pathname+'）。请打开读取页面确认内容');
   reply({result});
  }catch(error){reply({error:String(error.message||'CF 页面读取失败')});}
 });

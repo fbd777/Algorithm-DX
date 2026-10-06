@@ -435,8 +435,10 @@ export function buildBoard(
     if (score) scored.push({ entry, score });
   }
   const isCurrent = (e: DxEntry): boolean => e.releasedAt !== null && e.releasedAt >= currentYearStart;
-  const old = scored.filter((x) => !isCurrent(x.entry)).sort(byRatingThenAchievement).slice(0, OLD_SLOTS);
-  const current = scored.filter((x) => isCurrent(x.entry)).sort(byRatingThenAchievement).slice(0, NEW_SLOTS);
+  const seen=new Set<string>();
+  const distinct=scored.sort(byRatingThenAchievement).filter(x=>{const key=x.entry.platform+':'+(x.entry.canonicalProblemId??x.entry.problemId);if(seen.has(key))return false;seen.add(key);return true;});
+  const old = distinct.filter((x) => !isCurrent(x.entry)).slice(0, OLD_SLOTS);
+  const current = distinct.filter((x) => isCurrent(x.entry)).slice(0, NEW_SLOTS);
   const oldSlots = padSlots(old, OLD_SLOTS);
   const currentSlots = padSlots(current, NEW_SLOTS);
   const rating = [...oldSlots, ...currentSlots].reduce((sum, slot) => sum + (slot.score?.rating ?? 0), 0);

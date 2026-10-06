@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { cfExtensionBridge } from '../fetchers/cf-extension.ts';
+import {listGroupSources,addGroupSourceCandidate,confirmGroupSource,clearGroupSource,refreshGroupRatings} from '../fetchers/cf-group-sources.ts';
 import { openCfBrowser } from '../fetchers/cf-browser.ts';
 import { acquireSyncLock } from '../sync/lock.ts';
 import { parseGroupLinks } from '../fetchers/codeforces-group.ts';
@@ -120,6 +121,7 @@ class SyncConflict extends Error {
 
 /** 写端点清单。server.ts 用它判断是否需要同源校验，也让「能改什么」一眼可查。 */
 export const WRITE_ROUTES = new Set([
+  '/api/cf-group-source',
   '/api/accounts/cf-groups',
   '/api/accounts/cf-browser',
   '/api/cf-extension/pair',
@@ -313,7 +315,11 @@ function feed(ctx: ApiContext, params: URLSearchParams): ApiResult {
       offset,
       total: page.total,
       hasMore: offset + page.items.length < page.total,
-      items: page.items,
+      items: page.items.map(item=>{
+        if(item.platform!=='codeforces'||!item.problem_url?.includes('/group/'))return item;
+        const source=ctx.db.prepare("SELECT source_problem_id,source_url,check_state FROM cf_group_rating_sources WHERE problem_id=? AND method IN ('content','user_confirmed')").get(item.problem_id);
+        return {...item,source_problem_id:source?.source_problem_id??null,source_url:source?.source_url??null,rating_state:source?(item.difficulty===null?'unrated':'matched'):'pending'};
+      }),
     },
   };
 }
@@ -524,6 +530,8 @@ function dx(ctx: ApiContext, params: URLSearchParams): ApiResult {
   const reminderNow = Math.floor(Date.now()/1000);
   const pending = buildPending(entries, since).map((p) => ({
     ...p,
+    sourceProblemId: entries.find(e=>e.problemId===p.problemId)?.sourceProblemId??null,
+    sourceProblemUrl: entries.find(e=>e.problemId===p.problemId)?.sourceProblemUrl??null,
     reminderGroup: reminderGroup(p.solvedAt, dismissed.has(p.problemId), reminderNow),
     autoSeconds: autoSeconds.get(p.problemId) ?? null,
     outsideYear: p.releasedAt !== null && p.releasedAt >= until,
@@ -691,7 +699,7 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           return problemDetail(ctx, params);
         case '/api/cf-group-ratings': {
           const id=parseIntOrNull(params.get('accountId'),1,Number.MAX_SAFE_INTEGER,'accountId');if(id===null)throw new BadRequest('缺少 accountId');
-          return {status:200,body:{items:ctx.db.prepare("SELECT DISTINCT s.problem_id,s.problem_title,r.source_problem_id,r.source_url,r.rating,r.method FROM submissions s LEFT JOIN cf_group_rating_sources r ON r.problem_id=s.problem_id WHERE s.account_id=? AND s.platform='codeforces' AND s.problem_url LIKE 'https://codeforces.com/group/%' ORDER BY s.problem_id").all(id)}};
+          return {status:200,body:{items:listGroupSources(ctx.db,id)}};
         }
         case '/api/cf-extension/status': {
           const accountId=parseIntOrNull(params.get('accountId'),1,Number.MAX_SAFE_INTEGER,'accountId');
@@ -707,6 +715,23 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
     }
     if (method === 'POST') {
       switch (pathname) {
+        case '/api/cf-group-source': {
+          const input=objectBody(body),accountId=positiveInt(input,'accountId'),problemId=text(input,'problemId',64),action=text(input,'action',20);
+          if(!['candidate','confirm','clear','retry'].includes(action))throw new BadRequest('原题操作无效');
+          if(ctx.syncJobs.busy())throw new Conflict('请等待同步完成后再核对原题');
+          if(action==='confirm'&&input.confirm!==true)throw new BadRequest('请先核对两道题的题面，再确认原题');
+          const db=ctx.openWrite(),owner=acquireSyncLock(db),read=cfExtensionBridge.read.bind(cfExtensionBridge);
+          const heartbeat=setInterval(()=>db.prepare('UPDATE sync_lock SET expires_at=unixepoch()+90 WHERE id=1 AND owner=?').run(owner),30000);
+          try{
+            if(action==='clear')clearGroupSource(db,accountId,problemId);
+            else if(action==='confirm')await confirmGroupSource(db,accountId,problemId,text(input,'sourceUrl',500),new HttpClient(db),read);
+            else {
+              if(action==='candidate')addGroupSourceCandidate(db,accountId,problemId,text(input,'sourceUrl',500));
+              await refreshGroupRatings(db,accountId,new HttpClient(db),{read,onlyProblemId:problemId,force:true});
+            }
+          }finally{clearInterval(heartbeat);db.prepare('DELETE FROM sync_lock WHERE id=1 AND owner=?').run(owner);ctx.syncJobs.markDataChanged();}
+          return {status:200,body:{items:listGroupSources(ctx.db,accountId)}};
+        }
         case '/api/import/matiji': {
           const input = objectBody(body);
           const commit = input.commit === true;

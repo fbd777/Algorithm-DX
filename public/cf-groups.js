@@ -1,3 +1,4 @@
+import {groupSourceControls} from './cf-group-sources.js';
 export function openCfGroups(account,onSaved) {
   const dialog=document.createElement('dialog'); dialog.className='import-dialog cf-group-dialog'; dialog.setAttribute('aria-labelledby','cfGroupDialogTitle');
   dialog.innerHTML=`
@@ -36,7 +37,7 @@ export function openCfGroups(account,onSaved) {
         <p class="credential-note cf-dialog-hint"></p>
         <details class="cf-oauth-help"><summary>看到的是 OAuth 应用页面？</summary><p id="cfOAuthHint">当前不支持 OAuth。请勿填写 Client id 或 Client secret，也无需配置 Redirect Uris；具体区别见设置教程。</p></details>
       </section>
-      <details class="group-rating-sources"><summary>原题难度来源</summary><p>唯一同名匹配是推定来源；同名冲突不会自动补分。</p><div class="group-rating-list">正在读取…</div></details>
+      <details class="group-rating-sources"><summary>原题配对与难度</summary><p class="cf-dialog-hint"><a href="/help.html#cf-source-matching" target="_blank" rel="noopener">配对与时间规则 ↗</a></p><div class="group-rating-list">正在读取…</div></details>
       <p class="cf-dialog-status" role="status" aria-live="polite"></p>
     </div>
     <footer class="cf-dialog-footer"><button class="btn btn-ghost close" type="button">关闭</button><button class="btn btn-primary save" type="button">保存配置</button></footer>
@@ -97,14 +98,7 @@ export function openCfGroups(account,onSaved) {
     } catch(error){status.textContent=error.message;}
     finally{button.disabled=false;}
   };
-  fetch('/api/cf-group-ratings?accountId='+encodeURIComponent(account.id)).then(r=>{if(!r.ok)throw Error('暂时无法读取');return r.json();}).then(data=>{
-    const list=dialog.querySelector('.group-rating-list');list.textContent='';
-    for(const item of data.items??[]){const row=document.createElement('p');row.textContent=item.problem_id+' · '+item.problem_title+'：';
-      if(item.source_url){const link=document.createElement('a');link.href=item.source_url;link.target='_blank';link.rel='noopener';link.textContent=item.source_problem_id+'（'+(item.rating??'未评级')+'，唯一同名候选）';row.append(link);}
-      else row.append(document.createTextNode(item.method==='ambiguous'?'存在同名题，未自动补分':'未找到有评级的唯一原题'));
-      list.append(row);
-    }
-    if(!data.items?.length)list.textContent='同步 Group 记录后在这里查看来源。';
-  }).catch(()=>{dialog.querySelector('.group-rating-list').textContent='难度来源暂不可用，请稍后重试。';});
+  const reloadSources=groupSourceControls(dialog.querySelector('.group-rating-list'),account.id,onSaved);
+  dialog.querySelector('.group-rating-sources').addEventListener('toggle',()=>{if(dialog.querySelector('.group-rating-sources').open)reloadSources();});
   document.body.append(dialog);dialog.showModal();
 }

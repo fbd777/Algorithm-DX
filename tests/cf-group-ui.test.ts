@@ -18,6 +18,7 @@ test('Group dialog checks connection and saves before starting account history i
  const request=message.params.request,url=new URL(request.url);let body='',type='application/json';
  if(url.pathname==='/'){type='text/html';body='<html><body></body></html>';}
  else if(url.pathname==='/cf-groups.js'){type='text/javascript';body=readFileSync(new URL('../public/cf-groups.js',import.meta.url),'utf8');}
+ else if(url.pathname==='/cf-group-sources.js'){type='text/javascript';body=readFileSync(new URL('../public/cf-group-sources.js',import.meta.url),'utf8');}
  else if(url.pathname==='/api/cf-extension/status')body=JSON.stringify({connected,pending:[],lastPage:null});
  else{if(request.method==='POST')writes.push({path:url.pathname,body:JSON.parse(request.postData||'{}')});body=JSON.stringify(url.pathname.endsWith('cf-groups')?{groups:['https://codeforces.com/group/abc/contests']}:{job:{id:1,running:true}});}
  await cdp!.call('Fetch.fulfillRequest',{requestId:message.params.requestId,responseCode:200,responseHeaders:[{name:'Content-Type',value:type}],body:Buffer.from(body).toString('base64')},sessionId);

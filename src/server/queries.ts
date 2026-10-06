@@ -660,6 +660,9 @@ function parseJsonOrNull(value: unknown): unknown {
 /* ---------- DX Rating ---------- */
 
 export interface DxEntryRow {
+  canonicalProblemId: string;
+  sourceProblemId: string | null;
+  sourceProblemUrl: string | null;
   problemId: string;
   problemTitle: string;
   problemUrl: string | null;
@@ -668,7 +671,7 @@ export interface DxEntryRow {
   /** 该题**最早**一次 AC 的时间（UTC 秒）。只用于排序与显示。 */
   solvedAt: number;
   /**
-   * **出题日期** = 该题所属比赛的开始时间（UTC 秒）。
+   * **出题日期** = 原题所属比赛的开始时间（UTC 秒）。Group 副本只用已确认来源的时间。
    * b35 / b15 的分板看的是它，不是 AC 时间 —— 2026 年切掉一道 2013 年的老题，
    * 它仍然进旧题区。查不到（比赛不在 `contests` 表里，例如 gym）时为 null。
    */
@@ -686,7 +689,8 @@ export interface DxEntryRow {
  * 题目 Rating 取该题所有提交中非空的 `difficulty`（CF 是官方数字）——
  * 同一题的不同提交理论上同值，用 MAX 只是为了在混合 NULL 时稳定取到那个非空值。
  *
- * 出题日期来自 `contests`：problem_id 形如 `339:A`，`:` 前那一段就是比赛 id，
+ * 普通题的出题日期来自 `contests`；Group 副本来自已确认的原题，不使用训练赛日期。
+ * 普通 problem_id 形如 `339:A`，`:` 前那一段就是比赛 id，
  * 联上比赛开始时间即可。`instr` 找不到 `:` 时 `substr` 会得到空串、`CAST` 成 0，
  * 匹配不到任何比赛 → NULL，不会误判成 1970 年。
  */
@@ -694,14 +698,20 @@ export function listDxEntries(db: DatabaseSync, userId: number, platform: string
   const rows = db
     .prepare(
       `SELECT s.problem_id,
+              MAX(CASE WHEN s.platform='codeforces' AND s.problem_url LIKE 'https://codeforces.com/group/%' AND gs.method IN ('content','user_confirmed') THEN gs.source_problem_id ELSE s.problem_id END) AS canonical_problem_id,
+              MAX(CASE WHEN s.problem_url LIKE 'https://codeforces.com/group/%' AND gs.method IN ('content','user_confirmed') THEN gs.source_problem_id END) AS source_problem_id,
+              MAX(CASE WHEN s.problem_url LIKE 'https://codeforces.com/group/%' AND gs.method IN ('content','user_confirmed') THEN gs.source_url END) AS source_url,
               MAX(s.problem_title) AS problem_title,
               MAX(s.problem_url)   AS problem_url,
               MAX(s.difficulty)    AS difficulty,
               MIN(s.submitted_at)  AS solved_at,
-              MAX(c.start_time)    AS released_at,
+              MAX(CASE WHEN s.platform='codeforces' AND s.problem_url LIKE 'https://codeforces.com/group/%'
+                THEN CASE WHEN gs.method IN ('content','user_confirmed') THEN gs.source_released_at END
+                ELSE c.start_time END) AS released_at,
               MAX(pt.seconds)      AS recorded_seconds
        FROM submissions s
        JOIN accounts a ON a.id = s.account_id
+       LEFT JOIN cf_group_rating_sources gs ON s.platform='codeforces' AND gs.problem_id=s.problem_id
        LEFT JOIN contests c
               ON c.platform = s.platform
              AND c.contest_id = CAST(substr(s.problem_id, 1, instr(s.problem_id, ':') - 1) AS INTEGER)
@@ -714,6 +724,9 @@ export function listDxEntries(db: DatabaseSync, userId: number, platform: string
     .all(userId, platform) as Record<string, unknown>[];
   return rows.map((row) => ({
     problemId: String(row.problem_id),
+    canonicalProblemId: String(row.canonical_problem_id ?? row.problem_id),
+    sourceProblemId: row.source_problem_id == null ? null : String(row.source_problem_id),
+    sourceProblemUrl: row.source_url == null ? null : String(row.source_url),
     problemTitle: String(row.problem_title ?? ''),
     problemUrl: row.problem_url === null || row.problem_url === undefined ? null : String(row.problem_url),
     problemRating: row.difficulty === null || row.difficulty === undefined ? null : Number(row.difficulty),

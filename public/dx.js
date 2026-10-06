@@ -287,8 +287,8 @@ function pendingRow(item) {
     item.problemRating === null
       ? el('span', {
           class: 'badge',
-          text: '未评定',
-          title: 'CF 还没公布这道题的 Rating。现在就能填用时；评级公布后同步会自动回填，届时参与 B50 排名。',
+          text: item.sourceProblemId?'原题未评级':item.problemUrl?.includes('/group/')?'待核对原题':'未评定',
+          title: item.sourceProblemId?'已确认原题，但 CF 未提供官方题目 Rating。可先记录用时。':item.problemUrl?.includes('/group/')?'请在账号管理的「原题配对与难度」核对来源。':'CF 尚无这道题的 Rating，可先填写用时。',
         })
       : el('span', { class: 'dx-pending-meta', text: `难度 ${item.problemRating}` }),
     el('span', {
@@ -297,7 +297,7 @@ function pendingRow(item) {
       text: `${item.releasedAt == null ? 'CF????' : 'CF' + new Date(item.releasedAt * 1000).getFullYear()} · AC ${fmtDateTime(item.solvedAt)}`,
       title:
         item.releasedAt === null
-          ? '还没查到这道题的出题日期，暂按旧题处理；同步一次就会补上'
+          ? '尚未确认原题出题日期，暂按旧题处理'
           : `出题 ${fmtDate(item.releasedAt)} · ${item.outsideYear ? '晚于所选年度' : item.isCurrent ? '新题' : '旧题'}；按比赛开始时间划分 B35 / B15`,
     }),
     // 比赛自动计时（口径 B）：窗口内按「被切的时间顺序」逐题相减算出的纯耗时。
@@ -386,7 +386,7 @@ function renderRecorded(data) {
   $('recordsNext').disabled=recordsPage>=pages-1;
   $('recordsPagination').textContent=`第 ${recordsPage+1} / ${pages} 页 · 共 ${records.length} 条`;
   for (const item of records.slice(recordsPage*size,(recordsPage+1)*size)) {
-    list.append(scoreCard(item, labels[item.state]));
+    list.append(scoreCard(item, item.state==='waitingRating'&&item.sourceProblemId?'原题未评级':labels[item.state]));
   }
 }
 
@@ -400,7 +400,7 @@ function scoreCard(item, statusLabel) {
       el('div',{class:'dx-library-metrics'},[
         el('div',{},[el('span',{text:'完成度'}),el('strong',{text:score?score.achievementShown.toFixed(4)+'%':'—'})]),
         el('div',{},[el('span',{text:'单题 Rating'}),el('strong',{text:num1(score?.rating)})]),
-        el('div',{},[el('span',{text:'难度'}),el('strong',{text:item.problemRating ?? '待公布'})]),
+        el('div',{},[el('span',{text:'难度'}),el('strong',{text:item.problemRating ?? (item.sourceProblemId?'原题未评级':item.problemUrl?.includes('/group/')?'待核对原题':'待公布')})]),
         el('div',{},[el('span',{text:'最佳用时'}),el('strong',{text:fmtClock(item.recordedSeconds)})]),
       ]),
       el('div',{class:'dx-library-card-foot'},[el('span',{text:`首次 AC ${fmtDate(item.solvedAt)}`}),
@@ -541,7 +541,7 @@ function openModal(entry, title) {
   $('timeModalTitle').textContent = '记录一次练习';
   $('timeModalSub').textContent =
     !entry.problemId ? '支持各平台练习；勾选手动记录后，无需同步或绑定平台账号。保存后可在练习历史查看。' : entry.problemRating == null
-      ? `${entry.problemId} · ${title}（未评定 —— 评级公布并同步后参与 B50 排名）`
+      ? `${entry.problemId} · ${title}（${entry.sourceProblemId?'原题未评级，可先记录用时':entry.problemUrl?.includes('/group/')?'原题待核对，可先记录用时':'未评定，评级公布并同步后参与 B50 排名'}）`
       : `${entry.problemId} · ${title}（难度 ${entry.problemRating}）`;
   $('practiceProblem').value = entry.problemId ?? '';
   $('practiceProblem').readOnly = !!entry.problemId;

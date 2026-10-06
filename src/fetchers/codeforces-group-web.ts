@@ -15,6 +15,7 @@ export const CF_GROUP_SNAPSHOT = '(async()=>{' + parserSource + `
  return parseCfHtml(await response.text(),location.href,response.status);
 })()`;
 export interface PageSnapshot {
+ problem?: {title:string;statement:string;samples:{input:string;output:string}[];sourceLinks:string[];timeLimit:string;memoryLimit:string;rating?:number|null;tags?:string[]}|null;
  contests?:{id:string;name:string;time:string;duration:string}[];
  url:string; status:number; title:string; viewer?:string|null; loggedIn:boolean; challenge:boolean;
  contestTable:boolean; statusTable:boolean; empty:boolean;

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Algorithm DX · CF 同步",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "通过已登录的 Codeforces 标签页同步自建比赛记录到本机 Algorithm DX。",
   "permissions": [
     "storage",

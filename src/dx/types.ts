@@ -26,6 +26,8 @@ export interface DxCurve {
 
 /** 一道题的原始信息（来自 submissions 表，只取 AC 的 CF 题）。 */
 export interface DxEntry {
+  /** Verified original identity. Copies compete for one B50 slot. */
+  canonicalProblemId?: string;
   platform: string;
   problemId: string;
   problemTitle: string;

@@ -1117,6 +1117,8 @@ function metaRow(item) {
     );
   }
   if (item.difficulty !== null) row.append(el('span', { class: `badge diff ${difficultyClass(item.platform, item.difficulty)}`, text: difficultyLabel(item.platform, item.difficulty) }));
+  else if(item.rating_state)row.append(el('span',{class:'badge',text:item.rating_state==='unrated'?'原题未评级':'待核对原题'}));
+  if(item.source_url)row.append(el('a',{class:'badge',href:item.source_url,target:'_blank',rel:'noopener',text:'原题 '+item.source_problem_id}));
   const identity = el('div', { class: 'ac-card-identity', text: `${item.user_name} · ${shortAccountLabel(item)}` });
   if (item.ac_count > 1) row.append(el('span', { class: 'badge', text: `AC ${item.ac_count} 次` }));
   const tags = el('div', { class: 'ac-card-tags' });

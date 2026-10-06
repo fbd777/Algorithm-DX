@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import { CfExtensionBridge, validExtensionToken } from '../src/fetchers/cf-extension.ts';
 const url='https://codeforces.com/group/abc/contests?locale=en';
 const snapshot={url,status:200,loggedIn:true,challenge:false,links:[],rows:[]};
+
+test('problem extraction requires a capable extension and rejects malformed metadata',async()=>{
+ const b=new CfExtensionBridge();b.lastSeen=Date.now();const problemUrl='https://codeforces.com/group/abc/contest/700001/problem/A';
+ assert.throws(()=>b.read(problemUrl,''),/0.6.0/);b.version='0.6.0';
+ const result=b.read(problemUrl,''),task=await b.poll();b.complete(task!.id,{...snapshot,url:problemUrl,problem:{statement:'bad',samples:[],sourceLinks:[],tags:{invalid:true}}});await assert.rejects(result,/题面格式异常/);
+});
 test('extension tokens reject absent, wrong and non-ASCII input',()=>{
  const token='a'.repeat(64);assert.ok(validExtensionToken(token,token));
  for(const bad of [undefined,'', 'b'.repeat(64),'好'.repeat(64)])assert.equal(validExtensionToken(token,bad),false);

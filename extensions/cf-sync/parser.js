@@ -14,6 +14,25 @@ function cfChallenge(doc){
 function parseCfHtml(html,url,status){
 return parseCfDocument(new DOMParser().parseFromString(html,'text/html'),url,status);
 }
+function cfProblemSnapshot(doc){
+ const problem=doc.querySelector('.problem-statement');if(!problem)return null;
+ const clean=e=>{
+  if(!e)return '';const copy=e.cloneNode(true);
+  for(const math of copy.querySelectorAll('script[type^="math/tex"]'))math.replaceWith(doc.createTextNode(' '+math.textContent+' '));
+  for(const n of copy.querySelectorAll('.header,.sample-tests,script,style,.MathJax,.MathJax_Preview,mjx-container'))n.remove();
+  return (copy.textContent||'').replace(/\s+/g,' ').trim();
+ };
+ const sample=e=>{if(!e)return '';const copy=e.cloneNode(true);for(const br of copy.querySelectorAll('br'))br.replaceWith(doc.createTextNode('\n'));for(const div of copy.querySelectorAll('div'))div.append(doc.createTextNode('\n'));return (copy.textContent||'').trim();};
+ const inputs=Array.from(problem.querySelectorAll('.sample-tests .input pre'));
+ const outputs=Array.from(problem.querySelectorAll('.sample-tests .output pre'));
+ const links=Array.from(doc.querySelectorAll('#pageContent a[href]')).map(a=>a.getAttribute('href')).filter(h=>/^\/(?:problemset\/problem\/\d+\/|(?:contest|gym)\/\d+\/problem\/)[A-Za-z0-9]+\/?$/.test(cfPath(h)));
+ const tagBoxes=Array.from(doc.querySelectorAll('.tag-box'));
+ const difficulty=tagBoxes.find(e=>/problem difficulty/i.test(e.getAttribute('title')||''));
+ const ratingText=(difficulty?.textContent||'').trim();
+ return {rating:/^\*\d+$/.test(ratingText)?Number(ratingText.slice(1)):null,tags:tagBoxes.filter(e=>e!==difficulty).map(e=>(e.textContent||'').trim()).filter(Boolean),title:(problem.querySelector('.title')?.textContent||'').replace(/^[A-Za-z0-9]+\.\s*/, '').trim(),
+  statement:clean(problem),samples:inputs.map((e,i)=>({input:sample(e),output:sample(outputs[i])})),
+  sourceLinks:[...new Set(links)],timeLimit:(problem.querySelector('.time-limit')?.textContent||'').trim(),memoryLimit:(problem.querySelector('.memory-limit')?.textContent||'').trim()};
+}
 function parseCfDocument(doc,url,status,originalTime){
  const text=e=>(e?.textContent||'').trim().replace(/\s+/g,' ');
  const links=Array.from(doc.querySelectorAll('a[href]')).map(a=>({href:a.getAttribute('href'),text:text(a)}));
@@ -46,7 +65,7 @@ function parseCfDocument(doc,url,status,originalTime){
    seen.add(match[2]);contests.push({id:match[2],name:text(cells[0]).replace(/Enter\s*»|Virtual participation\s*»/g,'').trim(),time,duration});
   }
  }
- return {contests,url,status,title:text(doc.querySelector('title')),
+ return {problem:cfProblemSnapshot(doc),contests,url,status,title:text(doc.querySelector('title')),
    viewer:((doc.querySelector('#header,.lang-chooser'))?cfProfileHandles(doc.querySelector('#header,.lang-chooser'))[0]:null)||null,
    loggedIn:cfLoggedIn(doc),
    challenge:cfChallenge(doc),
