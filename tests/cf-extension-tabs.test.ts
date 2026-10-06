@@ -53,14 +53,15 @@ test('challenge detection ignores CF scripts and only recognizes challenge page 
  assert.equal(cfChallenge({...normal,querySelector:()=>({})}),true);
 });
 
-function navigationHarness(initialTabs:any[],challenge=false){
+function navigationHarness(initialTabs:any[],challenge=false,missingScripts:number[]=[],recoverOnReload=true){
  const tabs=initialTabs.map(t=>({...t})),operations:any[]=[],session:any={};let next=10;
  const noop={addListener:()=>{}};
  const chrome={runtime:{onMessage:noop,onStartup:noop,onInstalled:noop},alarms:{onAlarm:noop},storage:{local:{get:async()=>({enabled:true})},session:{get:async()=>session,set:async(value:any)=>Object.assign(session,value)}},tabs:{
   query:async()=>tabs,get:async(id:number)=>{const t=tabs.find(t=>t.id===id);if(!t)throw Error('closed');return t;},
   create:async(value:any)=>{operations.push(['create',value]);const tab={...value,id:next++,status:'complete'};tabs.push(tab);return tab;},
   update:async(id:number,value:any)=>{operations.push(['update',id,value]);const t=tabs.find(t=>t.id===id);Object.assign(t,value);return t;},
-  sendMessage:async(id:number,message:any)=>message.type==='cf-ready'?{ready:true,loggedIn:true,challenge}:{result:{source:'rendered-page',url:message.url,rows:[]}}
+  reload:async(id:number)=>{operations.push(['reload',id]);if(recoverOnReload){const index=missingScripts.indexOf(id);if(index>=0)missingScripts.splice(index,1);}},
+  sendMessage:async(id:number,message:any)=>{if(missingScripts.includes(id))throw Error('Could not establish connection. Receiving end does not exist.');return message.type==='cf-ready'?{ready:true,loggedIn:true,challenge}:{result:{source:'rendered-page',url:message.url,rows:[]}};}
  }};
  const read=runInNewContext(source+';readThroughTab',{chrome,URL,setTimeout:(f:any)=>{f();return 0;}});
  return {read,operations,session};
@@ -82,3 +83,20 @@ test('a filtered status page is not reused for an unfiltered task',async()=>{
  const h=navigationHarness([{id:1,url:'https://codeforces.com/group/abc/contest/720850/status?my=on',status:'complete'}]);
  await h.read({url:'https://codeforces.com/group/abc/contest/720850/status?order=BY_ARRIVED_DESC'},{id:1});assert.equal(h.operations[0][0],'create');
 });
+
+ test('stale matching user tab is skipped without reloading or navigating it',async()=>{
+ const url='https://codeforces.com/group/abc/contests';
+ const h=navigationHarness([{id:1,url,status:'complete',windowId:1}],false,[1]);
+ const result=await h.read({url},{id:1,windowId:1});
+ assert.equal(result.result.source,'rendered-page');assert.equal(h.operations.length,1);assert.equal(h.operations[0][0],'create');assert.equal(h.session.readingTabId,10);
+ });
+ test('missing script in owned reader is recovered by a single reload',async()=>{
+ const h=navigationHarness([],false,[10]);
+ const result=await h.read({url:'https://codeforces.com/group/abc/contests'},{id:1,windowId:1});
+ assert.equal(result.result.source,'rendered-page');assert.deepEqual(h.operations.filter(op=>op[0]==='reload'),[['reload',10]]);
+ });
+ test('persistent missing script stops after one reload with page-specific diagnostics',async()=>{
+ const h=navigationHarness([],false,[10],false);
+ await assert.rejects(h.read({url:'https://codeforces.com/group/abc/contest/720850/status/page/2'},{id:1,windowId:1}),/720850.*Receiving end/);
+ assert.deepEqual(h.operations.filter(op=>op[0]==='reload'),[['reload',10]]);
+ });
