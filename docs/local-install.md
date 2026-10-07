@@ -1,5 +1,12 @@
 # 本地安装与桌面快捷方式
 
+## 下载入口
+
+- [项目 v0.1.0 源码 ZIP](https://github.com/fbd777/Algorithm-DX/archive/refs/tags/v0.1.0.zip) · [版本发布记录](https://github.com/fbd777/Algorithm-DX/releases)
+- [Node.js 官方下载](https://nodejs.org/en/download)：选择 24.x LTS，至少 24.15；Windows 通常选择 x64 MSI 安装程序。
+
+项目 ZIP 需要先解压，不是独立 EXE 安装包。
+
 ## Windows 首次使用
 
 1. 安装 Node.js 24.15 或更新版本，安装时保留加入 PATH 的选项。安装后重新打开终端或启动窗口。

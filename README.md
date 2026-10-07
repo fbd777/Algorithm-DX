@@ -2,7 +2,7 @@
 
 受 maimai DX 启发的本地算法练习 Dashboard：汇总多平台做题记录，用 Codeforces 练习用时生成 B50 与 DX Rating，让每一次进步都看得见。
 
-[下载源码](https://github.com/fbd777/Algorithm-DX/archive/refs/heads/main.zip) · [安装指南](docs/local-install.md) · [平台说明](docs/platforms.md) · [反馈问题](https://github.com/fbd777/Algorithm-DX/issues)
+[下载 v0.1.0（ZIP）](https://github.com/fbd777/Algorithm-DX/archive/refs/tags/v0.1.0.zip) · [版本说明](https://github.com/fbd777/Algorithm-DX/releases/tag/v0.1.0) · [Node.js 官方下载](https://nodejs.org/en/download) · [安装指南](docs/local-install.md) · [平台说明](docs/platforms.md) · [反馈问题](https://github.com/fbd777/Algorithm-DX/issues)
 
 - **B50 与成绩结算**：计时练习、自动识别 AC、保存用时，查看达成率、评级与 DX Rating 变化。
 - **多平台记录**：集中查看 AC 记录、题目与逐次练习历史。
@@ -23,13 +23,22 @@
 | <a href="docs/images/rating-frames.jpg"><img src="docs/images/rating-frames.jpg" alt="七种 DX Rating 框体，虚拟演示数据" width="300"></a> | <a href="docs/images/today-practice.jpg"><img src="docs/images/today-practice.jpg" alt="今日练习时间线，虚拟演示数据" width="300"></a> | <a href="docs/images/friends-circle.jpg"><img src="docs/images/friends-circle.jpg" alt="题友圈动态，虚拟演示数据" width="300"></a> |
 
 
+## 下载与版本
+
+- **首次使用**：[下载 v0.1.0 源码 ZIP](https://github.com/fbd777/Algorithm-DX/archive/refs/tags/v0.1.0.zip)，解压后按下方步骤启动。
+- **版本记录**：[v0.1.0 发布说明](https://github.com/fbd777/Algorithm-DX/releases/tag/v0.1.0) · [全部版本](https://github.com/fbd777/Algorithm-DX/releases)。
+- **最新改动**：[下载 main 分支 ZIP](https://github.com/fbd777/Algorithm-DX/archive/refs/heads/main.zip)，内容可能领先于发布版本。
+- **运行环境**：[Node.js 官方下载](https://nodejs.org/en/download)。Windows 用户选择对应架构的安装程序（通常为 x64 MSI），保留加入 PATH 的默认选项。
+
+当前提供源码包，不是独立 EXE 安装包；需先安装 Node.js。更新前请备份并保留自己的数据，详见[更新说明](docs/local-install.md#更新移动和多份项目)。
+
 ## 快速开始
 
-需要 **Node.js 24.15 或更新版本**，无需安装数据库服务，也无需运行 `npm install`。
+先从 [Node.js 官网](https://nodejs.org/en/download) 安装 **24.x LTS（至少 24.15）**，再下载项目。无需安装数据库服务，也无需运行 `npm install`。
 
 ### Windows
 
-1. 下载完整项目并解压到固定目录，不要直接在 ZIP 中运行。
+1. [下载 v0.1.0](https://github.com/fbd777/Algorithm-DX/archive/refs/tags/v0.1.0.zip) 并解压到固定目录，不要直接在 ZIP 中运行。
 2. 双击根目录的 `create-desktop-shortcut.cmd`，创建桌面快捷方式。
 3. 双击桌面的 **Algorithm DX**。首次启动会自动创建数据库和「我」用户。
 4. 在页面「账号管理」绑定平台账号，按需配置登录态并同步。
