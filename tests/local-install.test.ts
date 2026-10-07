@@ -81,11 +81,21 @@ test('Windows shortcut points at downloaded directory, supports custom names and
     assert.equal(first.status, 0, first.stderr);
     assert.equal(run().status, 0);
     assert.equal(run('Algorithm DX Test').status, 0);
+    assert.equal(run('项目支持').status, 0);
     assert.notEqual(run('../escape').status, 0);
     const shortcut = join(desktop, 'Algorithm DX.lnk');
+    // Check the persisted Unicode strings without WScript.Shell's ANSI conversion.
+    const bytes = readFileSync(shortcut);
+    for (const value of [project, join(project, 'public/algorithm-dx-mark.ico')]) {
+      assert.ok(bytes.includes(Buffer.from(value, 'utf16le')), `Shortcut must preserve ${value}`);
+    }
+    // Construct an unrelated ASCII-path link independently, then put it at the
+    // destination to verify collision handling leaves the existing bytes intact.
+    const unrelated = join(temp, 'other.lnk');
     const inspect = spawnSync('powershell.exe', ['-NoProfile', '-Command',
-      `$s = New-Object -ComObject WScript.Shell; $l = $s.CreateShortcut(${quote(shortcut)}); if ($l.TargetPath -ne ${quote(join(project, 'dashboard.cmd'))} -or $l.WorkingDirectory -ne ${quote(project)} -or $l.Arguments -ne '') { exit 1 }; $l.TargetPath = ${quote(join(temp, 'other.cmd'))}; $l.Save()`], { encoding: 'utf8', windowsHide: true });
+      `. ${quote(join(project, 'scripts/create-desktop-shortcut.ps1'))} -DesktopDirectory ${quote(desktop)}; $saved = [AlgorithmDXShortcut]::Read(${quote(shortcut)}); if ($saved[0] -ne ${quote(join(project, 'dashboard.cmd'))} -or $saved[1] -ne ${quote(project)} -or $saved[2] -ne '') { exit 1 }; $s = New-Object -ComObject WScript.Shell; $l = $s.CreateShortcut(${quote(unrelated)}); $l.TargetPath = ${quote(join(temp, 'other.cmd'))}; $l.Save()`], { encoding: 'utf8', windowsHide: true });
     assert.equal(inspect.status, 0, inspect.stderr);
+    cpSync(unrelated, shortcut);
     const before = readFileSync(shortcut);
     assert.notEqual(run().status, 0);
     assert.deepEqual(readFileSync(shortcut), before);
