@@ -18,14 +18,10 @@
 | --- | --- | --- |
 | <a href="docs/images/timer-result.jpg"><img src="docs/images/timer-result.jpg" alt="计时完成与成绩结算，虚拟演示数据" width="300"></a> | <a href="docs/images/b50.jpg"><img src="docs/images/b50.jpg" alt="B50 成绩单，虚拟演示数据" width="300"></a> | <a href="docs/images/practice-overview.jpg"><img src="docs/images/practice-overview.jpg" alt="做题数据总览，虚拟演示数据" width="300"></a> |
 
-<details>
-<summary>更多预览：七种框体、今日练习与题友圈</summary>
-
 | 七种 DX Rating 框体 | 今日练习 | 题友圈 |
 | --- | --- | --- |
 | <a href="docs/images/rating-frames.jpg"><img src="docs/images/rating-frames.jpg" alt="七种 DX Rating 框体，虚拟演示数据" width="300"></a> | <a href="docs/images/today-practice.jpg"><img src="docs/images/today-practice.jpg" alt="今日练习时间线，虚拟演示数据" width="300"></a> | <a href="docs/images/friends-circle.jpg"><img src="docs/images/friends-circle.jpg" alt="题友圈动态，虚拟演示数据" width="300"></a> |
 
-</details>
 
 ## 快速开始
 
