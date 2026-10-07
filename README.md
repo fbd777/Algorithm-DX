@@ -9,6 +9,49 @@
 
 尽管尽力臻于完善，Algorithm DX 一定还存在各种各样的问题，欢迎使用、反馈和PR。
 
+## 功能预览
+
+以下图片均使用虚拟昵称、题目与成绩，仅用于展示功能，不代表真实用户记录。点击图片可查看原图。
+
+### 计时完成与成绩结算
+
+自动识别 AC、保存练习用时，并展示本次评级与 DX Rating 变化。
+
+<a href="docs/images/timer-result.jpg"><img src="docs/images/timer-result.jpg" alt="计时完成弹窗：达成率、SSS+ 评级、提交判定及 DX Rating 变化，均为虚拟演示数据" width="720"></a>
+
+### B50 成绩单
+
+旧题 Best 35 与当年新题 Best 15，共同组成你的 DX Rating。
+
+<a href="docs/images/b50.jpg"><img src="docs/images/b50.jpg" alt="B50 成绩单：旧题 Best 35、新题 Best 15 与总分，均为虚拟演示数据" width="720"></a>
+
+### 做题数据总览
+
+用 AC 热力图、提交趋势、判题结果与题目分布，回顾练习积累。
+
+<a href="docs/images/practice-overview.jpg"><img src="docs/images/practice-overview.jpg" alt="做题数据总览：AC 热力图、提交趋势、判题结果、难度和标签分布，均为虚拟演示数据" width="720"></a>
+
+<details>
+<summary>更多预览：七种框体、今日练习与题友圈</summary>
+
+### 七种 DX Rating 框体
+
+<a href="docs/images/rating-frames.jpg"><img src="docs/images/rating-frames.jpg" alt="七种 DX Rating 框体：灰、绿、青、蓝、紫、橙、红，数值为虚拟演示数据" width="720"></a>
+
+### 今日练习
+
+查看今日 AC 时间线、提交节奏、已记录用时与最佳评级。
+
+<a href="docs/images/today-practice.jpg"><img src="docs/images/today-practice.jpg" alt="今日练习：AC 数量、通过率、用时、提交节奏及题目时间线，均为虚拟演示数据" width="720"></a>
+
+### 题友圈
+
+汇总关注的题友在不同平台的做题动态。
+
+<a href="docs/images/friends-circle.jpg"><img src="docs/images/friends-circle.jpg" alt="题友圈：关注列表和多平台做题动态，昵称、题目与记录均为虚拟演示数据" width="720"></a>
+
+</details>
+
 默认数据库为 `data/algorithm-dx.sqlite`，项目环境变量统一使用 `ALGORITHM_DX_*` 前缀。
 
 项目采用 [MIT 许可证](LICENSE)。欢迎使用、修改及提交 Pull Request；是否合并到本仓库由维护者决定。
