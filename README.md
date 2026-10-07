@@ -1,5 +1,7 @@
 # Algorithm DX
 
+[![Tests](https://github.com/fbd777/Algorithm-DX/actions/workflows/tests.yml/badge.svg)](https://github.com/fbd777/Algorithm-DX/actions/workflows/tests.yml)
+
 受 maimai DX 启发的本地算法练习 Dashboard：汇总多平台做题记录，用 Codeforces 练习用时生成 B50 与 DX Rating，让每一次进步都看得见。
 
 [下载 v0.1.0（ZIP）](https://github.com/fbd777/Algorithm-DX/archive/refs/tags/v0.1.0.zip) · [版本说明](https://github.com/fbd777/Algorithm-DX/releases/tag/v0.1.0) · [Node.js 官方下载](https://nodejs.org/en/download) · [安装指南](docs/local-install.md) · [平台说明](docs/platforms.md) · [反馈问题](https://github.com/fbd777/Algorithm-DX/issues)
@@ -104,7 +106,7 @@ DX Rating 是本项目的娱乐向练习指标，不是 Codeforces 官方 Rating
 - [目录、数据模型与 API](docs/development.md)
 - [Codeforces × maimai 统计实验](docs/cf-maimai-study.md)
 
-技术栈：Node.js / TypeScript / SQLite / 原生 HTML、CSS、JavaScript。运行测试：`npm test`。欢迎反馈问题和提交 Pull Request。
+技术栈：Node.js / TypeScript / SQLite / 原生 HTML、CSS、JavaScript。运行测试：`npm test`。提交到 main 或向 main 发起 Pull Request 时，GitHub Actions 会在 Windows、macOS 和 Linux 上运行测试；另在 Linux 检查最新 Node.js 24.x。也可在 Actions 页面手动运行。欢迎反馈问题和提交 Pull Request。
 
 项目采用 [MIT 许可证](LICENSE)，允许使用、修改与分发；是否合并贡献由维护者决定。
 
