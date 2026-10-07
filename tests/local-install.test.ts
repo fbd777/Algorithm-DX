@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -65,7 +65,8 @@ test('downloaded project starts from another cwd, creates self once and preserve
 });
 
 test('Windows shortcut points at downloaded directory, supports custom names and refuses collisions', { skip: process.platform !== 'win32' }, () => {
-  const temp = mkdtempSync(join(tmpdir(), 'dx-shortcut-'));
+  // CI may expose TEMP through an 8.3 alias; PowerShell expands script paths.
+  const temp = realpathSync.native(mkdtempSync(join(tmpdir(), 'dx-shortcut-')));
   const quote = (value: string) => "'" + value.replaceAll("'", "''") + "'";
   try {
     const desktop = join(temp, '桌面 with spaces');
