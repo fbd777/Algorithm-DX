@@ -32,7 +32,7 @@
 - **最新改动**：[下载 main 分支 ZIP](https://github.com/fbd777/Algorithm-DX/archive/refs/heads/main.zip)，内容可能领先于发布版本。
 - **运行环境**：[Node.js 官方下载](https://nodejs.org/en/download)。Windows 用户选择对应架构的安装程序（通常为 x64 MSI），保留加入 PATH 的默认选项。
 
-当前提供源码包，不是独立 EXE 安装包；需先安装 Node.js。更新前请备份并保留自己的数据，详见[更新说明](docs/local-install.md#更新移动和多份项目)。
+当前提供源码包，需先安装 Node.js。更新前请备份并保留自己的数据，详见[更新说明](docs/local-install.md#更新移动和多份项目)。
 
 ## 快速开始
 
