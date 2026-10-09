@@ -75,4 +75,10 @@ export interface ProblemRating {
   contestId: number;
   index: string;
   rating: number;
+  /**
+   * 题目的官方标签（CF 的 `problemset.problems` 原样带回）。
+   * 老缓存（`cf:problemset-ratings:v1`）里没有这个字段 —— 读取方必须把它当
+   * 「没有标签信息」处理，而不是「这道题没有标签」。
+   */
+  tags?: readonly string[];
 }

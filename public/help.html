@@ -11,13 +11,14 @@
     <a class="btn btn-ghost" href="/">AC 记录</a>
     <a class="btn btn-ghost" href="/circle.html">题友圈</a>
     <a class="btn btn-ghost" href="/dx.html">DX Rating</a>
+    <a class="btn btn-ghost" href="/dan.html">随机抽题</a>
     <a class="btn btn-ghost" href="/stats.html">练习数据</a>
     <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
     <a class="btn btn-primary" href="/help.html" aria-current="page">使用指南</a>
   </nav>
 </header><main class="app help-page">
 <div class="help-heading"><span class="stats-eyebrow">GETTING STARTED</span><h2>使用指南</h2><p>从绑定第一个账号，到记录练习、看懂成绩与统计。</p><a class="btn btn-ghost" href="/?admin=1">前往账号管理 ↗</a></div>
-<nav class="help-toc" aria-label="教程目录"><a href="#start">首次使用</a><a href="#identity">名称与账号 ID</a><a href="#cookie">通用 Cookie 教程</a><a href="#luogu">洛谷数据范围</a><a href="#sync">同步与历史</a><a href="#cf-groups">CF 自建比赛</a><a href="#matiji">码蹄集同步</a><a href="#dx">用时与 B50</a><a href="#faq">常见问题</a><a href="#scoring">评分规则</a><a href="#validation">模型与验证</a></nav>
+<nav class="help-toc" aria-label="教程目录"><a href="#start">首次使用</a><a href="#identity">名称与账号 ID</a><a href="#cookie">通用 Cookie 教程</a><a href="#luogu">洛谷数据范围</a><a href="#sync">同步与历史</a><a href="#cf-groups">CF 自建比赛</a><a href="#matiji">码蹄集同步</a><a href="#dx">用时与 B50</a><a href="#faq">常见问题</a><a href="#scoring">评分规则</a><a href="#validation">模型与验证</a><a href="#dan">随机抽题</a></nav>
 <section id="start"><h2>1. 需要注册吗？</h2><p>Algorithm DX 是本机应用，没有单独的注册、密码或云端账号。你需要在 Codeforces、码蹄集等平台上已有账号；如果没有，先在对应平台官网完成注册。</p><ol><li>打开首页「账号管理」，在「这个账号属于谁」中选择「添加一个人」。</li><li>起一个本地显示名称，例如“我”，并勾选「标记为我」。同一个人的其他平台账号以后选这个名称，不要重复建人。</li><li>选择平台，按输入框下的提示填写用户名或数字 ID。需要登录 Cookie 的平台可按下面的通用 Cookie 教程填写。</li><li>点击「保存账号」，再点「同步最新数据」。保存不等于已经抓取了数据。</li></ol><p>添加关注的人：为对方建一个本地名称，不勾选「我」，再把其公开平台账号绑定到这个名称。关注仅影响本机展示，不会在原平台发起关注或通知对方。码蹄集登录后可查询网站允许查看的其他用户做题记录。</p></section>
 <section id="identity"><h2>2. 本地名称、昵称、账号 ID 有什么区别？</h2><p><strong>本地名称</strong>由你起，方便把同一个人的多个平台账号放在一起。<strong>平台用户名 / ID</strong>用来找到真正的账号，必须按个人主页地址填写。</p><ul><li>Codeforces：/profile/ 后的用户名。</li><li>AtCoder：/users/ 后的用户名。</li><li>力扣国际站 / 中国站：个人主页 /u/ 后的字符，不一定与显示昵称相同。</li><li>洛谷：/user/ 后的数字。</li><li>码蹄集：自己的个人主页通常不显示 ID，填写 Cookie 后点击「识别我的账号」即可自动填入；他人账号需已知 ID 或含 /other-homepage/ 的链接。</li></ul><p>不要填写密码、电子邮箱或完整主页网址来代替账号 ID。输入框下也会随平台显示对应例子。</p></section>
 <section id="cookie">
@@ -113,6 +114,15 @@
 <details><summary>当前模型与验证依据</summary><div id="curveDetails">正在读取…</div></details>
 <p>在 DX 页面「更多 → 本地回测 / 导出」可以查看当前与旧版完成度模型的对比，并下载汇总 JSON。回测会区分计时来源、练习类型和未完成次数；未知练习日期不进入训练过程分析，未满 B35／B15 不能代表充分训练。报告不自动调整评分参数，练习数据不会自动上传。</p>
 <p>实现及研究记录保存在项目 docs/cf-maimai-study.md、docs/backtesting.md；界面中的参数和验证状态来自服务端当前模型。</p>
+</section>
+<section id="dan"><h2>10. 随机抽题与段位認定</h2>
+<p>不想挑题的时候，让服务端替你抽一道。打开导航里的「随机抽题」，选一个档位即可。四个档位按 Codeforces 官方难度划分，覆盖 800–2600：初级 800–1100（限时 30 分钟）、中级 1200–1500（40 分钟）、上级 1600–2000（50 分钟）、超上级 2100–2600（60 分钟）。</p>
+<p>「每日一题」的难度<strong>按你当前的水平定</strong>：以你的等效 Rating（B50 榜的平均单题 rating × 50 —— 榜填满 50 格时就是 DX Rating 本身）为中心 ±200，而不是全段乱抽；还没有可计分的成绩（没 AC 过、或 AC 了没填过用时）时才退回 800–2600 全段。同一天怎么刷新都是同一道，限时 45 分钟。</p>
+<p>「随机抽题」还可以<strong>自定义条件</strong>：难度范围（800–3500，2600 以上是评分外推段）+ 标签（多选，<strong>含任一</strong>，来自 CF 题库自带的标签，页面上按题量排序）。条件只支持 Codeforces —— 抽题要有全量题库，目前只有 CF 有。点「按条件抽一道」之前同样看不到题号与链接。</p>
+<p><strong>点「开始做题」之前，这道题的题号和链接根本不在页面里</strong> —— 服务端在组装响应时就不下发，所以刷新、右键、F12 都提前看不到，你只看得到难度。点下去的那一刻同时起计时并跳转到 Codeforces。抽题按难度均匀取（不是按题目均匀），并会跳过本机已同步到的提交记录里出现过的题，包括只有 WA 的。</p>
+<p>「段位認定」是挑战模式：做完一道立刻抽下一道，一共四道，每道各自限时。四道全部在限时内通关才算通过；任何一道超时即判本轮失败并结束。一轮只能进行一个，中途可以放弃。挑战模式<strong>不发段位名</strong>，结算只给各题结果与总分 —— 给段位名的是固定选曲段，随机段位認定本来就不给。</p>
+<p>「随机段位認定」分<strong>小随机</strong>与<strong>大随机</strong>两种，rating 都不分段（覆盖 800–2600 整段），都是四道、都限时。<strong>区别只有一件事</strong>：小随机按 rating 均匀，每个难度值被抽到的机会一样；大随机按题目均匀，<strong>不保证</strong>难度分布 —— 800 分那一桶因为本身题最多，出现得比别的难度频繁。随机段位的<strong>限时随抽到的难度走</strong>（800 分给 30 分钟、2600 分给 60 分钟），不是一刀切。</p>
+<p>抽题与挑战的成绩走的是正常的计时练习那条链，所以<strong>照常计入 B50 与 DX Rating</strong>，可以在 DX 页面看到。最后请记住：这是自测，不是防作弊。开始做题之后你照样可以查题解、问 AI，这一点拦不住 —— 它唯一能保证的是你没法挑题。</p>
 </section>
 <footer class="project-support">
 <details>

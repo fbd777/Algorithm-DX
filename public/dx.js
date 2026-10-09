@@ -1,3 +1,4 @@
+import { cfRatingColor } from './cf-rating-colors.js';
 import { inferPracticeKind } from './practice-kind.js';
 import { startAutoSync } from './auto-sync.js';
 import { initDxTimer } from './dx-timer.js';
@@ -204,13 +205,32 @@ function statCard(label, value, sub, tone) {
   ]);
 }
 
+function ratingSummary(value, sub) {
+  const color = cfRatingColor(value);
+  const digits = el('strong', { 'aria-label': num1(value) },
+    [...num1(value).padStart(6, ' ')].map(character => el('span', {
+      class: character === '.' ? 'dx-rating-point' : 'dx-rating-digit',
+      'aria-hidden': 'true', 'data-empty': String(character === ' '),
+      text: character === ' ' ? '\u00a0' : character,
+    })));
+  return el('div', { class: 'dx-stat is-primary dx-board-rating' }, [
+    el('span', { class: 'dx-stat-label', text: '我的 DX Rating' }),
+    el('div', { class: 'dx-result-total dx-board-rating-frame', 'data-rating-tone': color.tone,
+      title: `DX Rating · ${color.label}（${color.range}）` }, [
+      el('div', { class: 'dx-result-total-label' }, [el('b', { text: 'DX' }), el('span', { text: 'RATING' })]),
+      el('div', { class: 'dx-result-total-score' }, [digits]),
+    ]),
+    el('span', { class: 'dx-stat-sub', text: sub }),
+  ]);
+}
+
 function renderSummary(data) {
   const { board, counts, slots } = data;
   clear($('dxSummary'));
   const oldSum = board.old.reduce((n, s) => n + (s.score?.rating ?? 0), 0);
   const newSum = board.current.reduce((n, s) => n + (s.score?.rating ?? 0), 0);
   $('dxSummary').append(
-    statCard('DX Rating', num1(board.rating), `旧题 ${num1(oldSum)} + 新题 ${num1(newSum)}`, 'primary'),
+    ratingSummary(board.rating, `旧题 ${num1(oldSum)} + 新题 ${num1(newSum)}`),
     statCard('旧题 Best 35', `${board.oldCount} / ${slots.old}`, `出题日期早于 ${data.year}-01-01 的题`),
     statCard('新题 Best 15', `${board.currentCount} / ${slots.current}`, `${data.year} 年发布的题目`),
     statCard('已记录成绩', `${counts.recorded} 题`, '未计时题目保留 AC 记录，无需补齐'),

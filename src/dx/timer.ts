@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { recordPractice, type PracticeInput } from './practice.ts';
 import { scoreProblem, buildBoard } from './rating.ts';
+import { advanceDanSessions } from './dan.ts';
 import { listDxEntries } from '../server/queries.ts';
 
 export interface PracticeTimer {
@@ -85,7 +86,7 @@ export function startTimer(db: DatabaseSync, input: { userId: number; problemId:
 }
 
 /** Called in the sync transaction: AC and its timed practice are committed together. */
-export function reconcileTimers(db: DatabaseSync, accountId?: number, now = nowSeconds()): void {
+export function reconcileTimers(db: DatabaseSync, accountId?: number, now = nowSeconds(), submissionsChecked = accountId !== undefined): void {
   transaction(db, () => {
     const timers = db.prepare(`SELECT * FROM practice_timers WHERE status='running' ${accountId === undefined ? '' : 'AND account_id=?'}`)
       .all(...(accountId === undefined ? [] : [accountId])) as unknown as PracticeTimer[];
@@ -95,9 +96,13 @@ export function reconcileTimers(db: DatabaseSync, accountId?: number, now = nowS
         db.prepare("UPDATE practice_timers SET status='cancelled',ended_at=? WHERE id=?").run(now,timer.id);
         continue;
       }
+      const dan = db.prepare(`SELECT d.claimed_at + COALESCE(d.limit_seconds,s.limit_seconds) AS deadline
+        FROM dan_stages d JOIN dan_sessions s ON s.id=d.session_id
+        WHERE d.timer_id=? AND s.status='active' AND d.outcome IS NULL`).get(timer.id);
+      const deadline = dan ? Number(dan.deadline) : timer.started_at + 86400;
       const ac = db.prepare(`SELECT submission_id,submitted_at FROM submissions WHERE account_id=? AND platform='codeforces'
         AND problem_id=? AND status='AC' AND submitted_at>? AND submitted_at<=? AND submitted_at<=?
-        ORDER BY submitted_at,submission_id LIMIT 1`).get(timer.account_id,timer.problem_id,timer.started_at,timer.started_at+86400,now);
+        ORDER BY submitted_at,submission_id LIMIT 1`).get(timer.account_id,timer.problem_id,timer.started_at,deadline,now);
       if (ac) {
         const endedAt = Number(ac.submitted_at);
         // A prior AC discovered by this very sync also identifies a repeat.
@@ -122,11 +127,15 @@ export function reconcileTimers(db: DatabaseSync, accountId?: number, now = nowS
           .run(endedAt,attempt.id,ac.submission_id,JSON.stringify(comparison),timer.id);
       }
       // Keep an overdue timer recoverable until synchronization has checked the account.
-      else if (accountId !== undefined && now > timer.started_at + 86400) {
+      else if (!dan && accountId !== undefined && now > timer.started_at + 86400) {
         db.prepare("UPDATE practice_timers SET status='expired',ended_at=? WHERE id=?").run(timer.started_at+86400,timer.id);
       }
     }
   });
+  // 挑战/段位認定：计时器落成 completed 之后，那一轮才知道自己第几道做完了。
+  // 放在事务外，且**不调 cancelTimer** —— 它会回调本函数，形成递归
+  // （超时取消在 advanceDanSessions 里直接置状态，见 dan.ts）。
+  advanceDanSessions(db, now, submissionsChecked ? accountId : undefined);
 }
 
 export function cancelTimer(db: DatabaseSync, userId: number, id: string) {

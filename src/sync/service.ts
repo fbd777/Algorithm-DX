@@ -145,7 +145,7 @@ export class SyncService {
         const before=Number(this.db.prepare('SELECT count(*) AS n FROM submissions WHERE account_id=?').get(account.id)!.n);
         this.repo.saveSubmissions(account.id,batch.submissions);
         if(account.platform==='codeforces'&&batch.groupReleases?.length)this.repo.saveProblemReleases(account.platform,batch.groupReleases);
-        if(account.platform==='codeforces')reconcileTimers(this.db,account.id);
+        if(account.platform==='codeforces')reconcileTimers(this.db,account.id,undefined,mode==='recent'&&!cached);
         const after=Number(this.db.prepare('SELECT count(*) AS n FROM submissions WHERE account_id=?').get(account.id)!.n);
         inserted=after-before;
         this.db.prepare('UPDATE sync_state SET last_success_at=unixepoch(),last_error=NULL,coverage_json=? WHERE account_id=?').run(encoded,account.id);

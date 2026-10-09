@@ -1,0 +1,302 @@
+/*
+ * 随机抽题 / 每日一题 / 段位認定。
+ *
+ * 只写这一页特有的布局：按钮、输入、顶栏、卡片底色一律复用 styles.css / ui.css 的
+ * 既有类与变量，避免又开一套视觉语言（这是 public/ 下每个页面一致的做法）。
+ */
+
+.dan-app { display: grid; gap: 18px; max-width: 1080px; }
+
+.dan-hero {
+  background: linear-gradient(140deg, var(--accent-soft), transparent 70%), var(--panel);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 22px 24px; display: grid; gap: 8px;
+}
+.dan-hero h2 { margin: 0; font-size: 1.35rem; }
+.dan-hero p { margin: 0; color: var(--text-dim); font-size: .88rem; line-height: 1.75; max-width: 74ch; }
+.dan-eyebrow { font-family: var(--mono); font-size: .7rem; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+
+.dan-msg { margin: 0; min-height: 1.1rem; font-size: .85rem; color: var(--muted); }
+.dan-msg.error { color: var(--bad); }
+
+.dan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.dan-wide { grid-column: 1 / -1; }
+
+.dan-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px; display: grid; gap: 12px; align-content: start;
+}
+.dan-card > header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dan-card h3 { margin: 0; font-size: 1rem; }
+.dan-chip {
+  font-size: .72rem; color: var(--muted); border: 1px solid var(--border);
+  border-radius: 999px; padding: 2px 9px; white-space: nowrap;
+}
+.dan-note { margin: 0; color: var(--text-dim); font-size: .85rem; line-height: 1.7; }
+
+.dan-difficulty {
+  font-family: var(--mono); font-size: 2.1rem; font-weight: 600; color: var(--accent);
+  line-height: 1.1; display: grid; gap: 2px;
+}
+.dan-difficulty small { font-family: var(--sans); font-size: .7rem; font-weight: 400; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+
+.dan-tiers { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.dan-tier {
+  display: grid; gap: 3px; text-align: left; font: inherit; cursor: pointer;
+  background: var(--bg-soft); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--radius-sm); padding: 11px 13px;
+  transition: border-color .12s, background .12s;
+}
+.dan-tier:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.dan-tier:disabled { opacity: .55; cursor: progress; }
+.dan-tier strong { font-size: .95rem; }
+.dan-tier small { color: var(--muted); font-size: .75rem; }
+/* 抽题分布是这两个模式唯一的区别，得在按钮上就说清楚，不能只写在正文里。 */
+.dan-tier-warn { color: var(--warn) !important; }
+.dan-note-sub { border-top: 1px dashed var(--border-soft); padding-top: 10px; }
+
+/* ---------- 自定义抽题（难度范围 + 标签） ---------- */
+.dan-custom { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-soft); }
+.dan-custom-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dan-custom-head h4 { margin: 0; font-size: .85rem; }
+.dan-custom-range { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dan-custom-range label { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--muted); }
+.dan-custom-range input {
+  width: 5.2em; font: inherit; font-size: .85rem; text-align: center; color: var(--text);
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 6px;
+}
+.dan-custom-range input:focus { outline: none; border-color: var(--accent); }
+.dan-custom-range .dan-note { margin: 0; }
+/* 标签云：题库有几十个标签，限高滚动，别把卡片撑成一整屏。 */
+.dan-tagcloud {
+  display: flex; flex-wrap: wrap; gap: 6px; max-height: 138px; overflow-y: auto;
+  border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 8px;
+}
+.dan-tag {
+  font: inherit; font-size: .72rem; cursor: pointer; color: var(--muted);
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.dan-tag:hover { border-color: var(--accent); color: var(--text); }
+.dan-tag.on { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.dan-tag small { margin-left: 4px; opacity: .65; }
+.dan-tagcount { font-size: .72rem; color: var(--muted); }
+
+.dan-active {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; display: grid; gap: 16px;
+}
+.dan-active-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.dan-active-head h2 { margin: 0; font-size: 1.1rem; }
+.dan-badge { font-size: .72rem; border-radius: 999px; padding: 2px 9px; border: 1px solid transparent; white-space: nowrap; }
+.dan-badge.ok { color: var(--ac); background: var(--ac-soft); border-color: rgba(63, 185, 80, .32); }
+.dan-badge.bad { color: var(--bad); background: var(--bad-soft); border-color: rgba(248, 81, 73, .32); }
+.dan-badge.idle { color: var(--warn); background: var(--warn-soft); border-color: rgba(210, 153, 34, .32); }
+
+.dan-progress { display: flex; gap: 6px; }
+.dan-pip { flex: 1; height: 6px; border-radius: 999px; background: var(--border); }
+.dan-pip.now { background: var(--accent); }
+.dan-pip.done { background: var(--ac); }
+.dan-pip.fail { background: var(--bad); }
+
+.dan-stage {
+  display: grid; gap: 10px; padding: 15px; background: var(--bg-soft);
+  border: 1px solid var(--border-soft); border-radius: var(--radius-sm);
+}
+.dan-stage-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dan-clock { font-family: var(--mono); font-size: 1.15rem; color: var(--text); }
+.dan-clock.urgent { color: var(--warn); }
+.dan-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.dan-history { display: grid; gap: 12px; }
+.dan-history-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dan-history-head h2 { margin: 0; font-size: 1rem; }
+.dan-run {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 13px 15px; display: grid; gap: 9px;
+}
+.dan-run-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.dan-total { font-family: var(--mono); font-size: 1.05rem; color: var(--accent); }
+.dan-run-list { display: grid; gap: 4px; font-size: .84rem; color: var(--text-dim); }
+.dan-run-row { display: grid; grid-template-columns: 2.4rem 1fr auto; gap: 10px; align-items: baseline; }
+.dan-run-row:last-child { padding-bottom: 0; }
+.dan-run-row a { color: var(--accent); text-decoration: none; font-family: var(--mono); }
+.dan-run-row a:hover { text-decoration: underline; }
+
+.dan-disclaimer {
+  margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.8;
+  border-top: 1px solid var(--border-soft); padding-top: 14px;
+}
+.dan-disclaimer strong { color: var(--text-dim); }
+
+/* ---------- 单题结算：底部那条段位進度带（结算皮复用 dx-result.css） ---------- */
+.dan-sheet-strip {
+  display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; align-items: baseline;
+  border-top: 1px solid var(--border-soft); padding-top: 10px; margin-top: 2px;
+  color: var(--text-dim); font-size: .8rem;
+}
+.dx-result-time .dx-result-limit { color: var(--muted); font-size: .62rem; }
+.dx-result-time { flex-direction: column; gap: 1px; }
+
+/* ---------- 段位認定结算页 ----------
+ * 版式照原作段位認定结算（Process/Course/CourseResultProcess）：
+ *   奶油色纸盘 + 两侧水引红绳 + 每道一个「可」印 + 竖排逐曲卡
+ *   （封面 / TRACK 0n / 难度 / 曲名 / 达成率 / LV / DX分数）
+ *   + 底部「十段」框 · 绿心 · 总达成率 · DX分数 + 「好」按钮。
+ * 逐个对得上素材包 resources.assets 里的 UI_DNM_*：那枚「可」印是 UI_DNM_Stamp 的
+ * Clear / NoClear，两侧绳子是 UI_DNM_Separator，底部那块是 UI_DNM_DaniData。
+ * 贴图没有从素材包里搬：全部用 CSS 重画，避免把游戏美术带进这个 MIT 仓库。
+ * 盘面用大圆角而不是正圆 —— 三道题卡竖排进正圆，在常见宽度下会挤到不可读。
+ */
+/* dialog 默认是 shrink-to-fit，只写 max-width 撑不宽，这里必须给 width。 */
+.dan-result { border: 0; padding: 0; background: transparent; width: min(1040px, 96vw); max-width: none; color: #2b1c12; }
+.dan-result::backdrop { background: #05070ce0; }
+.dan-result-sheet {
+  position: relative; overflow: auto; max-height: 90vh;
+  background: radial-gradient(120% 80% at 50% -10%, #fffaf0, #f7e7cd 55%, #eed7b4), #f7e7cd;
+  border: 9px solid #d8461f; border-radius: 46px;
+  box-shadow: inset 0 0 0 3px #f7b23f, inset 0 0 0 7px #d8461f, inset 0 0 60px #e8b98155, 0 22px 60px #000b;
+  padding: 20px 46px 22px; display: grid; gap: 11px; justify-items: center;
+}
+.dan-result[data-verdict="failed"] .dan-result-sheet { border-color: #8c2b1a; }
+.dan-result[data-verdict="abandoned"] .dan-result-sheet { border-color: #8a8578; }
+.dan-result-close { position: absolute; top: 12px; right: 18px; padding: 0; font-size: 1.5rem; line-height: 1; color: #a8623a; background: none; border: 0; cursor: pointer; z-index: 2; }
+.dan-result-close:hover { color: #d8461f; }
+.dan-result-title { margin: 2px 0 0; font-size: 1.85rem; font-weight: 900; letter-spacing: .22em; color: #33200f; text-shadow: 0 1px 0 #fff; }
+.dan-result-sub { margin: 0 0 2px; font-size: .8rem; color: #9a7550; text-align: center; }
+
+/* 两侧水引（UI_DNM_Separator）：上端蝴蝶结 + 竖绳 + 下端流苏 */
+.dan-cord { position: absolute; top: 16px; bottom: 16px; width: 30px; pointer-events: none; }
+.dan-cord.left { left: 14px; }
+.dan-cord.right { right: 14px; }
+.dan-cord::before {
+  content: ''; position: absolute; left: 50%; top: 34px; bottom: 36px; width: 5px; transform: translateX(-50%);
+  background: linear-gradient(#ff9d7a, #e0402a 40%, #c9381f); border-radius: 3px;
+}
+.dan-cord::after {
+  content: ''; position: absolute; left: 50%; top: 8px; width: 22px; height: 22px;
+  transform: translateX(-50%) rotate(45deg); background: #f2603c; border-radius: 4px 13px 6px 13px;
+  box-shadow: inset 0 0 0 2px #ffd2bd, 0 2px 5px #0004;
+}
+.dan-cord i {
+  position: absolute; left: 50%; bottom: 6px; width: 20px; height: 30px; transform: translateX(-50%);
+  background: repeating-linear-gradient(90deg, #e0402a 0 2px, transparent 2px 5px);
+}
+
+/* 逐曲卡：左边「可」印（UI_DNM_Stamp），右边一条难度配色的横卡 */
+.dan-result-tracks { display: grid; gap: 7px; width: 100%; margin: 0; padding: 0; list-style: none; }
+.dan-track { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 9px; align-items: center; }
+.dan-track-stamp {
+  box-sizing: border-box; width: 46px; height: 50px; display: grid; place-items: center;
+  font-size: 1.15rem; font-weight: 900; color: #e0402a; background: #fff8ec;
+  border: 3px solid #e0402a; border-radius: 2px; box-shadow: 0 2px 6px #0002;
+  clip-path: polygon(29% 0, 71% 0, 100% 29%, 100% 71%, 71% 100%, 29% 100%, 0 71%, 0 29%);
+}
+.dan-track[data-outcome="timeout"] .dan-track-stamp,
+.dan-track[data-outcome="interrupted"] .dan-track-stamp { color: #8f8f8f; border-color: #9d9d9d; background: #f4f1ec; }
+.dan-track[data-outcome="pending"] .dan-track-stamp { color: #b9b1a6; border-color: #bcb4a8; background: #f4f1ec; }
+.dan-track-card {
+  display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 6px 12px 6px 6px; border-radius: 9px; border: 2px solid #ffffff59;
+  background: linear-gradient(100deg, var(--tc1, #8b6cf0), var(--tc2, #4a2fb0));
+  box-shadow: 0 3px 10px #0005, inset 0 1px #ffffff40;
+}
+.dan-track-jacket {
+  width: 96px; height: 68px; border-radius: 5px; display: grid; place-items: center;
+  border: 2px solid #ffffff66; box-shadow: inset 0 0 22px #00000066;
+  background: linear-gradient(140deg, #ffffff2e, #00000059);
+}
+.dan-track-jacket b { font-family: var(--mono); font-size: 1.5rem; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 2px 5px #000b; }
+.dan-track-jacket small { font-family: var(--mono); font-size: .58rem; color: #ffffffcc; }
+.dan-track-info { display: grid; gap: 3px; min-width: 0; }
+.dan-track-head { display: flex; gap: 7px; align-items: baseline; flex-wrap: nowrap; min-width: 0; }
+.dan-track-no { font-family: var(--mono); font-size: .66rem; font-weight: 700; letter-spacing: .1em; color: #ffe0b0; white-space: nowrap; }
+.dan-track-diff { font-family: var(--mono); font-size: .64rem; color: #fff; background: #0000004d; border-radius: 3px; padding: 1px 6px; white-space: nowrap; }
+.dan-track-name { flex: 1; min-width: 0; font-size: .76rem; color: #ffffffeb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dan-track-ach { display: flex; align-items: baseline; gap: 8px; }
+.dan-track-achlabel { font-size: .68rem; color: #ffffffd0; }
+.dan-track-achvalue { font-family: var(--mono); font-size: 1.8rem; font-weight: 900; letter-spacing: -.02em; }
+.dan-track-judge { font-size: .62rem; color: #3a2418; background: #ffd76a; border-radius: 999px; padding: 1px 9px; white-space: nowrap; }
+.dan-track[data-outcome="timeout"] .dan-track-judge,
+.dan-track[data-outcome="interrupted"] .dan-track-judge,
+.dan-track[data-outcome="pending"] .dan-track-judge { background: #d9d2c8; }
+.dan-track-side { display: grid; gap: 4px; justify-items: end; }
+.dan-track-lv {
+  font-family: var(--mono); font-size: .95rem; font-weight: 900; color: #fff; padding: 0 8px;
+  border: 2px solid #ffffff8c; border-radius: 6px; background: linear-gradient(#7b5cff, #4628b8);
+}
+.dan-track-score { display: flex; align-items: baseline; gap: 5px; }
+.dan-track-score small { font-size: .58rem; color: #ffffffb8; }
+.dan-track-score b { font-family: var(--mono); font-size: .9rem; color: #fff; }
+.dan-track-limit { font-size: .56rem; color: #ffffff9e; }
+
+/* 金色描边数字：白→金→橙渐变填充 + 深棕描边（原作那套 DX 数字，用 CSS 重画）。
+ * 必须分两层，试过两条捷径都不行：
+ *   - 八向 text-shadow：偏移副本会把渐变填充整个盖住，只剩一圈棕边；
+ *   - -webkit-text-stroke + paint-order: stroke fill：Chromium 的 paint-order 只对
+ *     SVG 生效，HTML 文字上描边照样盖在填充之上，6px 描边直接吃掉整个笔画。
+ * 所以描边交给 ::before、渐变填充交给 ::after，两层叠在同一段文字（data-text）上。
+ * 这两点是抠图像素数数出来的，DOM 层面完全看不出来。 */
+.dan-gold { position: relative; display: inline-block; color: transparent; }
+.dan-gold::before, .dan-gold::after {
+  content: attr(data-text); position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none;
+}
+.dan-gold::before { color: #5a2a10; -webkit-text-stroke: 6px #5a2a10; }
+.dan-gold::after {
+  background: linear-gradient(#fffce8, #ffd85c 42%, #ff9a1f 68%, #ffd85c);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.dan-gold { filter: drop-shadow(0 4px 7px #00000059); }
+
+/* 底部：判定框 · 心 · 总达成率 / DX分数 */
+.dan-result-bottomrow { display: grid; grid-template-columns: minmax(140px, 210px) auto minmax(0, 1fr); gap: 16px; align-items: center; width: 100%; margin-top: 3px; }
+.dan-result-rankbox {
+  display: grid; place-items: center; gap: 1px; padding: 9px 12px; background: #fffdf6;
+  border: 3px solid #e6d3b4; border-radius: 13px; box-shadow: 0 3px 10px #00000030, inset 0 1px #fff;
+}
+.dan-result-rankbox strong { font-size: 2.35rem; font-weight: 900; letter-spacing: .05em; line-height: 1.1; color: #2b1c12; }
+.dan-result[data-verdict="failed"] .dan-result-rankbox strong { color: #b32a15; }
+.dan-result[data-verdict="abandoned"] .dan-result-rankbox strong { color: #7d8794; }
+.dan-result-rankbox small { font-size: .68rem; color: #9a7550; }
+.dan-result-life { position: relative; width: 88px; height: 88px; display: grid; place-items: center; }
+.dan-result-life::before {
+  content: '♥'; position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 92px; line-height: 1; color: #35c257;
+  -webkit-text-stroke: 5px #e6fbec; text-shadow: 0 4px 10px #0000004d;
+}
+.dan-result-life[data-state="bad"]::before { color: #9aa3ae; }
+.dan-result-life span { position: relative; z-index: 1; font-family: var(--mono); font-size: 1.2rem; font-weight: 900; color: #fff; text-shadow: 0 1px 4px #000000b3; }
+.dan-result-life span small { font-size: .62rem; opacity: .9; }
+.dan-result-totalblock { display: grid; gap: 2px; min-width: 0; }
+.dan-total-label { font-size: .74rem; font-weight: 700; letter-spacing: .1em; color: #8a5a2a; }
+.dan-total-ach { font-family: var(--mono); font-size: 2.5rem; font-weight: 900; letter-spacing: -.02em; }
+.dan-total-score { display: inline-flex; align-items: baseline; gap: 7px; justify-self: start; margin-top: 2px; padding: 2px 12px; border-radius: 6px; background: #fffdf699; border: 2px solid #e6d3b4; }
+.dan-total-score small { font-size: .64rem; color: #9a7550; }
+.dan-total-score b { font-family: var(--mono); font-size: 1rem; color: #2b1c12; }
+
+.dan-result-note { margin: 2px 0 0; max-width: 72ch; text-align: center; font-size: .78rem; line-height: 1.7; color: #96714b; }
+.dan-result-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; align-items: center; width: 100%; }
+.dan-result-ok {
+  min-width: 112px; padding: 7px 26px; font-size: 1.25rem; font-weight: 900; color: #fff; cursor: pointer;
+  background: linear-gradient(#ff9a4d, #e8542a); border: 3px solid #c9381f; border-radius: 11px;
+  box-shadow: 0 4px 0 #a32c15, 0 6px 14px #0000004d;
+}
+.dan-result-ok:active { transform: translateY(2px); box-shadow: 0 2px 0 #a32c15; }
+.dan-result-again { padding: 6px 16px; font-weight: 700; color: #7a4a20; background: #fffdf6; border: 2px solid #e6d3b4; border-radius: 9px; cursor: pointer; }
+
+@media (max-width: 860px) {
+  .dan-grid { grid-template-columns: 1fr; }
+  .dan-result-sheet { padding: 16px 22px 18px; border-radius: 30px; }
+  .dan-result-title { font-size: 1.4rem; }
+  .dan-cord { display: none; }
+  .dan-track-card { grid-template-columns: 62px minmax(0, 1fr); row-gap: 6px; }
+  .dan-track-jacket { width: 62px; height: 56px; }
+  .dan-track-jacket b { font-size: 1.15rem; }
+  .dan-track-side { grid-column: 2; grid-auto-flow: column; align-items: baseline; gap: 8px; justify-items: start; }
+  .dan-track-achvalue { font-size: 1.35rem; }
+  .dan-track-name { flex-basis: 8ch; }
+  .dan-result-bottomrow { grid-template-columns: 1fr; justify-items: center; }
+  .dan-total-ach { font-size: 2rem; }
+  .dan-total-score { justify-self: center; }
+  .dan-result-actions { justify-content: center; }
+}
