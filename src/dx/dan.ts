@@ -7,8 +7,10 @@ import { scoreProblem } from './rating.ts';
  * 随机抽题、每日一题与段位認定（挑战模式）—— **唯一实现**。
  *
  * 三件事共用同一套抽题引擎：
- *   1. **随机题目**：选一个档位，抽一道题（`single`）
- *   2. **每日一题**：按（日期 + 用户）确定性抽一道，同一天刷新不变（`daily`）
+ *   1. **随机题目**：选一个档位，抽一道题（`single`）；也可以**自定义**难度范围与
+ *      标签（tier=`custom`，条件存 `dan_sessions` 的区间列与 `tags_json`）
+ *   2. **每日一题**：按（日期 + 用户）确定性抽一道，同一天刷新不变（`daily`）；
+ *      难度带**按用户当前的等效 Rating 定**（±200，见 `dailyBand`）—— 不再全段乱抽
  *   3. **段位認定**：同一档位连抽 4 道、逐题限时，全部通关才算通过（`challenge`）
  *      四个难度档之外还有两个**随机段位**：小随机与大随机（`DAN_RANDOM_TIERS`）。
  *      注意口径：这是**挑战模式**，不发段位名。maimai 的随机段位認定同样不发段位名，
@@ -112,6 +114,26 @@ export const DAN_RANDOM_TIERS: readonly DanTier[] = [
     draw: 'problem', perStageLimit: true },
 ];
 
+/**
+ * **自定义单题抽题**：难度范围与标签由用户在请求里给（只支持 `kind='single'`），
+ * 区间不写死在这里 —— 真正的范围存 `dan_sessions.min_rating / max_rating`，
+ * 标签存 `dan_stages` 同表的 `tags_json`（迁移 020）。
+ *
+ * 上下界放宽到 3500（题库的真实上界）：这是用户自己的明确选择，与档位刻意停在
+ * 2600 的那条「评分口径」约束不是一回事 —— 但 2600 以上仍然是 T97 外推段，
+ * 页面上要说明。`perStageLimit` 与随机段位同理：1200 的题给 60 分钟、3500 的题
+ * 给 30 分钟都说不过去，限时随当题难度走。
+ */
+export const DAN_CUSTOM_TIER: DanTier = {
+  key: 'custom', name: '自定义', minRating: 800, maxRating: 3500, limitSeconds: 3600,
+  draw: 'rating', perStageLimit: true,
+};
+
+/** 自定义抽题允许的难度范围与标签数（越界在 API 层拒绝，这里只放口径）。 */
+export const DAN_CUSTOM_MIN_RATING = 800;
+export const DAN_CUSTOM_MAX_RATING = 3500;
+export const DAN_CUSTOM_MAX_TAGS = 8;
+
 /** 每日一题：全档位并集，一天一道。不属于可选的档位。 */
 export const DAILY_TIER: DanTier = {
   key: 'daily', name: '每日一题', minRating: 800, maxRating: 2600, limitSeconds: 2700, draw: 'rating',
@@ -121,6 +143,7 @@ export type DanKind = 'challenge' | 'single' | 'daily';
 
 export function danTier(key: string): DanTier | null {
   if (key === DAILY_TIER.key) return DAILY_TIER;
+  if (key === DAN_CUSTOM_TIER.key) return DAN_CUSTOM_TIER;
   return DAN_TIERS.find((tier) => tier.key === key)
     ?? DAN_RANDOM_TIERS.find((tier) => tier.key === key) ?? null;
 }
@@ -194,6 +217,12 @@ export interface DanPoolOptions {
   exclude: ReadonlySet<string>;
   /** 抽题分布，默认 `rating`（口径 B）。`problem` 只有「大随机段位」用。 */
   draw?: 'rating' | 'problem';
+  /**
+   * 标签条件（自定义抽题）：非空时只抽**至少带其中一个标签**的题（「含任一」）。
+   * 用「含任一」而不是「全含」—— 全含会把池子筛到只剩几道，「dp AND graphs AND
+   * greedy」这种交集在 11000 道的题库里也常常是空的。
+   */
+  tags?: ReadonlySet<string>;
 }
 
 /** 注入随机源，便于单测；生产用 crypto（服务端不可预测，见口径 A）。 */
@@ -209,11 +238,15 @@ const defaultRandomInt: DanRandomInt = (maxExclusive) => cryptoRandomInt(maxExcl
  */
 function groupDanCandidates(pool: readonly ProblemRating[], options: DanPoolOptions): ProblemRating[][] {
   const byRating = new Map<number, ProblemRating[]>();
+  const wantTags = options.tags !== undefined && options.tags.size > 0;
   for (const problem of pool) {
     if (!Number.isSafeInteger(problem.rating)) continue;
     if (problem.rating < options.minRating || problem.rating > options.maxRating) continue;
     const id = danProblemId(problem);
     if (options.exclude.has(id)) continue;
+    // 标签条件是「含任一」。老缓存（v1）里没有 tags 字段 —— 那是「没有标签信息」，
+    // 不是「这道题没有标签」，带标签条件时一律不抽，而不是把整池当无标签放行。
+    if (wantTags && !(problem.tags ?? []).some((tag) => options.tags!.has(tag))) continue;
     const bucket = byRating.get(problem.rating);
     if (bucket) bucket.push(problem); else byRating.set(problem.rating, [problem]);
   }
@@ -267,6 +300,7 @@ export function dailyDanCandidate(
 
 export type DanErrorCode =
   | 'TIER_UNKNOWN'
+  | 'CUSTOM_INVALID'
   | 'SESSION_ACTIVE'
   | 'SESSION_NOT_FOUND'
   | 'POOL_EMPTY'
@@ -287,6 +321,8 @@ export interface DanSessionRow {
   status: 'active' | 'cleared' | 'failed' | 'abandoned';
   started_at: number; finished_at: number | null;
   total_rating: number | null; settlement_json: string | null;
+  /** 自定义抽题的标签条件（JSON 数组）。NULL = 没有标签条件（迁移 020 之前的行也是）。 */
+  tags_json: string | null;
 }
 
 export interface DanStageRow {
@@ -346,35 +382,106 @@ export function danExcludedProblems(db: DatabaseSync, userId: number, sessionId?
   return exclude;
 }
 
+/** 每日一题难度带的半宽：以等效 Rating 为中心，上下各这个数。 */
+export const DAILY_BAND_RADIUS = 200;
+
+/** 每日一题的难度带：中心 + 上下界（已裁进档位并集 800–2600）。 */
+export interface DailyBand {
+  minRating: number;
+  maxRating: number;
+  /** 中心取整到 100 之后的值。null = 没有水平数据，退回全段。 */
+  center: number | null;
+  /** 榜算出的等效 Rating（未取整）。null = 没有任何可计分的成绩。 */
+  equivalentRating: number | null;
+}
+
+/**
+ * 每日一题的难度带：**以用户当前的等效 Rating 为中心 ±200**，裁进 [800, 2600]。
+ *
+ * 「不能太简单也不能太难」的落法。两端都裁进档位并集，于是中心特别低时带子
+ * 收敛到 [800, 800]（水平还不到 800 就从最简单的抽），特别高时收敛到 [2600, 2600]
+ * （2600 以上是 T97 外推段，档位刻意不往上走，每日一题跟着同一口径）。
+ *
+ * 中心**取整到 100**：题目 rating 本来就是 100 的倍数，取整不丢信息；更重要的是
+ * 这让带子对 DX Rating 的小幅漂移不敏感 —— 一次同步把分数从 1543 推到 1549，
+ * 今天的题不会跟着换；跨过 1550 这道坎（取整到 1600）才会挪一次
+ * （见 docs/dan.md「每日一题按水平定带」）。
+ */
+export function dailyBand(equivalentRating: number | null): DailyBand {
+  if (equivalentRating === null || !Number.isFinite(equivalentRating)) {
+    return { minRating: DAILY_TIER.minRating, maxRating: DAILY_TIER.maxRating, center: null, equivalentRating: null };
+  }
+  const center = Math.round(equivalentRating / 100) * 100;
+  return {
+    minRating: Math.min(Math.max(center - DAILY_BAND_RADIUS, DAILY_TIER.minRating), DAILY_TIER.maxRating),
+    maxRating: Math.max(Math.min(center + DAILY_BAND_RADIUS, DAILY_TIER.maxRating), DAILY_TIER.minRating),
+    center,
+    equivalentRating,
+  };
+}
+
 /** 每日一题：确定性抽题 + 该用户未见过。不落库（读接口不能写，见口径 A 与 GET 只读约束）。 */
 export function dailyProblem(
   db: DatabaseSync,
   userId: number,
   pool: readonly ProblemRating[],
   dateKey: string,
+  band?: { minRating: number; maxRating: number },
 ): ProblemRating | null {
+  const range = band ?? DAILY_TIER;
   return dailyDanCandidate(
     pool,
-    { minRating: DAILY_TIER.minRating, maxRating: DAILY_TIER.maxRating, exclude: danExcludedProblems(db, userId) },
+    { minRating: range.minRating, maxRating: range.maxRating, exclude: danExcludedProblems(db, userId) },
     `daily:${dateKey}:${userId}`,
   );
 }
 
+/** 自定义抽题的输入校验：范围与标签的**形状**。标签是否真实存在于题库，由 API 层对着题库验。 */
+function validateCustomInput(input: { minRating?: number; maxRating?: number; tags?: readonly string[] }): {
+  minRating: number; maxRating: number; tags: string[];
+} {
+  const { minRating, maxRating } = input;
+  if (!Number.isSafeInteger(minRating) || !Number.isSafeInteger(maxRating)) {
+    throw new DanError('CUSTOM_INVALID', '自定义抽题要给难度上下限（整数）');
+  }
+  if (minRating < DAN_CUSTOM_MIN_RATING || maxRating > DAN_CUSTOM_MAX_RATING || minRating > maxRating) {
+    throw new DanError('CUSTOM_INVALID',
+      `难度范围要在 ${DAN_CUSTOM_MIN_RATING}–${DAN_CUSTOM_MAX_RATING} 之内，且下限不超过上限`);
+  }
+  const tags = input.tags ?? [];
+  if (!Array.isArray(tags) || tags.length > DAN_CUSTOM_MAX_TAGS) {
+    throw new DanError('CUSTOM_INVALID', `标签最多选 ${DAN_CUSTOM_MAX_TAGS} 个`);
+  }
+  for (const tag of tags) {
+    if (typeof tag !== 'string' || !tag.trim() || tag.length > 40) throw new DanError('CUSTOM_INVALID', '标签格式无效');
+  }
+  return { minRating, maxRating, tags: tags.map((tag) => tag.trim()) };
+}
+
 export function createDanSession(
   db: DatabaseSync,
-  input: { id: string; userId: number; kind: DanKind; tierKey: string; now: number },
+  input: { id: string; userId: number; kind: DanKind; tierKey: string; now: number;
+    minRating?: number; maxRating?: number; tags?: readonly string[] },
 ): DanSessionRow {
-  const tier = input.kind === 'daily' ? DAILY_TIER : selectableDanTier(input.tierKey);
+  const custom = input.tierKey === DAN_CUSTOM_TIER.key;
+  if (custom && input.kind !== 'single') throw new DanError('CUSTOM_INVALID', '自定义条件只用于单题抽题');
+  const customRange = custom ? validateCustomInput(input) : null;
+  const tier = input.kind === 'daily' ? DAILY_TIER
+    : custom ? DAN_CUSTOM_TIER : selectableDanTier(input.tierKey);
   if (!tier) throw new DanError('TIER_UNKNOWN', '不认识的档位');
   return transaction(db, () => {
     if (activeDanSession(db, input.userId)) {
       throw new DanError('SESSION_ACTIVE', '已经有一轮认定没结束，先完成或放弃它');
     }
     db.prepare(`INSERT INTO dan_sessions
-      (id,user_id,tier,kind,stage_count,limit_seconds,min_rating,max_rating,status,started_at)
-      VALUES(?,?,?,?,?,?,?,?,'active',?)`)
+      (id,user_id,tier,kind,stage_count,limit_seconds,min_rating,max_rating,status,started_at,tags_json)
+      VALUES(?,?,?,?,?,?,?,?,'active',?,?)`)
       .run(input.id, input.userId, tier.key, input.kind, danStageCount(input.kind),
-        tier.limitSeconds, tier.minRating, tier.maxRating, input.now);
+        tier.limitSeconds,
+        customRange ? customRange.minRating : tier.minRating,
+        customRange ? customRange.maxRating : tier.maxRating,
+        input.now,
+        customRange && customRange.tags.length ? JSON.stringify(customRange.tags) : null);
     return sessionRow(db, input.id)!;
   });
 }
@@ -397,11 +504,14 @@ export function drawNextDanStage(
     if (stages.length > 0 && stages[stages.length - 1].outcome === null) return null;
     if (stages.length >= session.stage_count) return null;
     const tier = danTier(session.tier);
+    // 自定义抽题的标签条件存在轮次上（迁移 020）；没有条件或旧行（NULL）都不筛。
+    const tagList = session.tags_json ? JSON.parse(session.tags_json) as string[] : [];
     const options: DanPoolOptions = {
       minRating: session.min_rating,
       maxRating: session.max_rating,
       exclude: danExcludedProblems(db, session.user_id, session.id),
       draw: tier?.draw ?? 'rating',
+      tags: tagList.length ? new Set(tagList) : undefined,
     };
     // 每日一题必须**可复现**（同一天刷新不能换题），所以走哈希而不是随机数；
     // 其余模式走 crypto 随机数，服务端不可预测（口径 A）。
@@ -545,6 +655,8 @@ function finishDanSession(db: DatabaseSync, session: DanSessionRow, status: 'cle
     tier: session.tier, kind: session.kind, status,
     stageCount: session.stage_count, limitSeconds: session.limit_seconds,
     minRating: session.min_rating, maxRating: session.max_rating,
+    // 自定义抽题的标签条件进快照：历史记录要能按当时的条件解释。
+    tags: session.tags_json ? JSON.parse(session.tags_json) as string[] : null,
     startedAt: session.started_at, finishedAt: now, totalRating: total, stages: scores,
     selfReported: true,
   };
@@ -616,6 +728,8 @@ export interface DanSessionView {
   draw: 'rating' | 'problem';
   /** true = 逐题限时按当题难度，此时 `limitSeconds` 只是展示回退值。 */
   perStageLimit: boolean;
+  /** 自定义抽题的标签条件；null = 没有条件。 */
+  tags: string[] | null;
   stages: DanStageView[];
   /** 结算只出单题成绩与总分，**不发段位名**（随机段位認定是挑战模式）。 */
   selfReported: true;
@@ -639,6 +753,7 @@ export function danSessionView(db: DatabaseSync, session: DanSessionRow): DanSes
     totalRating: session.total_rating,
     draw: tier?.draw ?? 'rating',
     perStageLimit: tier?.perStageLimit === true,
+    tags: session.tags_json ? JSON.parse(session.tags_json) as string[] : null,
     stages: stageRows(db, session.id).map((stage) => danStageView(db, stage, session)),
     selfReported: true,
   };

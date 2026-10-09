@@ -7,6 +7,8 @@ import { cfRatingColor } from './cf-rating-colors.js';
  * 这一页刻意**不缓存、不预取**任何题目信息：服务端在下发时就不给未开始的题号与链接
  * （见 src/dx/dan.ts 的口径 A），所以这里也没有任何「提前藏起来」的东西可以做 ——
  * 唯一的入口是 beginStage()，它在 claim 成功之后才拿到 url 并立刻跳转。
+ * 自定义抽题（难度范围 + 标签）走同一条链：条件在 start 时发给服务端，
+ * 题目照样只在服务端抽，页面在这之前拿不到它是哪一道。
  *
  * 结算是两层的，和街机原作一致：
  *   - 每道题做完 → 单题结算（复用 public/dx-result.css 那套，与普通计时结算同一张皮）；
@@ -200,10 +202,18 @@ function renderIdle() {
   if (session) return;
 
   $('dailyDate').textContent = board.dateKey ?? '';
+  // 每日一题的难度带按水平定：把带子说出去，用户才知道「今天的难度为什么是这个」。
+  const bandNote = $('dailyBandNote');
+  const band = board.dailyBand;
+  if (band?.center !== null && band?.center !== undefined) {
+    bandNote.textContent = `按你的水平定带：等效 Rating ${Math.round(band.equivalentRating)} → ${band.minRating}–${band.maxRating}。同一天怎么刷新都是同一道。`;
+  } else {
+    bandNote.textContent = '还没有可以定带的成绩（B50 里没有带用时的 AC），先从 800–2600 全段抽。';
+  }
   const dailyHost = $('dailyDifficulty');
   dailyHost.replaceChildren();
   if (board.daily) dailyHost.append(difficultyNode(board.daily.difficulty, '今日难度 · CF 官方 Rating'));
-  else dailyHost.append(el('p', 'dan-note', board.poolReady ? '今天已经没有你没做过的题了。' : '题库缓存未就绪。'));
+  else dailyHost.append(el('p', 'dan-note', board.poolReady ? '这个难度带里今天已经没有你没做过的题了。' : '题库缓存未就绪。'));
   $('dailyStart').disabled = busy || !board.daily;
 
   const singles = $('singleTiers');
@@ -212,6 +222,41 @@ function renderIdle() {
   challenges.replaceChildren(...(board.tiers ?? []).map((tier) => tierButton(tier, 'challenge')));
   const randoms = $('randomTiers');
   randoms.replaceChildren(...(board.randomTiers ?? []).map((tier) => tierButton(tier, 'challenge')));
+  renderTagCloud();
+}
+
+/** 选中的标签存在这里（Set），点标签切换；空集 = 不限标签。 */
+const pickedTags = new Set();
+
+/** 计数器要说清两件事：选了几个、多个标签之间是「含任一」而不是「全含」。 */
+function syncTagCount() {
+  $('tagCount').textContent = pickedTags.size ? `已选 ${pickedTags.size} 个 · 含任一` : '不限标签';
+}
+
+function renderTagCloud() {
+  const host = $('tagCloud');
+  host.replaceChildren();
+  const tags = board.tags ?? [];
+  const known = new Set(tags.map((tag) => tag.name));
+  // 缓存刷新后个别标签可能消失：留在选择集里只会让服务端拒一次，先清掉。
+  for (const name of pickedTags) if (!known.has(name)) pickedTags.delete(name);
+  if (!tags.length) {
+    host.append(el('span', 'dan-note', board.poolReady ? '题库没有标签数据（缓存是老版本，点一次抽题后会自动刷新）。' : '题库缓存未就绪。'));
+  } else {
+    for (const tag of tags) {
+      const chip = el('button', 'dan-tag');
+      chip.type = 'button';
+      chip.append(document.createTextNode(tag.name), el('small', '', String(tag.count)));
+      chip.classList.toggle('on', pickedTags.has(tag.name));
+      chip.addEventListener('click', () => {
+        if (pickedTags.has(tag.name)) pickedTags.delete(tag.name); else pickedTags.add(tag.name);
+        chip.classList.toggle('on', pickedTags.has(tag.name));
+        syncTagCount();
+      });
+      host.append(chip);
+    }
+  }
+  syncTagCount();
 }
 
 function progressBar(session) {
@@ -272,8 +317,10 @@ function renderActive() {
   const head = el('div', 'dan-active-head');
   head.append(el('h2', '', `${session.tierName} · ${KIND_LABEL[session.kind] ?? session.kind}`));
   head.append(el('span', `dan-badge ${STATUS_CLASS[session.status] ?? 'idle'}`, STATUS_LABEL[session.status] ?? session.status));
-  head.append(el('span', 'dan-chip', `限时 ${fmtLimit(session.limitSeconds)} / 道`));
+  // 逐题限时的模式报不出确定的数，就照实说（与档位按钮同一句话）。
+  head.append(el('span', 'dan-chip', session.perStageLimit ? '限时按当题难度' : `限时 ${fmtLimit(session.limitSeconds)} / 道`));
   head.append(el('span', 'dan-chip', `${session.minRating}–${session.maxRating}`));
+  if (session.tags?.length) head.append(el('span', 'dan-chip', `标签：${session.tags.join('、')}`));
   host.append(head);
   host.append(progressBar(session));
 
@@ -339,6 +386,7 @@ function runCard(run) {
   head.append(el('strong', '', `${run.tierName} · ${KIND_LABEL[run.kind] ?? run.kind}`));
   head.append(el('span', `dan-badge ${STATUS_CLASS[run.status] ?? 'idle'}`, STATUS_LABEL[run.status] ?? run.status));
   head.append(el('span', 'dan-chip', new Date(run.startedAt * 1000).toLocaleString('zh-CN', { hour12: false })));
+  if (run.tags?.length) head.append(el('span', 'dan-chip', `标签：${run.tags.join('、')}`));
   if (run.totalRating !== null) head.append(el('span', 'dan-total', `总分 ${run.totalRating.toFixed(1)}`));
   card.append(head);
 
@@ -599,7 +647,8 @@ function openRunResult(run) {
   const limitText = run.perStageLimit ? '每道限时按当题难度' : `每道限时 ${fmtLimit(run.limitSeconds)}`;
   field(dialog, '.dan-result-sub').textContent =
     `${run.tierName} · ${run.minRating}–${run.maxRating} · 共 ${run.stageCount} 道 · ${limitText}`
-    + ` · ${run.draw === 'problem' ? '按题目均匀' : '按 rating 均匀'}`;
+    + ` · ${run.draw === 'problem' ? '按题目均匀' : '按 rating 均匀'}`
+    + (run.tags?.length ? ` · 标签 ${run.tags.join('、')}` : '');
 
   const tracks = field(dialog, '.dan-result-tracks');
   tracks.replaceChildren();
@@ -681,20 +730,27 @@ function openRunResult(run) {
 
   const again = field(dialog, '.dan-result-again');
   again.textContent = `再来一轮 · ${run.tierName}`;
-  again.onclick = () => { dialog.close(); startRun(run.kind === 'challenge' ? 'challenge' : 'single', run.tier); };
+  again.onclick = () => {
+    dialog.close();
+    if (run.kind === 'challenge') startRun('challenge', run.tier);
+    // 自定义轮次的「再来」要带上当时的条件，否则变成全段乱抽。
+    else if (run.tier === 'custom') startRun('single', 'custom',
+      { minRating: run.minRating, maxRating: run.maxRating, tags: run.tags ?? [] });
+    else startRun('single', run.tier);
+  };
 
   if (!dialog.open) dialog.showModal();
 }
 
 /* ---------------- 动作 ---------------- */
 
-async function startRun(kind, tier) {
+async function startRun(kind, tier, extra = {}) {
   if (busy) return;
   busy = true;
   setMessage(kind === 'daily' ? '正在抽今天的题…' : '正在抽题…');
   render();
   try {
-    await post('/api/dan/start', { userId, kind, tier, tz });
+    await post('/api/dan/start', { userId, kind, tier, tz, ...extra });
     await refresh();
     setMessage('');
   } catch (error) {
@@ -768,6 +824,13 @@ function tick(node) {
 }
 
 $('dailyStart').addEventListener('click', () => startRun('daily'));
+$('customStart').addEventListener('click', () => {
+  const min = Number($('customMin').value), max = Number($('customMax').value);
+  // 本地先拦一道明显的错（非数字、区间反了），省一次网络往返；真正的口径校验在服务端。
+  if (!Number.isFinite(min) || !Number.isFinite(max)) { setMessage('难度上下限要是数字。', true); return; }
+  if (min > max) { setMessage('难度下限不能大于上限。', true); return; }
+  startRun('single', 'custom', { minRating: min, maxRating: max, tags: [...pickedTags] });
+});
 $('refresh').addEventListener('click', () => refresh().catch((error) => setMessage(error.message, true)));
 
 boot()

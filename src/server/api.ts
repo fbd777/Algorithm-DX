@@ -74,6 +74,7 @@ import { localBacktestReport } from '../dx/backtest.ts';
 import { startTimer, timerState, cancelTimer, reconcileTimers } from '../dx/timer.ts';
 import {
   DAILY_TIER,
+  DAN_CUSTOM_TIER,
   DAN_RANDOM_TIERS,
   DAN_STAGES,
   DAN_TIERS,
@@ -89,6 +90,7 @@ import {
   danProblemUrl,
   danSessionView,
   danStageLimitOf,
+  dailyBand,
   dailyProblem,
   drawNextDanStage,
   type DanKind,
@@ -723,6 +725,40 @@ function danTimerRequestId(sessionId: string, stageIndex: number): string {
 }
 
 /**
+ * 用户当前的「等效 Rating」：B50 榜的平均单题 rating × 50。
+ *
+ * 为什么不直接用 DX Rating（50 格之和）：榜没填满时那个数是**求和**口径 ——
+ * 四道 1700 分的题总分只有 ~136，拿它当每日一题的难度带中心会让带子整天贴着 800。
+ * 「单题 rating × 50 = 等效 CF Rating」是评分模型自己的锚（rating.ts）；
+ * 平均口径在榜填满 50 格时与 DX Rating **完全相等**，不满时是诚实的水平估计。
+ * 与 /api/dx 同一套分板规则（本年度出题的进 b15，其余进 b35，未出题日期按旧题）。
+ */
+function danEquivalentRating(db: DatabaseSync, userId: number): number | null {
+  const entries = listDxEntries(db, userId, DX_PLATFORM);
+  const year = new Date().getFullYear();
+  const until = yearStartSeconds(year + 1);
+  const eligible = entries.filter((e) => e.releasedAt === null || e.releasedAt < until);
+  const board = buildBoard(eligible, yearStartSeconds(year));
+  const filled = board.oldCount + board.currentCount;
+  if (!filled || !(board.rating > 0)) return null;
+  return (board.rating / filled) * PROBLEM_RATING_DIVISOR;
+}
+
+/** 题库的标签清单（名字 + 题量），按题量降序给前端做选择器；空标签不收。 */
+function danTagCatalog(pool: readonly ProblemRating[]): { name: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const problem of pool) {
+    for (const tag of problem.tags ?? []) {
+      if (!tag) continue;
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+/**
  * 抽题面板与记录页的只读视图。
  *
  * **只下发难度**：`daily` 与 `active` 里没 claim 过的题都不含题号与链接（见 dan.ts 口径 A）。
@@ -734,7 +770,9 @@ function danOverview(ctx: ApiContext, userId: number, tzOffsetMinutes: number): 
   const pool = cachedProblemRatings(new Repository(ctx.db));
   const now = Math.floor(Date.now() / 1000);
   const dateKey = danDateKey(now, tzOffsetMinutes);
-  const daily = pool ? dailyProblem(ctx.db, userId, pool, dateKey) : null;
+  // 每日一题的难度带按用户当前的等效 Rating 定（没有水平数据时退回全段）。
+  const band = dailyBand(danEquivalentRating(ctx.db, userId));
+  const daily = pool ? dailyProblem(ctx.db, userId, pool, dateKey, band) : null;
   const active = activeDanSession(ctx.db, userId);
   return {
     status: 200,
@@ -745,8 +783,11 @@ function danOverview(ctx: ApiContext, userId: number, tzOffsetMinutes: number): 
       randomTiers: DAN_RANDOM_TIERS.map((tier) => ({ key: tier.key, name: tier.name, minRating: tier.minRating,
         maxRating: tier.maxRating, limitSeconds: tier.limitSeconds, draw: tier.draw,
         perStageLimit: tier.perStageLimit === true })),
-      dailyTier: { name: DAILY_TIER.name, minRating: DAILY_TIER.minRating, maxRating: DAILY_TIER.maxRating,
-        limitSeconds: DAILY_TIER.limitSeconds },
+      customTier: { key: DAN_CUSTOM_TIER.key, minRating: DAN_CUSTOM_TIER.minRating,
+        maxRating: DAN_CUSTOM_TIER.maxRating, perStageLimit: DAN_CUSTOM_TIER.perStageLimit === true },
+      dailyBand: { minRating: band.minRating, maxRating: band.maxRating,
+        center: band.center, equivalentRating: band.equivalentRating },
+      tags: pool ? danTagCatalog(pool) : [],
       stageCount: DAN_STAGES,
       dateKey,
       serverNow: now,
@@ -953,12 +994,24 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           const input = objectBody(body), userId = positiveInt(input, 'userId');
           const kind = text(input, 'kind', 20) as DanKind;
           if (!['challenge', 'single', 'daily'].includes(kind)) throw new BadRequest('抽题模式无效');
+          const tierKey = kind === 'daily' ? DAILY_TIER.key : text(input, 'tier', 40);
           const now = Math.floor(Date.now() / 1000), db = ctx.openWrite();
+          // 自定义抽题：先抓题库把标签验掉，再建轮次 —— 标签写错时不该留下半截轮次。
+          // 范围与标签个数的形状校验在 createDanSession 里（DanError → 400）。
+          let pool: ProblemRating[] | null = null;
+          let custom: { minRating: number; maxRating: number; tags: string[] } | undefined;
+          if (tierKey === DAN_CUSTOM_TIER.key) {
+            pool = await danPool(db);
+            const requested = Array.isArray(input.tags) ? input.tags.filter((t): t is string => typeof t === 'string') : [];
+            const known = new Set(pool.flatMap((problem) => [...(problem.tags ?? [])]));
+            const unknown = requested.filter((tag) => !known.has(tag));
+            if (unknown.length) throw new BadRequest(`题库里没有这些标签：${unknown.join('、')}`);
+            custom = { minRating: Number(input.minRating), maxRating: Number(input.maxRating), tags: requested };
+          }
           const sessionId = newDanSessionId();
           // 先建轮次再抽题：抽题要题库（可能触发一次网络抓取），失败时不该留下半截状态。
-          const session = createDanSession(db, { id: sessionId, userId, kind,
-            tierKey: kind === 'daily' ? DAILY_TIER.key : text(input, 'tier', 40), now });
-          const pool = await danPool(db);
+          const session = createDanSession(db, { id: sessionId, userId, kind, tierKey, now, ...custom });
+          pool ??= await danPool(db);
           const drawn = drawNextDanStage(db, { sessionId, pool, now, dateKey: danDateKey(now, tzFromBody(input)) });
           // 只回难度。题号与链接留到 claim 那一次（口径 A）。
           return { status: 200, body: { session: danSessionView(db, session), poolSize: pool.length,

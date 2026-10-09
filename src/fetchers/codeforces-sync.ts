@@ -13,7 +13,7 @@ const PROBLEMSET_URL = 'https://codeforces.com/api/problemset.problems';
  * 全量题库的缓存键。导出是为了让调用方（读接口、测试）能直接定位这份缓存，
  * 而不必在别处硬编码同一个字符串。
  */
-export const PROBLEM_RATINGS_CACHE_KEY = 'cf:problemset-ratings:v1';
+export const PROBLEM_RATINGS_CACHE_KEY = 'cf:problemset-ratings:v2';
 const RATINGS_CACHE_KEY = PROBLEM_RATINGS_CACHE_KEY;
 const RATINGS_TTL_SECONDS = 6 * 3600;
 
@@ -75,7 +75,9 @@ export class CodeforcesSyncFetcher extends CodeforcesFetcher {
     const rows:ProblemRating[]=[];
     for(const p of problems){
       if(!Number.isSafeInteger(p?.contestId)||typeof p?.index!=='string'||!Number.isSafeInteger(p?.rating))continue;
-      rows.push({contestId:p.contestId,index:p.index,rating:p.rating});
+      // 标签原样带走（自定义抽题按它筛）。非字符串的一律丢掉，不让脏数据进缓存。
+      const tags=Array.isArray(p.tags)?p.tags.filter((t:any):t is string=>typeof t==='string'):[];
+      rows.push({contestId:p.contestId,index:p.index,rating:p.rating,tags});
     }
     this.cache.set(RATINGS_CACHE_KEY,rows,RATINGS_TTL_SECONDS);
     return rows;

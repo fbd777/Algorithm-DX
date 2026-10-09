@@ -55,6 +55,33 @@
 .dan-tier-warn { color: var(--warn) !important; }
 .dan-note-sub { border-top: 1px dashed var(--border-soft); padding-top: 10px; }
 
+/* ---------- 自定义抽题（难度范围 + 标签） ---------- */
+.dan-custom { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-soft); }
+.dan-custom-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dan-custom-head h4 { margin: 0; font-size: .85rem; }
+.dan-custom-range { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dan-custom-range label { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--muted); }
+.dan-custom-range input {
+  width: 5.2em; font: inherit; font-size: .85rem; text-align: center; color: var(--text);
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 6px;
+}
+.dan-custom-range input:focus { outline: none; border-color: var(--accent); }
+.dan-custom-range .dan-note { margin: 0; }
+/* 标签云：题库有几十个标签，限高滚动，别把卡片撑成一整屏。 */
+.dan-tagcloud {
+  display: flex; flex-wrap: wrap; gap: 6px; max-height: 138px; overflow-y: auto;
+  border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 8px;
+}
+.dan-tag {
+  font: inherit; font-size: .72rem; cursor: pointer; color: var(--muted);
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.dan-tag:hover { border-color: var(--accent); color: var(--text); }
+.dan-tag.on { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.dan-tag small { margin-left: 4px; opacity: .65; }
+.dan-tagcount { font-size: .72rem; color: var(--muted); }
+
 .dan-active {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 20px; display: grid; gap: 16px;

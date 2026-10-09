@@ -30,7 +30,7 @@
 <section class="dan-grid" id="idle" hidden>
   <article class="dan-card">
     <header><h3>每日一题</h3><span class="dan-chip" id="dailyDate"></span></header>
-    <p class="dan-note">从四个档位的并集里按当天日期确定性抽取：同一天怎么刷新都是同一道。</p>
+    <p class="dan-note" id="dailyBandNote">按你的水平定难度带，同一天怎么刷新都是同一道。</p>
     <div id="dailyDifficulty"></div>
     <div class="dan-actions"><button class="btn btn-primary" id="dailyStart" type="button">开始今日一题</button></div>
   </article>
@@ -38,6 +38,19 @@
     <header><h3>随机抽题</h3><span class="dan-chip">单题 · 计时</span></header>
     <p class="dan-note">按 rating 均匀抽取，不是按题目均匀 —— 否则「初级」会几乎全是 800 分。抽完只显示难度。</p>
     <div class="dan-tiers" id="singleTiers"></div>
+    <div class="dan-custom">
+      <div class="dan-custom-head"><h4>自定义条件</h4><span class="dan-chip">难度范围 + 标签</span></div>
+      <div class="dan-custom-range">
+        <label>难度
+          <input type="number" id="customMin" min="800" max="3500" step="100" value="800" inputmode="numeric">
+          <span>–</span>
+          <input type="number" id="customMax" min="800" max="3500" step="100" value="2600" inputmode="numeric">
+        </label>
+        <span class="dan-note">800–3500 · 2600 以上是外推段</span>
+      </div>
+      <div class="dan-tagcloud" id="tagCloud"></div>
+      <div class="dan-actions"><span class="dan-tagcount" id="tagCount">不限标签</span><button class="btn btn-primary" id="customStart" type="button">按条件抽一道</button></div>
+    </div>
   </article>
   <article class="dan-card dan-wide">
     <header><h3>段位認定</h3><span class="dan-chip">挑战模式 · 连续 4 道 · 逐题限时</span></header>

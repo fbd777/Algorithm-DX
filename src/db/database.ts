@@ -24,6 +24,7 @@ const MIGRATIONS: readonly { appliesWhenAtMost: number; file: string }[] = [
   { appliesWhenAtMost: 16, file: './migrations/017-group-source-evidence.sql' },
   { appliesWhenAtMost: 17, file: './migrations/018-dan.sql' },
   { appliesWhenAtMost: 18, file: './migrations/019-dan-random.sql' },
+  { appliesWhenAtMost: 19, file: './migrations/020-dan-custom.sql' },
 ];
 export const SCHEMA_VERSION = MIGRATIONS.length;
 

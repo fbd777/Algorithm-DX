@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { openDatabase, Repository } from '../src/db/database.ts';
 import { submission } from '../src/fetchers/common.ts';
 import { reconcileTimers, startTimer } from '../src/dx/timer.ts';
-import { listPractice } from '../src/dx/practice.ts';
-import { scoreProblem } from '../src/dx/rating.ts';
+import { listPractice, recordPractice } from '../src/dx/practice.ts';
+import { scoreProblem, lookupT97 } from '../src/dx/rating.ts';
 import { listDxEntries } from '../src/server/queries.ts';
 import { handleApi, WRITE_ROUTES } from '../src/server/api.ts';
 import { PROBLEM_RATINGS_CACHE_KEY } from '../src/fetchers/codeforces-sync.ts';
@@ -28,6 +28,7 @@ import {
   danProblemId,
   danSessionView,
   danTier,
+  dailyBand,
   dailyDanCandidate,
   drawDanCandidate,
   drawNextDanStage,
@@ -328,6 +329,218 @@ test('danDateKey 按给定时区换算日期', () => {
   const epoch = Date.parse('2026-10-08T16:30:00Z') / 1000;
   assert.equal(danDateKey(epoch, 480), '2026-10-09');
   assert.equal(danDateKey(epoch, 0), '2026-10-08');
+});
+
+test('每日一题难度带：以等效 Rating 为中心 ±200，中心取整到 100，两端裁进 800–2600', () => {
+  // 没有水平数据：退回全段（老行为）。
+  assert.deepEqual(dailyBand(null), { minRating: 800, maxRating: 2600, center: null, equivalentRating: null });
+  // 常规：1543 → 1500 → [1300, 1700]。
+  const band = dailyBand(1543);
+  assert.deepEqual([band.minRating, band.maxRating, band.center], [1300, 1700, 1500]);
+  // 取整到 100 让带子对分数的小幅漂移不敏感：1543 与 1549 同带（都取整到 1500）。
+  assert.deepEqual([dailyBand(1549).minRating, dailyBand(1549).maxRating], [1300, 1700]);
+  // 但跨过 1550 这道坎（四舍五入到 1600）带子就会挪 —— 这是「按水平定带」的代价。
+  assert.deepEqual([dailyBand(1550).minRating, dailyBand(1550).maxRating], [1400, 1800]);
+  // 水平很低：两端都裁到 800，带子收敛成 [800, 800]，而不是空集。
+  assert.deepEqual([dailyBand(48).minRating, dailyBand(48).maxRating], [800, 800]);
+  assert.deepEqual([dailyBand(300).minRating, dailyBand(300).maxRating], [800, 800]);
+  // 水平很高：2600 以上是外推段，带子收敛到 [2600, 2600]。
+  assert.deepEqual([dailyBand(2940).minRating, dailyBand(2940).maxRating], [2600, 2600]);
+  // 边界附近不越界。
+  assert.deepEqual([dailyBand(900).minRating, dailyBand(900).maxRating], [800, 1100]);
+  assert.deepEqual([dailyBand(2500).minRating, dailyBand(2500).maxRating], [2300, 2600]);
+});
+
+test('每日一题落在难度带里，且带子换了题也换', () => {
+  // 全段池子（800–2600 各若干道），验证「带」真的约束了抽取。
+  const pool = [...at(800, 10, 1), ...at(1200, 10, 100), ...at(1500, 10, 200), ...at(1900, 10, 300), ...at(2400, 10, 400)];
+  const band = dailyBand(1543); // → [1300, 1700]，池子里只有 1500 落在带内。
+  const picked = dailyDanCandidate(pool,
+    { minRating: band.minRating, maxRating: band.maxRating, exclude: ANY }, 'daily:2026-10-09:1')!;
+  assert.equal(picked.rating, 1500);
+  // 换一个中心（2100 → [1900, 2300]，带内只有 1900）就抽到别的难度。
+  const higher = dailyBand(2100);
+  const other = dailyDanCandidate(pool,
+    { minRating: higher.minRating, maxRating: higher.maxRating, exclude: ANY }, 'daily:2026-10-09:1')!;
+  assert.equal(other.rating, 1900);
+});
+
+test('标签过滤是「含任一」：多个标签取并集，没选的标签抽不到', () => {
+  const pool = [
+    { contestId: 1, index: 'A', rating: 1200, tags: ['dp'] },
+    { contestId: 2, index: 'A', rating: 1200, tags: ['math'] },
+    { contestId: 3, index: 'A', rating: 1200, tags: ['graphs', 'dp'] },
+    { contestId: 4, index: 'A', rating: 1200, tags: ['greedy'] },
+  ];
+  const options = { minRating: 800, maxRating: 2600, exclude: ANY };
+  // 单标签：只抽带这个标签的。
+  for (let i = 0; i < 200; i += 1) {
+    const picked = drawDanCandidate(pool, { ...options, tags: new Set(['dp']) })!;
+    assert.ok(picked.tags!.includes('dp'), `抽到了不带 dp 的题：${danProblemId(picked)}`);
+  }
+  // 两个标签取并集：dp ∪ math = 1,2,3 号题，4 号（greedy）绝不该出现。
+  const seen = new Set();
+  for (let i = 0; i < 500; i += 1) {
+    const picked = drawDanCandidate(pool, { ...options, tags: new Set(['dp', 'math']) })!;
+    seen.add(danProblemId(picked));
+    assert.notEqual(danProblemId(picked), '4:A');
+  }
+  assert.deepEqual([...seen].sort(), ['1:A', '2:A', '3:A'], '并集应当覆盖三个题号');
+  // 池子里没有任何题带这个标签：如实报「没题」，而不是放开条件。
+  assert.equal(drawDanCandidate(pool, { ...options, tags: new Set(['nonexistent']) }), null);
+  // 老缓存（v1，没有 tags 字段）：带标签条件时一律不抽，不把「没有标签信息」当成「没有标签」。
+  const legacy = pool.map(({ contestId, index, rating }) => ({ contestId, index, rating }));
+  assert.equal(drawDanCandidate(legacy, { ...options, tags: new Set(['dp']) }), null);
+  // 不给 tags 字段 = 不筛（所有档位、随机段位、每日一题都走这条）。
+  assert.ok(drawDanCandidate(legacy, options));
+});
+
+test('自定义单题抽题：条件落库、抽题遵守范围与标签、限时随当题难度', () => {
+  const s = setup();
+  try {
+    createDanSession(s.db, { id: 's1', userId: s.user, kind: 'single', tierKey: 'custom',
+      now: 1_000_000, minRating: 1200, maxRating: 1900, tags: ['dp', 'graphs'] });
+    const session = s.db.prepare('SELECT * FROM dan_sessions WHERE id=?').get('s1') as { tier: string; min_rating: number; max_rating: number; tags_json: string };
+    assert.equal(session.tier, 'custom');
+    assert.deepEqual([session.min_rating, session.max_rating], [1200, 1900]);
+    assert.deepEqual(JSON.parse(session.tags_json), ['dp', 'graphs']);
+
+    const pool = [
+      { contestId: 1, index: 'A', rating: 800, tags: ['dp'] },        // 低于下限
+      { contestId: 2, index: 'A', rating: 1200, tags: ['greedy'] },   // 范围内但标签不符
+      { contestId: 3, index: 'A', rating: 1500, tags: ['dp'] },       // ✓
+      { contestId: 4, index: 'A', rating: 1900, tags: ['graphs', 'dp'] }, // ✓
+      { contestId: 5, index: 'A', rating: 2400, tags: ['dp'] },       // 高于上限
+    ];
+    for (let i = 0; i < 300; i += 1) {
+      const drawn = drawNextDanStage(s.db, { sessionId: 's1', pool, now: 1_000_000 + i, dateKey: '2026-10-09' });
+      if (!drawn) break;
+      assert.ok(drawn.difficulty >= 1200 && drawn.difficulty <= 1900, `抽到范围外：${drawn.difficulty}`);
+      assert.ok(['3:A', '4:A'].includes(drawn.problem_id), `抽到标签不符的题：${drawn.problem_id}`);
+      // 限时随当题难度：1500 → 40 分钟、1900 → 50 分钟，而不是 session 回退值 60 分钟。
+      assert.equal(drawn.limit_seconds, danLimitForRating(drawn.difficulty));
+      // 单题抽完就结束，清场再抽（单题模式 stage_count=1，抽下一道前先结算这道）。
+      s.db.prepare("UPDATE dan_stages SET outcome='cleared' WHERE id=?").run(drawn.id);
+      s.db.prepare("UPDATE dan_sessions SET status='active' WHERE id='s1'").run();
+      if (i >= 2) break;
+    }
+    const view = viewOf(s, 's1');
+    assert.equal(view.tierName, '自定义');
+    assert.deepEqual(view.tags, ['dp', 'graphs']);
+    assert.equal(view.perStageLimit, true);
+  } finally { s.db.close(); }
+});
+
+test('自定义抽题的条件校验：只允许单题模式，范围与标签个数有边界', () => {
+  const s = setup();
+  try {
+    // 挑战模式不许自定义：四道连抽的「段位」是固定口径，不跟自定义条件混。
+    assert.throws(() => createDanSession(s.db, { id: 's1', userId: s.user, kind: 'challenge',
+      tierKey: 'custom', now: 1, minRating: 1200, maxRating: 1900 }),
+      (error: unknown) => error instanceof DanError && error.code === 'CUSTOM_INVALID');
+    // 上下限必填。
+    assert.throws(() => createDanSession(s.db, { id: 's2', userId: s.user, kind: 'single', tierKey: 'custom', now: 1 }),
+      (error: unknown) => error instanceof DanError && error.code === 'CUSTOM_INVALID');
+    // 范围越界（上界 3500 是题库真实上界）。
+    assert.throws(() => createDanSession(s.db, { id: 's3', userId: s.user, kind: 'single', tierKey: 'custom',
+      now: 1, minRating: 1200, maxRating: 9900 }),
+      (error: unknown) => error instanceof DanError && error.code === 'CUSTOM_INVALID');
+    assert.throws(() => createDanSession(s.db, { id: 's4', userId: s.user, kind: 'single', tierKey: 'custom',
+      now: 1, minRating: 700, maxRating: 1900 }),
+      (error: unknown) => error instanceof DanError && error.code === 'CUSTOM_INVALID');
+    // 下限大于上限。
+    assert.throws(() => createDanSession(s.db, { id: 's5', userId: s.user, kind: 'single', tierKey: 'custom',
+      now: 1, minRating: 1900, maxRating: 1200 }),
+      (error: unknown) => error instanceof DanError && error.code === 'CUSTOM_INVALID');
+    // 标签个数有上限（防把请求撑爆）。
+    assert.throws(() => createDanSession(s.db, { id: 's6', userId: s.user, kind: 'single', tierKey: 'custom',
+      now: 1, minRating: 1200, maxRating: 1900, tags: Array.from({ length: 9 }, (_, i) => `t${i}`) }),
+      (error: unknown) => error instanceof DanError && error.code === 'CUSTOM_INVALID');
+    // 合法输入照常建轮次。
+    createDanSession(s.db, { id: 's7', userId: s.user, kind: 'single', tierKey: 'custom',
+      now: 1, minRating: 1200, maxRating: 1900, tags: ['dp'] });
+    assert.equal(activeDanSession(s.db, s.user)!.tier, 'custom');
+  } finally { s.db.close(); }
+});
+
+test('API：自定义抽题带标签，题库不认识的标签直接拒', async () => {
+  const s = setup();
+  try {
+    const pool = [
+      { contestId: 1, index: 'A', rating: 1300, tags: ['dp'] },
+      { contestId: 2, index: 'A', rating: 1500, tags: ['dp', 'graphs'] },
+      { contestId: 3, index: 'A', rating: 1700, tags: ['math'] },
+    ];
+    s.db.prepare('INSERT INTO fetch_cache(cache_key,payload,expires_at) VALUES(?,?,unixepoch()+3600)')
+      .run(PROBLEM_RATINGS_CACHE_KEY, JSON.stringify(pool));
+    const ctx = { db: s.db, dbPath: ':memory:', platforms: ['codeforces'], envFile: 'unused',
+      openWrite: () => s.db, syncJobs: { checkTimer: () => {}, timerCheckState: () => null } as never };
+    const call = (method: string, pathname: string, params: Record<string, string> = {}, body?: unknown) =>
+      handleApi(ctx, { method, pathname, params: new URLSearchParams(params), body });
+
+    // 不认识的标签：400，且不留下半截轮次。
+    const bad = await call('POST', '/api/dan/start', {},
+      { userId: s.user, kind: 'single', tier: 'custom', minRating: 1200, maxRating: 1900, tags: ['dp', 'no-such-tag'] });
+    assert.equal(bad.status, 400);
+    assert.match(String((bad.body as { error: string }).error), /no-such-tag/);
+    assert.equal(activeDanSession(s.db, s.user), null, '被拒的请求不得留下轮次');
+
+    // 合法条件：建轮次、抽题、视图带标签；下发的仍然只有难度。
+    const started = await call('POST', '/api/dan/start', {},
+      { userId: s.user, kind: 'single', tier: 'custom', minRating: 1200, maxRating: 1600, tags: ['dp'] });
+    assert.equal(started.status, 200);
+    const body = started.body as { session: { tier: string; tags: string[]; minRating: number; maxRating: number };
+      stage: { difficulty: number } | null };
+    assert.equal(body.session.tier, 'custom');
+    assert.deepEqual(body.session.tags, ['dp']);
+    assert.ok([1300, 1500].includes(body.stage!.difficulty), '只能抽到 dp 且在 1200–1600 的题');
+    const json = JSON.stringify(body);
+    assert.ok(!json.includes('codeforces.com'), '自定义抽题同样不发链接');
+    assert.ok(!/"problemId":"\d+:/i.test(json), '自定义抽题同样不发题号');
+
+    // 面板：标签清单带题量、按题量降序；难度带字段在。
+    const panel = (await call('GET', '/api/dan', { user: String(s.user), tz: '480' })).body as {
+      tags: { name: string; count: number }[]; dailyBand: { minRating: number; maxRating: number; center: number | null } };
+    assert.deepEqual(panel.tags, [{ name: 'dp', count: 2 }, { name: 'graphs', count: 1 }, { name: 'math', count: 1 }]);
+    assert.deepEqual(panel.dailyBand, { minRating: 800, maxRating: 2600, center: null, equivalentRating: null },
+      '没有可计分成绩时难度带退回全段');
+  } finally { s.db.close(); }
+});
+
+test('API：有计分成绩时，每日一题按等效 Rating 定带', async () => {
+  const s = setup();
+  try {
+    // 两道 1500 分的 AC，用时正好压在 T97（S 档，factor = 1.0）：
+    // 单题 rating = 1500/50 = 30.0，等效 Rating = 平均单题 × 50 = 1500。
+    const t97 = Math.round(lookupT97(1500).seconds);
+    for (let i = 0; i < 2; i += 1) {
+      s.repo.saveSubmissions(s.account, [submission('codeforces', {
+        submission_id: `eq-${i}`, problem_id: `90${i}:A`, problem_title: '定带用的题',
+        status: 'AC', submitted_at: 1_700_000 + i, difficulty: 1500,
+      })]);
+      recordPractice(s.db, { userId: s.user, platform: 'codeforces', problemId: `90${i}:A`,
+        seconds: t97, outcome: 'ac', practiceKind: 'first', timingSource: 'manual', manual: true,
+        title: '定带用的题', attemptedAt: 1_700_000 + i });
+    }
+    const entries = listDxEntries(s.db, s.user, 'codeforces');
+    assert.equal(entries.length, 2, '练习记录要能被 listDxEntries 读到');
+    assert.ok(entries.every((entry) => entry.recordedSeconds !== null), '用时要被读到');
+
+    // 池子只在带内 [1300,1700] 放题：带子生效的话只能抽到这两档。
+    const pool = [...at(1300, 5, 1), ...at(1700, 5, 100), ...at(2400, 5, 200)];
+    s.db.prepare('INSERT INTO fetch_cache(cache_key,payload,expires_at) VALUES(?,?,unixepoch()+3600)')
+      .run(PROBLEM_RATINGS_CACHE_KEY, JSON.stringify(pool));
+    const ctx = { db: s.db, dbPath: ':memory:', platforms: ['codeforces'], envFile: 'unused',
+      openWrite: () => s.db, syncJobs: { checkTimer: () => {}, timerCheckState: () => null } as never };
+    const panel = (await handleApi(ctx, { method: 'GET', pathname: '/api/dan',
+      params: new URLSearchParams({ user: String(s.user), tz: '480' }), body: undefined })).body as {
+      dailyBand: { minRating: number; maxRating: number; center: number | null; equivalentRating: number };
+      daily: { difficulty: number } | null };
+    // 等效 1500 → 带 [1300, 1700]。
+    assert.equal(panel.dailyBand.center, 1500);
+    assert.deepEqual([panel.dailyBand.minRating, panel.dailyBand.maxRating], [1300, 1700]);
+    assert.ok([1300, 1700].includes(panel.daily!.difficulty), '每日一题必须落在带内');
+  } finally { s.db.close(); }
 });
 
 test('口径 A：「开始做题」之前，下发数据里没有题号、题名与链接', () => {

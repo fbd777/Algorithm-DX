@@ -54,6 +54,30 @@ CF 题目的官方 rating 都是 100 的倍数（实测全量 11152 道有评级
 
 每日一题用 `(日期, 用户)` 做种子确定性抽取：同一天怎么刷新都是同一道，换一天才换题。随机抽题与挑战模式用 `crypto.randomInt`，服务端抽、服务端存。
 
+### 每日一题按水平定带
+
+每日一题的难度带**以用户当前的等效 Rating 为中心 ±200**，而不是从 800–2600 全段乱抽：
+
+- **等效 Rating = B50 榜的平均单题 rating × 50**。这是评分模型自己的锚（`rating.ts`：「单题 rating × 50 = 等效 CF Rating」）。榜填满 50 格时它与 DX Rating **完全相等**；没填满时它仍是诚实的水平估计 —— 直接拿 DX Rating（求和口径）当中心的话，四道 1700 分的题总分只有 ~136，带子会整天贴着 800。
+- 中心**取整到 100** 再定带：一次同步把分数从 1543 推到 1549，今天的题不会跟着换；跨过 1550（取整到 1600）带子才挪一次。这是「按水平定带」的代价，如实写在这里。
+- 两端裁进档位并集 [800, 2600]。于是水平很低时带子收敛到 [800, 800]（从最简单的抽），很高时收敛到 [2600, 2600] —— 2600 以上是 T97 外推段（`productionReady: false`），档位刻意不往上走，每日一题跟同一口径。
+- 榜上没有任何可计分的成绩（没 AC 过、或 AC 了但从没填过用时）时退回全段，卡片上说明原因。
+- 抽取本身仍是 `(日期, 用户)` 确定性：同一天刷新不变（见上一节）。
+
+页面上把带子说出去：「等效 Rating 2199 → 2000–2400」，用户才知道今天的难度为什么是这个。
+
+### 自定义单题抽题
+
+「随机抽题」卡片里除了四个档位，还有**自定义条件**：难度范围（800–3500）+ 标签（多选，**含任一**）。
+
+- 平台锁定 Codeforces：抽题的前提是有**全量题库**，现在只有 CF 有（`problemset.problems`，11152 道）；洛谷/码题集只有提交抓取，没有本地题库，而且洛谷的难度是另一套制。标签数据来自同一份抓取 —— CF 的 `problemset.problems` 本来就带每道题的 tags，**不新增数据源**（缓存键从 v1 升到 v2 就是为了把 tags 带上）。
+- 上界放到 3500（题库的真实上界）：这是用户自己的明确选择。2600 以上仍是外推段，表单上写明了。
+- 标签取**并集**（「含任一」）而不是交集：「dp AND graphs AND greedy」这种交集在 11000 道的题库里也常常是空的。最多选 8 个；题库里没有的标签在 start 时直接拒（400），不会静默抽错。
+- **口径 A 原样适用**：条件在 start 时发给服务端，题目照样只在服务端抽；点「开始做题」之前，页面里没有这道题的题号与链接。排除做过的题用同一套 `danExcludedProblems`。
+- 条件**落库**（`dan_sessions` 的区间列本来就有，标签进 020 新加的 `tags_json`），并冻结进结算快照 —— 历史记录能按当时的条件解释，「再来一轮 · 自定义」也会带上当时的条件。
+- 限时随当题难度走（与随机段位同一套 `danLimitForRating`），不是统一值。
+- 自定义只用于**单题**模式：挑战（段位認定）的档位是固定口径，不跟自定义条件混。
+
 ## 口径 A：开始做题之前，链接不下发
 
 **未开始的题目，题号与链接根本不会离开服务端。** 这不是「发到前端再藏起来」，而是服务端在组装响应时就不给：
@@ -179,12 +203,12 @@ active ──四道全部通关──→ cleared（通过）
 
 ## 数据
 
-迁移 `018-dan.sql` 与 `019-dan-random.sql`，两张表：
+迁移 `018-dan.sql`、`019-dan-random.sql` 与 `020-dan-custom.sql`，两张表：
 
-- `dan_sessions`：一轮认定（`tier`、`kind` ∈ `challenge` / `single` / `daily`、`stage_count`、`limit_seconds`、`min_rating` / `max_rating`、`status` ∈ `active` / `cleared` / `failed` / `abandoned`、起止时间、`total_rating`、结算快照 `settlement_json`）。
+- `dan_sessions`：一轮认定（`tier`、`kind` ∈ `challenge` / `single` / `daily`、`stage_count`、`limit_seconds`、`min_rating` / `max_rating`、`status` ∈ `active` / `cleared` / `failed` / `abandoned`、起止时间、`total_rating`、结算快照 `settlement_json`、`tags_json`（020 新增，自定义抽题的标签条件，NULL = 无条件））。
 - `dan_stages`：一道题（`session_id`、`stage_index`、`problem_id`、`difficulty`、`drawn_at`、`claimed_at`、`timer_id`、`outcome` ∈ `cleared` / `timeout` / `interrupted`、`seconds`、`score_json`、`limit_seconds`（019 新增，NULL = 沿用 session 的档位统一限时））。
 
-两个随机段位**没有新增 `kind`**：它们沿用 `kind='challenge'`，靠 `tier`（`small_random` / `big_random`）区分。加一个 `kind` 值要重建整张 `dan_sessions`（SQLite 改不了 `CHECK`），而 `tier` 已经能表达这件事，019 也就只需要一条加列。
+两个随机段位**没有新增 `kind`**：它们沿用 `kind='challenge'`，靠 `tier`（`small_random` / `big_random`）区分。加一个 `kind` 值要重建整张 `dan_sessions`（SQLite 改不了 `CHECK`），而 `tier` 已经能表达这件事，019 也就只需要一条加列。**自定义抽题同理**：`tier='custom'`，难度范围复用本来就有的 `min_rating` / `max_rating` 两列，020 只为标签加了一列。
 
 两个设计点：
 
@@ -195,8 +219,8 @@ active ──四道全部通关──→ cleared（通过）
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/dan?user=&tz=` | 抽题面板与记录页。档位表（`tiers`）、两个随机段位（`randomTiers`）、题库是否就绪、每日一题的**难度**、进行中的一轮、历史记录 |
-| POST | `/api/dan/start` | 开一轮：`{userId, kind, tier?, tz?}`。kind 为 `daily` 时忽略 tier |
+| GET | `/api/dan?user=&tz=` | 抽题面板与记录页。档位表（`tiers`）、两个随机段位（`randomTiers`）、标签清单（`tags`，带题量）、每日一题的难度带（`dailyBand`）、题库是否就绪、每日一题的**难度**、进行中的一轮、历史记录 |
+| POST | `/api/dan/start` | 开一轮：`{userId, kind, tier?, tz?}`。kind 为 `daily` 时忽略 tier。`tier='custom'`（仅 single）额外收 `minRating` / `maxRating`（800–3500）与 `tags`（≤8 个，题库里没有的直接 400） |
 | POST | `/api/dan/claim` | **唯一一次下发题号与链接**：`{userId, sessionId}`。幂等，重复点击返回同一道题 |
 | POST | `/api/dan/settle` | **只结算、不抽题**：`{userId}`。轮询用这条，所以出成绩会停在结算页上 |
 | POST | `/api/dan/next` | 结算已同步到的 AC 并抽下一道：`{userId, tz?}`。由「抽选下一题」触发 |
@@ -208,6 +232,6 @@ active ──四道全部通关──→ cleared（通过）
 
 ## 题库来源
 
-复用 `problemset.problems` 那份 6 小时缓存（`cf:problemset-ratings:v1`），**不新增数据源、不额外请求**。实测全量 11433 道题，其中 11152 道（97.5%）有官方 rating，上限 3500，不含 gym。各档位可用题量：初级 2312、中级 1875、上级 2578、超上级 2576；两个随机段位用的并集（800–2600）是 **9341** 道、19 个 rating 值（每个值都是 100 的倍数，最多的 800 分有 1104 道，最少的 2600 只有 347 道）。
+复用 `problemset.problems` 那份 6 小时缓存（`cf:problemset-ratings:v2`，v2 起**连 tags 一起缓存**，同一次抓取自带、不额外请求），**不新增数据源**。实测全量 11433 道题，其中 11152 道（97.5%）有官方 rating，上限 3500，不含 gym。各档位可用题量：初级 2312、中级 1875、上级 2578、超上级 2576；两个随机段位用的并集（800–2600）是 **9341** 道、19 个 rating 值（每个值都是 100 的倍数，最多的 800 分有 1104 道，最少的 2600 只有 347 道）。标签共 **38** 个（greedy 3560 / math 3483 / implementation 3020 / dp 2518 …）。
 
-缓存过期时 `POST` 那几条路径会触发一次抓取（约 1.5 MB），之后 6 小时内复用。
+缓存过期时 `POST` 那几条路径会触发一次抓取（约 1.5 MB），之后 6 小时内复用。**v1 老缓存里没有 tags**：带标签条件抽题时把它当「没有标签信息」处理（一律不抽），而不是「这道题没有标签」。
