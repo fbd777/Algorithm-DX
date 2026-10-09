@@ -612,16 +612,22 @@ function buildResultDialog() {
           <h2 class="dan-result-title" id="danRunTitle">段位認定</h2>
           <ol class="dan-result-tracks"></ol>
           <div class="dan-bottom">
-            <small class="dan-verdict-count"></small>
-            <img class="dan-verdict-img" alt="">
+            <div class="dan-verdict">
+              <img class="dan-verdict-img" alt="">
+              <small class="dan-verdict-count"></small>
+            </div>
             <div class="dan-life">
               <img class="dan-life-base" alt="">
               <span class="dan-life-count"></span>
             </div>
-            <span class="dan-total-label">总达成率</span>
-            <span class="dan-total-num"></span>
-            <img class="dan-dxscore-label" src="/assets/maimai/dxscore-label.png" alt="DX SCORE">
-            <span class="dan-dxscore-num"></span>
+            <div class="dan-total-row">
+              <span class="dan-total-label">总达成率</span>
+              <span class="dan-total-num"></span>
+            </div>
+            <div class="dan-dxscore-row">
+              <img class="dan-dxscore-label" src="/assets/maimai/dxscore-label.png" alt="DX SCORE">
+              <span class="dan-dxscore-num"></span>
+            </div>
           </div>
         </div>
       </div>
@@ -828,14 +834,15 @@ function openRunResult(run) {
     // 官方白框左上角那行小字（原作烘在边框贴图里，我们画边框所以自己写）。
     achBox.append(el('small', 'dan-track-achlabel', 'ACHIEVEMENT'));
     // 官方分数图集（按分数分色）+ 官方彩色「%」字形 —— 这是这一行最大的一块数字。
-    // 没有成绩时用白字族的「—」（numText 里没这个字形，会退回普通文字，不会静默丢字符）。
+    // 没有成绩时用白字族的「—」，**染深蓝**：白字族是纯白剪影，落在达成率那个白框上会看不见
+    // （numText 里没这个字形，会退回普通文字，不会静默丢字符）。
     const achValue = stage.achievement === null
-      ? numText('—', 'n90', 41)
+      ? numText('—', 'n90', 41, DX_NUM_COLOR)
       : achievementNumber(stage.achievement, 41);
     achValue.classList.add('dan-track-achvalue');
     achBox.append(achValue);
     frame.append(achBox);
-    // 官方的 でらっくスコア 那一格。
+    // 官方的 でらっくスコア 那一格改成**跟着题目放左边**（右边那一列只剩评级与限时）。
     const dxBox = el('div', 'dan-track-dxbox');
     dxBox.append(el('small', 'dan-track-dxlabel', 'DX分数'));
     // 我们的数字是单题 rating、不是 DX 分数比率，所以**不上分数色**（那三色专门留给达成率），
@@ -845,10 +852,10 @@ function openRunResult(run) {
       : numText(String(stage.rating.toFixed(1)), 'n26', 15, DX_NUM_COLOR);
     dx.classList.add('dan-track-dxnum');
     dxBox.append(dx);
-    frame.append(dxBox);
     item.append(frame);
+    item.append(dxBox);
 
-    // 官方的 JacketImage_S 那一格：我们抽的是 CF 题、没有曲绘，放题号比放装饰诚实。
+    // 官方的 JacketImage_S 那一格：我们抽的是 CF 题、没有曲绘，槽里放按档位色上色的题号。
     const [contest, index] = (stage.problemId ?? '').split(':');
     const jacket = el('div', 'dan-track-jacket');
     jacket.append(el('b', '', index || '?'), el('small', '', contest || '未开始'));
@@ -858,8 +865,10 @@ function openRunResult(run) {
     // **排在曲绘槽之后 append**：官方那张小牌就在 MusicJacket_Base 里、压在曲绘槽左上角上。
     item.append(el('span', 'dan-track-no', `STAGE ${String(stage.index).padStart(2, '0')}`));
 
-    // 官方的难度名牌那一格（官方烘的是 BASIC/ADVANCED/…）：放我们自己的档位区间。
-    item.append(el('span', 'dan-track-diff', color.range));
+    // 官方的难度名牌那一格（官方烘的是难度名 BASIC/ADVANCED/…）：写我们自己的档位 rating + CF 区间。
+    const diffTab = el('span', 'dan-track-diff');
+    diffTab.append(el('b', '', String(stage.difficulty)), el('small', '', color.range));
+    item.append(diffTab);
 
     // 题目名写在标题条上（两者坐标相同，都是边框内坐标）。
     frame.append(el('span', 'dan-track-name', stage.title ?? '—'));
@@ -875,10 +884,8 @@ function openRunResult(run) {
         stage.outcome === 'timeout' ? '超时' : stage.outcome === 'interrupted' ? '中断' : '未开始'));
     }
 
-    // 官方的 UI_Difficulty 那一格：CF 难度分。
-    const lv = el('span', 'dan-track-lv');
-    lv.append(numText(String(stage.difficulty), 'n26', 20));
-    item.append(lv);
+    // 右边一列只留两件：评级（上面）与限时（下面，用官方 DerakkuScore_NUM 那格的白牌）。
+    // CF 难度分挪进了难度名牌，所以这里不再单独占一格。
     item.append(el('small', 'dan-track-limit', `限时 ${fmtLimit(stage.limitSeconds)}`));
 
     tracks.append(item);
@@ -897,7 +904,7 @@ function openRunResult(run) {
   // 这里对应各道达成率之和与各道单题 rating 之和。
   const totalAchievement = scored.reduce((sum, stage) => sum + stage.achievement, 0);
   field(dialog, '.dan-total-num').replaceChildren(
-    scored.length ? achievementNumber(totalAchievement, 60) : numText('—', 'n90', 60));
+    scored.length ? achievementNumber(totalAchievement, 60) : numText('—', 'n90', 60, DX_NUM_COLOR));
   field(dialog, '.dan-dxscore-num').replaceChildren(
     numText(run.totalRating === null ? '—' : String(run.totalRating.toFixed(1)), 'n90', 26, DX_NUM_COLOR));
 
