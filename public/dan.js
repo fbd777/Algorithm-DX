@@ -604,24 +604,29 @@ function buildResultDialog() {
   dialog.setAttribute('aria-labelledby', 'danRunTitle');
   dialog.innerHTML = `<div class="dan-result-sheet">
     <button class="dan-result-close" type="button" aria-label="关闭结算">×</button>
-    <span class="dan-cord left" aria-hidden="true"><i></i></span>
-    <span class="dan-cord right" aria-hidden="true"><i></i></span>
-    <h2 class="dan-result-title" id="danRunTitle">段位認定</h2>
-    <p class="dan-result-sub"></p>
-    <ol class="dan-result-tracks"></ol>
-    <div class="dan-result-bottomrow">
-      <div class="dan-result-rankbox"><strong></strong><small></small></div>
-      <div class="dan-result-life"><span></span></div>
-      <div class="dan-result-totalblock">
-        <span class="dan-total-label">总达成率</span>
-        <strong class="dan-total-ach dan-gold"></strong>
-        <span class="dan-total-score"><small>DX分数</small><b></b></span>
+    <div class="dan-result-body">
+      <div class="dan-result-art">
+        <h2 class="dan-result-title" id="danRunTitle">段位認定</h2>
+        <p class="dan-result-sub"></p>
+        <ol class="dan-result-tracks"></ol>
+        <div class="dan-result-bottomrow">
+          <div class="dan-result-verdict">
+            <img class="dan-result-verdict-img" alt="">
+            <small class="dan-result-verdict-count"></small>
+          </div>
+          <div class="dan-result-life"><span></span></div>
+          <div class="dan-result-totalblock">
+            <span class="dan-total-label">总达成率</span>
+            <strong class="dan-total-ach dan-gold"></strong>
+            <span class="dan-total-score"><small>DX分数</small><b></b></span>
+          </div>
+        </div>
       </div>
-    </div>
-    <p class="dan-result-note"></p>
-    <div class="dan-result-actions">
-      <button class="dan-result-again" type="button"></button>
-      <button class="dan-result-ok" type="button">好</button>
+      <p class="dan-result-note"></p>
+      <div class="dan-result-actions">
+        <button class="dan-result-again" type="button"></button>
+        <button class="dan-result-ok" type="button">好</button>
+      </div>
     </div></div>`;
   document.body.append(dialog);
   field(dialog, '.dan-result-close').addEventListener('click', () => dialog.close());
@@ -644,6 +649,16 @@ function openRunResult(run) {
   const scored = cleared.filter((stage) => stage.achievement !== null);
 
   dialog.dataset.verdict = verdict;
+  // 底图用原作素材，按模式选：档位挑战是「段位認定」那一版，
+  // 小/大随机段位是「ランダム段位認定」那一版（原作本来就把这两件事分成两块屏）。
+  // 页头文字与两侧水引都烘焙在底图里，所以标题 h2 只留给读屏。
+  field(dialog, '.dan-result-art').dataset.art =
+    run.tier === 'small_random' || run.tier === 'big_random' ? 'random' : 'dani';
+  const verdictImg = field(dialog, '.dan-result-verdict-img');
+  verdictImg.src = run.status === 'cleared' ? '/assets/maimai/verdict-clear.png' : '/assets/maimai/verdict-fail.png';
+  verdictImg.alt = VERDICT_TEXT[run.status] ?? '中断';
+  field(dialog, '.dan-result-verdict-count').textContent = `${cleared.length} / ${run.stageCount} 道通关`;
+
   const limitText = run.perStageLimit ? '每道限时按当题难度' : `每道限时 ${fmtLimit(run.limitSeconds)}`;
   field(dialog, '.dan-result-sub').textContent =
     `${run.tierName} · ${run.minRating}–${run.maxRating} · 共 ${run.stageCount} 道 · ${limitText}`
@@ -656,7 +671,11 @@ function openRunResult(run) {
     const tone = TRACK_TONE[cfRatingColor(stage.difficulty).tone] ?? TRACK_TONE.violet;
     const item = el('li', 'dan-track');
     item.dataset.outcome = stage.outcome ?? 'pending';
-    item.append(el('span', 'dan-track-stamp', stage.outcome === 'cleared' ? '可' : '不可'));
+    // 可 / 不可 用原作那两枚印（UI_DNM_Icon_Result_01/02），不再用 CSS 画。
+    const stamp = el('img', 'dan-track-stamp');
+    stamp.src = stage.outcome === 'cleared' ? '/assets/maimai/stamp-clear.png' : '/assets/maimai/stamp-fail.png';
+    stamp.alt = stage.outcome === 'cleared' ? '通过' : '未通过';
+    item.append(stamp);
 
     const card = el('div', 'dan-track-card');
     card.style.setProperty('--tc1', tone[0]);
@@ -677,8 +696,10 @@ function openRunResult(run) {
 
     const achievement = el('div', 'dan-track-ach');
     achievement.append(el('span', 'dan-track-achlabel', '达成率'));
-    achievement.append(goldNode('dan-track-achvalue dan-gold',
-      stage.achievement === null ? '—' : `${stage.achievement.toFixed(4)}%`));
+    // 没有成绩时别套金色描边数字：6px 描边会把一个破折号画成一根小横杠。
+    achievement.append(stage.achievement === null
+      ? goldNode('dan-track-achvalue', '—')
+      : goldNode('dan-track-achvalue dan-gold', `${stage.achievement.toFixed(4)}%`));
     achievement.append(el('span', 'dan-track-judge',
       stage.outcome === 'cleared' ? (stage.rank ?? '通关')
         : stage.outcome === 'timeout' ? '超时' : stage.outcome === 'interrupted' ? '中断' : '未开始'));
@@ -696,9 +717,6 @@ function openRunResult(run) {
     tracks.append(item);
   }
 
-  field(dialog, '.dan-result-rankbox strong').textContent = VERDICT_TEXT[run.status] ?? '中断';
-  field(dialog, '.dan-result-rankbox small').textContent = `${cleared.length} / ${run.stageCount} 道通关`;
-
   // 原作这一格是显示剩余生命的心；我们没有生命值，用「通关几道」占这一格。
   const life = field(dialog, '.dan-result-life');
   life.dataset.state = run.status === 'cleared' ? 'ok' : 'bad';
@@ -712,6 +730,8 @@ function openRunResult(run) {
   const totalNode = field(dialog, '.dan-total-ach');
   totalNode.textContent = totalText;
   totalNode.dataset.text = totalText;
+  // 同理：四道全没成绩时这里是一个破折号，套上金色描边会变成一根横杠。
+  totalNode.classList.toggle('dan-gold', scored.length > 0);
   field(dialog, '.dan-total-score b').textContent = run.totalRating === null ? '—' : run.totalRating.toFixed(1);
 
   const deltas = run.stages.map((stage) => stage.comparison?.ratingDelta).filter((value) => typeof value === 'number');
