@@ -10,7 +10,7 @@ import { cfRatingColor } from './cf-rating-colors.js';
  *
  * 结算是两层的，和街机原作一致：
  *   - 每道题做完 → 单题结算（复用 public/dx-result.css 那套，与普通计时结算同一张皮）；
- *   - 三道打完 → 段位認定结算页（`合格`/`不合格` 印章 + 逐题卡 + 合计）。
+ *   - 四道打完 → 段位認定结算页（`合格`/`不合格` 印章 + 逐题卡 + 合计）。
  * 轮询只调 /api/dan/settle（只结算不抽题），所以出了成绩会停在结算上；
  * 下一道由用户在单题结算上点「抽选下一题」才抽（/api/dan/next）。
  */
@@ -182,7 +182,13 @@ function tierButton(tier, kind) {
   const button = el('button', 'dan-tier');
   button.type = 'button';
   button.append(el('strong', '', tier.name));
-  button.append(el('small', '', `${tier.minRating}–${tier.maxRating} · ${kind === 'challenge' ? `每道限时 ${fmtLimit(tier.limitSeconds)}` : `限时 ${fmtLimit(tier.limitSeconds)}`}`));
+  // 随机段位的限时随抽到的难度走，报不出一个确定的数字，就照实说。
+  const timing = tier.perStageLimit
+    ? '限时按当题难度'
+    : kind === 'challenge' ? `每道限时 ${fmtLimit(tier.limitSeconds)}` : `限时 ${fmtLimit(tier.limitSeconds)}`;
+  button.append(el('small', '', `${tier.minRating}–${tier.maxRating} · ${timing}`));
+  if (tier.draw === 'problem') button.append(el('small', 'dan-tier-warn', '按题目均匀 · 不保证难度分布'));
+  else if (tier.perStageLimit) button.append(el('small', 'dan-tier-warn', '按 rating 均匀 · 每个难度等概率'));
   button.disabled = busy;
   button.addEventListener('click', () => startRun(kind, tier.key));
   return button;
@@ -204,6 +210,8 @@ function renderIdle() {
   singles.replaceChildren(...(board.tiers ?? []).map((tier) => tierButton(tier, 'single')));
   const challenges = $('challengeTiers');
   challenges.replaceChildren(...(board.tiers ?? []).map((tier) => tierButton(tier, 'challenge')));
+  const randoms = $('randomTiers');
+  randoms.replaceChildren(...(board.randomTiers ?? []).map((tier) => tierButton(tier, 'challenge')));
 }
 
 function progressBar(session) {
@@ -434,7 +442,7 @@ function showStageSheet(pending) {
 
   field(dialog, '.dx-result-rank').textContent = stage.rank ?? (stage.outcome === 'timeout' ? '—' : '');
   field(dialog, '.dx-result-time strong').textContent = stage.seconds === null ? '—' : fmtHMS(stage.seconds);
-  field(dialog, '.dx-result-limit').textContent = `限时 ${Math.round(session.limitSeconds / 60)}:00`;
+  field(dialog, '.dx-result-limit').textContent = `限时 ${Math.round(stage.limitSeconds / 60)}:00`;
   field(dialog, '.dx-result-rating strong').textContent = String(stage.difficulty);
   field(dialog, '.dx-result-rating').lastElementChild.textContent = previous && score ? signed(score.rating - previous.rating, 1) : '';
 
@@ -475,7 +483,10 @@ function showStageSheet(pending) {
   strip.replaceChildren(
     el('span', '', `本轮 ${done.length} / ${session.stageCount} 完成`),
     el('span', '', `已累计 ${accumulated.toFixed(1)} 分`),
-    el('span', '', finished || done.length >= session.stageCount ? '三道已打完' : `下一道仍是${session.tierName}，限时 ${fmtLimit(session.limitSeconds)}`),
+    el('span', '', finished || done.length >= session.stageCount ? '本轮已打完'
+      // 随机段位下一道还没抽出来，限时是多少现在还不知道 —— 不编一个数字。
+      : session.perStageLimit ? '下一道限时按当题难度'
+        : `下一道仍是${session.tierName}，限时 ${fmtLimit(session.limitSeconds)}`),
   );
 
   const next = field(dialog, '.dx-result-next');
@@ -585,8 +596,10 @@ function openRunResult(run) {
   const scored = cleared.filter((stage) => stage.achievement !== null);
 
   dialog.dataset.verdict = verdict;
+  const limitText = run.perStageLimit ? '每道限时按当题难度' : `每道限时 ${fmtLimit(run.limitSeconds)}`;
   field(dialog, '.dan-result-sub').textContent =
-    `随机抽题 · ${run.tierName} ${run.minRating}–${run.maxRating} · 共 ${run.stageCount} 道 · 每道限时 ${fmtLimit(run.limitSeconds)}`;
+    `${run.tierName} · ${run.minRating}–${run.maxRating} · 共 ${run.stageCount} 道 · ${limitText}`
+    + ` · ${run.draw === 'problem' ? '按题目均匀' : '按 rating 均匀'}`;
 
   const tracks = field(dialog, '.dan-result-tracks');
   tracks.replaceChildren();
@@ -628,6 +641,7 @@ function openRunResult(run) {
     const score = el('span', 'dan-track-score');
     score.append(el('small', '', 'DX分数'), el('b', '', stage.rating === null ? '—' : stage.rating.toFixed(1)));
     side.append(score);
+    side.append(el('small', 'dan-track-limit', `限时 ${fmtLimit(stage.limitSeconds)}`));
     card.append(side);
     item.append(card);
     tracks.append(item);
@@ -643,7 +657,7 @@ function openRunResult(run) {
     document.createTextNode(String(cleared.length)), el('small', '', `/${run.stageCount}`));
 
   // 原作的「总达成率」是四首歌达成率之和、「DX分数」是四首 DX 分数之和；
-  // 这里对应三道达成率之和与三道单题 rating 之和。
+  // 这里对应各道达成率之和与各道单题 rating 之和。
   const totalAchievement = scored.reduce((sum, stage) => sum + stage.achievement, 0);
   const totalText = scored.length ? `${totalAchievement.toFixed(4)}%` : '—';
   const totalNode = field(dialog, '.dan-total-ach');
@@ -653,10 +667,15 @@ function openRunResult(run) {
 
   const deltas = run.stages.map((stage) => stage.comparison?.ratingDelta).filter((value) => typeof value === 'number');
   let note = run.status === 'cleared'
-    ? '三道都在限时内解出。每道题的成绩已经作为单题记录存进练习记录，并计入 B50。'
+    ? `${run.stageCount} 道都在限时内解出。每道题的成绩已经作为单题记录存进练习记录，并计入 B50。`
     : run.status === 'failed'
       ? `有一道超出了限时，本轮就此结束。超时那道没有成绩（计时器被取消、不生成练习记录）；已经通过的 ${cleared.length} 道照样计入 B50。`
       : `这一轮被中断或放弃，没有生成总成绩。已经通过的 ${cleared.length} 道照样计入 B50。`;
+  // 大随机段位不保证难度分布，这是它的定义而不是抽题出了 bug —— 必须说清楚。
+  if (run.draw === 'problem') {
+    note += ' 这一轮是大随机段位：抽题按题目均匀，难度分布就是题库的真实分布，'
+      + '所以「连着好几道都是同一个难度」是正常结果。';
+  }
   if (deltas.length) note += ` 本轮对 B50 总分的影响：${signed(Math.round(deltas.reduce((sum, value) => sum + value, 0) * 10) / 10)}。`;
   field(dialog, '.dan-result-note').textContent = note;
 

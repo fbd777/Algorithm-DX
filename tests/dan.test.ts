@@ -10,7 +10,9 @@ import { handleApi, WRITE_ROUTES } from '../src/server/api.ts';
 import { PROBLEM_RATINGS_CACHE_KEY } from '../src/fetchers/codeforces-sync.ts';
 import {
   DAILY_TIER,
+  DAN_RANDOM_TIERS,
   DAN_SESSION_TTL_SECONDS,
+  DAN_STAGES,
   DAN_TIERS,
   DanError,
   abandonDanSession,
@@ -22,11 +24,14 @@ import {
   danDateKey,
   danExcludedProblems,
   danHistory,
+  danLimitForRating,
   danProblemId,
   danSessionView,
+  danTier,
   dailyDanCandidate,
   drawDanCandidate,
   drawNextDanStage,
+  selectableDanTier,
 } from '../src/dx/dan.ts';
 
 function setup() {
@@ -101,6 +106,135 @@ test('抽题先均匀选 rating 值，再在桶内选 —— 与桶的大小无�
   assert.equal(drawDanCandidate([{ contestId: 6000, index: 'A', rating: 800 }, { contestId: 6001, index: 'A', rating: 1100 }], options, rng)!.rating, 1100);
   cursor = 0;
   assert.equal(drawDanCandidate(skew, options, () => 0)!.rating, 800);
+});
+
+test('大随机段位：按题目均匀，难度分布就是题库的真实分布', () => {
+  // 999 道 800 分 + 1 道 1100 分。小随机会把两个 rating 抽成五五开，
+  // 大随机按题目均匀，所以 800 占 99.9% —— 这才是「不保证难度分布」。
+  const skew = [...at(800, 999, 1), { contestId: 5000, index: 'A', rating: 1100 }];
+  const options = { minRating: 800, maxRating: 2600, exclude: ANY, draw: 'problem' as const };
+
+  let hits = 0;
+  for (let i = 0; i < 2000; i += 1) if (drawDanCandidate(skew, options)!.rating === 800) hits += 1;
+  const share = hits / 2000;
+  assert.ok(share > 0.97, `800 分的占比应当约 99.9%，实际 ${(share * 100).toFixed(1)}%`);
+
+  // 对照：同一题库上两个 rating 桶大小相等时，大随机变成五五开 —— 它只认题目数。
+  let small = 0;
+  const even = [...at(800, 500, 1), ...at(1100, 500, 5000)];
+  for (let i = 0; i < 600; i += 1) if (drawDanCandidate(even, options)!.rating === 800) small += 1;
+  assert.ok(Math.abs(small / 600 - 0.5) < 0.1, `桶大小相同时应接近五五开，实际 ${(small / 600 * 100).toFixed(1)}%`);
+
+  // 同一个随机序列，两种分布选出的不是同一道 —— 证明分支真的分开了。
+  // rating 均匀：先选桶（第 2 个 = 1100），再选桶内第 0 道。那个桶只有 1 道题，
+  // 按题目均匀时它在 1000 道里排最后，用同一个种子根本抽不到。
+  let cursor = 0;
+  const seq = () => [1, 0][cursor++] ?? 0;
+  assert.equal(drawDanCandidate(skew, { ...options, draw: 'rating' }, seq)!.rating, 1100,
+    'rating 均匀：1100 那个桶再小也有一半机会');
+  assert.equal(drawDanCandidate(skew, options, () => 1)!.rating, 800,
+    '题目均匀：第 2 道仍然是 800');
+});
+
+test('随机段位：不分段覆盖 800-2600，逐题限时按当题难度', () => {
+  for (const tier of DAN_RANDOM_TIERS) {
+    assert.equal(tier.minRating, 800);
+    assert.equal(tier.maxRating, 2600);
+    assert.equal(tier.perStageLimit, true, '随机段位必须逐题限时，一个统一限时对两头都不公平');
+    assert.equal(selectableDanTier(tier.key), tier, '随机段位要能当档位选');
+    assert.equal(danTier(tier.key), tier);
+  }
+  assert.deepEqual(DAN_RANDOM_TIERS.map((tier) => tier.draw), ['rating', 'problem'],
+    '小随机按 rating 均匀，大随机按题目均匀');
+  // 区间取四个难度档的并集，且确实横跨全部四档。
+  assert.equal(Math.min(...DAN_TIERS.map((tier) => tier.minRating)), 800);
+  assert.equal(Math.max(...DAN_TIERS.map((tier) => tier.maxRating)), 2600);
+  for (const tier of DAN_TIERS) {
+    assert.ok(tier.maxRating >= 800 && tier.minRating <= 2600, `${tier.key} 应当落在并集里`);
+  }
+
+  // 限时按当题难度落到对应档位，且随难度单调不减。
+  const limits = [800, 1000, 1100, 1200, 1500, 1600, 2000, 2100, 2600].map(danLimitForRating);
+  assert.deepEqual(limits, [1800, 1800, 1800, 2400, 2400, 3000, 3000, 3600, 3600]);
+  for (let i = 1; i < limits.length; i += 1) assert.ok(limits[i] >= limits[i - 1]);
+});
+
+test('随机段位落库：每道的限时随抽到的难度定，并进结算快照', () => {
+  const s = setup();
+  try {
+    const t0 = 1_000_000;
+    createDanSession(s.db, { id: 's1', userId: s.user, kind: 'challenge', tierKey: 'small_random', now: t0 });
+    const session = activeDanSession(s.db, s.user)!;
+    assert.equal(session.stage_count, DAN_STAGES, '随机段位也是 4 道');
+    assert.equal(session.min_rating, 800);
+    assert.equal(session.max_rating, 2600);
+
+    // 池子里放了四个不同难度的题各一道，四道抽完必然覆盖四种限时。
+    const pool = [{ contestId: 1, index: 'A', rating: 800 }, { contestId: 2, index: 'A', rating: 1300 },
+      { contestId: 3, index: 'A', rating: 1800 }, { contestId: 4, index: 'A', rating: 2400 }];
+    const rows = s.db.prepare('SELECT difficulty,limit_seconds FROM dan_stages WHERE session_id=? ORDER BY stage_index');
+    for (let i = 1; i <= DAN_STAGES; i += 1) {
+      drawNextDanStage(s.db, { sessionId: 's1', pool, now: t0, dateKey: '2026-10-09' });
+      playStage(s, 's1', t0 + i * 10000, 300, String(i));
+    }
+    const stages = rows.all('s1') as unknown as { difficulty: number; limit_seconds: number }[];
+    assert.equal(stages.length, DAN_STAGES);
+    for (const stage of stages) {
+      assert.equal(stage.limit_seconds, danLimitForRating(stage.difficulty),
+        `难度 ${stage.difficulty} 的限时应当是当题难度对应的那一档`);
+    }
+    assert.ok(new Set(stages.map((stage) => stage.limit_seconds)).size > 1, '随机段位四道不会都是同一个限时');
+
+    const view = viewOf(s, 's1');
+    assert.equal(view.perStageLimit, true);
+    assert.equal(view.draw, 'rating');
+    for (const stage of view.stages) assert.equal(stage.limitSeconds, danLimitForRating(stage.difficulty));
+
+    const settlement = JSON.parse((s.db.prepare('SELECT settlement_json FROM dan_sessions WHERE id=?').get('s1') as { settlement_json: string }).settlement_json);
+    for (const stage of settlement.stages) assert.equal(stage.limitSeconds, danLimitForRating(stage.difficulty));
+  } finally { s.db.close(); }
+});
+
+test('019 之前的旧行没有 limit_seconds，结算时沿用 session 的统一限时', () => {
+  const s = setup();
+  try {
+    const t0 = 1_000_000;
+    // 手工插一行 limit_seconds 为 NULL 的记录，模拟 018 时期抽出来的「上级」档。
+    s.db.prepare(`INSERT INTO dan_sessions
+      (id,user_id,tier,kind,stage_count,limit_seconds,min_rating,max_rating,status,started_at)
+      VALUES('old',?,'advanced','single',1,3000,1600,2000,'active',?)`).run(s.user, t0);
+    s.db.prepare(`INSERT INTO dan_stages(session_id,stage_index,problem_id,difficulty,drawn_at)
+      VALUES('old',1,'1900:A',1900,?)`).run(t0);
+    const view = viewOf(s, 'old');
+    assert.equal(view.stages[0].limitSeconds, 3000, 'NULL 时回退到 session.limit_seconds');
+    assert.equal(view.perStageLimit, false);
+
+    beginStage(s, 'old', t0, 'dan-timer-old');
+    // 3000 秒内不算超时，3001 秒算 —— 证明用的确实是回退值。
+    advanceDanSessions(s.db, t0 + 3000);
+    assert.equal(activeDanSession(s.db, s.user)!.status, 'active');
+    advanceDanSessions(s.db, t0 + 3001);
+    assert.equal(activeDanSession(s.db, s.user), null);
+    assert.equal(danHistory(s.db, s.user)[0].status, 'failed');
+  } finally { s.db.close(); }
+});
+
+test('随机段位：逐题限时按当题难度，不是按 session 的统一限时', () => {
+  const s = setup();
+  try {
+    const t0 = 1_000_000;
+    createDanSession(s.db, { id: 's1', userId: s.user, kind: 'challenge', tierKey: 'small_random', now: t0 });
+    // 只放一道 800 分的题：限时应当是 1800 秒（初级档），而不是 3600。
+    drawNextDanStage(s.db, { sessionId: 's1', pool: at(800, 5, 1), now: t0, dateKey: '2026-10-09' });
+    const stage = beginStage(s, 's1', t0, 'dan-timer-r1');
+    assert.equal(stage.difficulty, 800);
+    assert.equal(viewOf(s, 's1').stages[0].limitSeconds, 1800);
+    advanceDanSessions(s.db, t0 + 1800);
+    assert.equal(activeDanSession(s.db, s.user)!.status, 'active', '1800 秒内不应判负');
+    advanceDanSessions(s.db, t0 + 1801);
+    assert.equal(activeDanSession(s.db, s.user), null, '过了 1800 秒就超时（若误用 3600 就不会结束）');
+    assert.equal(danHistory(s.db, s.user)[0].stages[0].outcome, 'timeout');
+  } finally { s.db.close(); }
 });
 
 test('抽题的 rating 分布接近均匀，而不是跟着题库的题目数走', () => {
@@ -178,7 +312,7 @@ test('口径 A：claim 之后才下发题号与链接', () => {
   } finally { s.db.close(); }
 });
 
-test('段位認定三道全部通关才算通过，总分是三道的单题 rating 之和', () => {
+test('段位認定四道全部通关才算通过，总分是各道的单题 rating 之和', () => {
   const s = setup();
   try {
     const t0 = 1_000_000;
@@ -186,7 +320,7 @@ test('段位認定三道全部通关才算通过，总分是三道的单题 rati
     const pool = at(1800, 30, 1);
     let total = 0;
     const drawnIds: string[] = [];
-    for (let i = 1; i <= 3; i += 1) {
+    for (let i = 1; i <= DAN_STAGES; i += 1) {
       drawNextDanStage(s.db, { sessionId: 's1', pool, now: t0, dateKey: '2026-10-09' });
       const stage = playStage(s, 's1', t0 + i * 10000, 600 + i * 60, String(i));
       drawnIds.push(stage.problem_id);
@@ -196,21 +330,23 @@ test('段位認定三道全部通关才算通过，总分是三道的单题 rati
       assert.ok(row.rating! > 0);
       total += row.rating!;
     }
-    assert.equal(new Set(drawnIds).size, 3, '同一轮内不应抽到重复的题');
+    assert.equal(new Set(drawnIds).size, DAN_STAGES, '同一轮内不应抽到重复的题');
 
     const session = danHistory(s.db, s.user)[0];
     assert.equal(session.status, 'cleared');
-    assert.equal(session.stages.length, 3);
+    assert.equal(session.stages.length, DAN_STAGES);
     assert.equal(session.totalRating, Math.round(total * 10) / 10);
     assert.ok(session.finishedAt);
     for (const stage of session.stages) assert.ok(stage.problemId, '结算后记录里应当能看到题号');
 
     // 规则随本轮冻结，之后调档位/限时不会改写旧记录。
     const settlement = JSON.parse((s.db.prepare('SELECT settlement_json FROM dan_sessions WHERE id=?').get('s1') as { settlement_json: string }).settlement_json);
-    assert.equal(settlement.stageCount, 3);
+    assert.equal(settlement.stageCount, DAN_STAGES);
     assert.equal(settlement.limitSeconds, 3000);
     assert.equal(settlement.totalRating, session.totalRating);
-    assert.equal(settlement.stages.length, 3);
+    assert.equal(settlement.stages.length, DAN_STAGES);
+    // 逐题限时也进快照 —— 随机段位每题不同，历史要能按当时的规则解释。
+    for (const stage of settlement.stages) assert.equal(stage.limitSeconds, 3000, '上级档统一 3000 秒');
     assert.equal(settlement.selfReported, true, '必须标明这是自测，不是防作弊');
   } finally { s.db.close(); }
 });

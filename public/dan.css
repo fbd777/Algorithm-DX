@@ -51,6 +51,9 @@
 .dan-tier:disabled { opacity: .55; cursor: progress; }
 .dan-tier strong { font-size: .95rem; }
 .dan-tier small { color: var(--muted); font-size: .75rem; }
+/* 抽题分布是这两个模式唯一的区别，得在按钮上就说清楚，不能只写在正文里。 */
+.dan-tier-warn { color: var(--warn) !important; }
+.dan-note-sub { border-top: 1px dashed var(--border-soft); padding-top: 10px; }
 
 .dan-active {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
@@ -198,6 +201,7 @@
 .dan-track-score { display: flex; align-items: baseline; gap: 5px; }
 .dan-track-score small { font-size: .58rem; color: #ffffffb8; }
 .dan-track-score b { font-family: var(--mono); font-size: .9rem; color: #fff; }
+.dan-track-limit { font-size: .56rem; color: #ffffff9e; }
 
 /* 金色描边数字：白→金→橙渐变填充 + 深棕描边（原作那套 DX 数字，用 CSS 重画）。
  * 必须分两层，试过两条捷径都不行：

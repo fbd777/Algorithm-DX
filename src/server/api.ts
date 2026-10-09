@@ -74,6 +74,7 @@ import { localBacktestReport } from '../dx/backtest.ts';
 import { startTimer, timerState, cancelTimer, reconcileTimers } from '../dx/timer.ts';
 import {
   DAILY_TIER,
+  DAN_RANDOM_TIERS,
   DAN_STAGES,
   DAN_TIERS,
   DanError,
@@ -87,6 +88,7 @@ import {
   danHistory,
   danProblemUrl,
   danSessionView,
+  danStageLimitOf,
   dailyProblem,
   drawNextDanStage,
   type DanKind,
@@ -738,7 +740,11 @@ function danOverview(ctx: ApiContext, userId: number, tzOffsetMinutes: number): 
     status: 200,
     body: {
       tiers: DAN_TIERS.map((tier) => ({ key: tier.key, name: tier.name, minRating: tier.minRating,
-        maxRating: tier.maxRating, limitSeconds: tier.limitSeconds })),
+        maxRating: tier.maxRating, limitSeconds: tier.limitSeconds, draw: tier.draw,
+        perStageLimit: tier.perStageLimit === true })),
+      randomTiers: DAN_RANDOM_TIERS.map((tier) => ({ key: tier.key, name: tier.name, minRating: tier.minRating,
+        maxRating: tier.maxRating, limitSeconds: tier.limitSeconds, draw: tier.draw,
+        perStageLimit: tier.perStageLimit === true })),
       dailyTier: { name: DAILY_TIER.name, minRating: DAILY_TIER.minRating, maxRating: DAILY_TIER.maxRating,
         limitSeconds: DAILY_TIER.limitSeconds },
       stageCount: DAN_STAGES,
@@ -976,7 +982,7 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           return { status: 200, body: {
             sessionId, stageIndex: stage.stage_index, difficulty: stage.difficulty,
             problemId: stage.problem_id, url: danProblemUrl(stage.problem_id), timerId: stage.timer_id,
-            deadlineAt: (stage.claimed_at ?? now) + session.limit_seconds, serverNow: now,
+            deadlineAt: (stage.claimed_at ?? now) + danStageLimitOf(stage, session), serverNow: now,
           } };
         }
         case '/api/dan/settle': {

@@ -80,7 +80,7 @@ data/backups/               npm run backup 生成的快照目录
 - `problem_times`（v5）：用户手填的**每题完成用时**，`(user_id, platform, problem_id)` 唯一。与 `submissions.execution_time`（平台给的判题毫秒数）完全是两回事，所以单独一张表，不混用。只存原始秒数，不存换算后的 rating —— 曲线一改（`npm run study:export-dx`）所有读数都得跟着变，落库就会多出一个真相来源。
 - `contests`（v6）：`(platform, contest_id)` 主键，存比赛名与**开始时间**，也就是题目的「出题日期」。b35/b15 的分板看它，不看 AC 时间。数据来自 CF 的 `contest.list?gym=false`，同步时按 6 小时 TTL upsert 写入；`problem_id` 的前缀（`339:A` → 339）就是比赛 id。不按 `type` 过滤 —— `contest.list` 的 `type='ICPC'` 并不是「ICPC 赛制」，Div.3 与 Educational 全是它。v8 加了 `duration_seconds`（比赛时长）：判定「比赛内提交」靠它 —— 首页的最快用时只认比赛窗口内的 AC，时长缺失的比赛一律不判，宁可不算也不猜。
 
-- `dan_sessions` / `dan_stages`（v18）：随机抽题与段位認定。一轮认定一行（档位、`kind` ∈ `challenge`/`single`/`daily`、题数、单题限时、rating 区间、状态），每道题一行（**抽题时快照下来的难度**、`claimed_at`、计时器 id、结果）。难度快照进 `dan_stages` 而不是结算时回查题库，否则题库缓存过期或 CF 修订题目 rating 会让历史记录跟着变；`settlement_json` 同样在结束时冻结。一个用户同时只能有一轮 `active`，由 partial unique index `one_active_dan_per_user` 兜底。题号与链接在 `claimed_at` 之前不写入响应，详见 [随机抽题与段位認定](dan.md)。
+- `dan_sessions` / `dan_stages`（v18，v19 加了一列）：随机抽题与段位認定。一轮认定一行（档位、`kind` ∈ `challenge`/`single`/`daily`、题数、单题限时、rating 区间、状态），每道题一行（**抽题时快照下来的难度与限时**、`claimed_at`、计时器 id、结果）。难度快照进 `dan_stages` 而不是结算时回查题库，否则题库缓存过期或 CF 修订题目 rating 会让历史记录跟着变；`settlement_json` 同样在结束时冻结。v19 给 `dan_stages` 加了 `limit_seconds`：两个随机段位（`small_random` / `big_random`）rating 不分段、抽到的题横跨 800–2600，限时得随题走，NULL 表示沿用 session 的档位统一限时。随机段位沿用 `kind='challenge'`，靠 `tier` 区分 —— 加 `kind` 值要重建整张表（SQLite 改不了 `CHECK`）。一个用户同时只能有一轮 `active`，由 partial unique index `one_active_dan_per_user` 兜底。题号与链接在 `claimed_at` 之前不写入响应，详见 [随机抽题与段位認定](dan.md)。
 
 时间统一存 UTC Unix 秒；执行时间为毫秒，内存为字节；缺失值为 NULL。删除用户或账号会级联删除相关提交，未来 UI 必须明确告知这一行为。
 

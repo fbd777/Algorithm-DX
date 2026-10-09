@@ -9,9 +9,10 @@ import { scoreProblem } from './rating.ts';
  * 三件事共用同一套抽题引擎：
  *   1. **随机题目**：选一个档位，抽一道题（`single`）
  *   2. **每日一题**：按（日期 + 用户）确定性抽一道，同一天刷新不变（`daily`）
- *   3. **段位認定**：同一档位连抽 3 道、逐题限时，全部通关才算通过（`challenge`）
+ *   3. **段位認定**：同一档位连抽 4 道、逐题限时，全部通关才算通过（`challenge`）
+ *      四个难度档之外还有两个**随机段位**：小随机与大随机（`DAN_RANDOM_TIERS`）。
  *      注意口径：这是**挑战模式**，不发段位名。maimai 的随机段位認定同样不发段位名，
- *      发段位名的是固定选曲段 —— 所以这里也不造分数线，结算只出三道题各自的成绩与总分。
+ *      发段位名的是固定选曲段 —— 所以这里也不造分数线，结算只出各题成绩与总分。
  *
  * ## 三条口径在这里定死
  *
@@ -24,9 +25,14 @@ import { scoreProblem } from './rating.ts';
  * 刻意**不做**右键屏蔽与 devtools 检测：那类拦截可被 View-Source、直接发请求、
  * 换浏览器绕过，只会挡住正常用户并制造虚假的安全感。真正的边界是数据不下发。
  *
- * **B. 抽题按 rating 均匀，不按题目均匀。**
+ * **B. 抽题默认按 rating 均匀，不按题目均匀 —— 但「大随机段位」刻意反过来。**
  * 题库里 800-899 有 1104 道，而其他桶只有约 450 道。按题目均匀抽会让「初级」
- * 几乎全是 800 分的题。做法：先均匀选一个 rating 值，再在该 rating 内均匀选一道。
+ * 几乎全是 800 分的题，所以档位抽题的做法是：先均匀选一个 rating 值，再在该 rating
+ * 内均匀选一道（`draw: 'rating'`）。
+ *
+ * 大随机段位（`draw: 'problem'`）**故意**改成在题目上均匀：它存在的意义就是
+ * 「不保证难度分布」，让简单题按它们在题库里的真实占比出现。这是 maimai 里
+ * 「随机段位」与「大随机段位」的区别 —— 前者难度铺得平，后者就是抓一把。
  *
  * **C. 难度在抽题时快照进 `dan_stages`。**
  * CF 的题目评级会变（公布、回填、重评），而这一轮的进展与结算必须可复现 ——
@@ -51,7 +57,7 @@ import { scoreProblem } from './rating.ts';
  */
 
 /** 挑战模式一轮的题数。 */
-export const DAN_STAGES = 3;
+export const DAN_STAGES = 4;
 
 /**
  * 一轮认定的总时长上限（秒），防止「抽了不点」把唯一的活动轮次永久占住
@@ -65,8 +71,16 @@ export interface DanTier {
   name: string;
   minRating: number;
   maxRating: number;
-  /** 单题限时（秒）。超时即该轮失败并结束。 */
+  /** 单题限时（秒）。超时即该轮失败并结束。`perStageLimit` 为真时这只是展示回退值。 */
   limitSeconds: number;
+  /**
+   * 抽题分布（口径 B）：
+   *   `rating`  —— 先均匀选 rating 值，再在该值内均匀选一道，难度铺得平；
+   *   `problem` —— 直接在题目上均匀，难度分布就是题库的真实分布。
+   */
+  draw: 'rating' | 'problem';
+  /** true = 逐题限时按**当题难度**定，不用 `limitSeconds`。随机段位专用。 */
+  perStageLimit?: boolean;
 }
 
 /**
@@ -76,27 +90,74 @@ export interface DanTier {
  * 把「超上级」再往上抬会让分数越来越依赖外推段。
  */
 export const DAN_TIERS: readonly DanTier[] = [
-  { key: 'beginner', name: '初级', minRating: 800, maxRating: 1100, limitSeconds: 1800 },
-  { key: 'intermediate', name: '中级', minRating: 1200, maxRating: 1500, limitSeconds: 2400 },
-  { key: 'advanced', name: '上级', minRating: 1600, maxRating: 2000, limitSeconds: 3000 },
-  { key: 'expert', name: '超上级', minRating: 2100, maxRating: 2600, limitSeconds: 3600 },
+  { key: 'beginner', name: '初级', minRating: 800, maxRating: 1100, limitSeconds: 1800, draw: 'rating' },
+  { key: 'intermediate', name: '中级', minRating: 1200, maxRating: 1500, limitSeconds: 2400, draw: 'rating' },
+  { key: 'advanced', name: '上级', minRating: 1600, maxRating: 2000, limitSeconds: 3000, draw: 'rating' },
+  { key: 'expert', name: '超上级', minRating: 2100, maxRating: 2600, limitSeconds: 3600, draw: 'rating' },
 ];
 
-/** 每日一题：全档位并集，一天一道。不属于四个可选档位。 */
+/**
+ * 两个**随机段位**：rating 区间取四个档位的并集（800–2600），**不分段**。
+ *
+ * - 小随机段位：按 rating 均匀 —— 每个 rating 值被抽到的机会一样，难度跨度铺得平。
+ * - 大随机段位：按**题目**均匀 —— 不保证难度分布，800 分那一桶因为本身题最多，
+ *   会成片地出现，「连着几道都是 800」是正常结果而不是 bug。
+ *
+ * 两者都设 `perStageLimit`：抽到的题横跨 800-2600，统一限时对两头都不公平。
+ */
+export const DAN_RANDOM_TIERS: readonly DanTier[] = [
+  { key: 'small_random', name: '小随机段位', minRating: 800, maxRating: 2600, limitSeconds: 3600,
+    draw: 'rating', perStageLimit: true },
+  { key: 'big_random', name: '大随机段位', minRating: 800, maxRating: 2600, limitSeconds: 3600,
+    draw: 'problem', perStageLimit: true },
+];
+
+/** 每日一题：全档位并集，一天一道。不属于可选的档位。 */
 export const DAILY_TIER: DanTier = {
-  key: 'daily', name: '每日一题', minRating: 800, maxRating: 2600, limitSeconds: 2700,
+  key: 'daily', name: '每日一题', minRating: 800, maxRating: 2600, limitSeconds: 2700, draw: 'rating',
 };
 
 export type DanKind = 'challenge' | 'single' | 'daily';
 
 export function danTier(key: string): DanTier | null {
   if (key === DAILY_TIER.key) return DAILY_TIER;
-  return DAN_TIERS.find((tier) => tier.key === key) ?? null;
+  return DAN_TIERS.find((tier) => tier.key === key)
+    ?? DAN_RANDOM_TIERS.find((tier) => tier.key === key) ?? null;
 }
 
 /** 可选档位（用于校验前端传来的 tier 参数，daily 不能当档位选）。 */
 export function selectableDanTier(key: string): DanTier | null {
-  return DAN_TIERS.find((tier) => tier.key === key) ?? null;
+  return DAN_TIERS.find((tier) => tier.key === key)
+    ?? DAN_RANDOM_TIERS.find((tier) => tier.key === key) ?? null;
+}
+
+/**
+ * 按难度取限时。随机段位的题横跨 800–2600，统一限时对两头都不公平，所以随题走。
+ *
+ * 取「上界不低于它的第一个档位」而不是「落在区间内」：CF 评级是 100 的倍数，
+ * 实际不会落进 1100→1200 这类空档，但万一日后区间调整，这个写法仍然单调。
+ */
+export function danLimitForRating(rating: number): number {
+  return DAN_TIERS.find((tier) => rating <= tier.maxRating)?.limitSeconds
+    ?? DAN_TIERS[DAN_TIERS.length - 1].limitSeconds;
+}
+
+/** 这一道题的限时：随机段位按当题难度，其余档位用档位自己的统一限时。 */
+export function danStageLimit(tier: DanTier | null, rating: number, fallback: number): number {
+  return tier?.perStageLimit ? danLimitForRating(rating) : fallback;
+}
+
+/**
+ * 已落库的那一道的限时。
+ *
+ * `limit_seconds` 为 NULL 的是 019 之前抽出来的行 —— 它们属于「档位统一限时」
+ * 那一套规则，沿用 session 的值，旧记录的解释一个字都不用改。
+ */
+export function danStageLimitOf(
+  stage: { limit_seconds: number | null },
+  session: { limit_seconds: number },
+): number {
+  return stage.limit_seconds ?? session.limit_seconds;
 }
 
 export function danStageCount(kind: DanKind): number {
@@ -131,6 +192,8 @@ export interface DanPoolOptions {
   maxRating: number;
   /** 已见过的题号（大写）。抽题时排除。 */
   exclude: ReadonlySet<string>;
+  /** 抽题分布，默认 `rating`（口径 B）。`problem` 只有「大随机段位」用。 */
+  draw?: 'rating' | 'problem';
 }
 
 /** 注入随机源，便于单测；生产用 crypto（服务端不可预测，见口径 A）。 */
@@ -159,7 +222,13 @@ function groupDanCandidates(pool: readonly ProblemRating[], options: DanPoolOpti
     .map(([, bucket]) => bucket.sort((a, b) => danProblemId(a).localeCompare(danProblemId(b))));
 }
 
-/** 随机抽一道：先均匀选 rating 值，再在该 rating 内均匀选一道（口径 B）。 */
+/**
+ * 随机抽一道。
+ *
+ * 默认按 rating 均匀（口径 B）：先均匀选 rating 值，再在该 rating 内均匀选一道。
+ * `draw: 'problem'` 时改成在题目上直接均匀 —— 难度分布就是题库的真实分布，
+ * 800 分那一桶因为本身题最多会成片出现。这是「大随机段位」的定义，不是缺陷。
+ */
 export function drawDanCandidate(
   pool: readonly ProblemRating[],
   options: DanPoolOptions,
@@ -167,6 +236,11 @@ export function drawDanCandidate(
 ): ProblemRating | null {
   const buckets = groupDanCandidates(pool, options);
   if (buckets.length === 0) return null;
+  if (options.draw === 'problem') {
+    // flat() 之前桶已按 rating 升序、桶内按题号升序排过，顺序稳定，单测可复现。
+    const problems = buckets.flat();
+    return problems[randomInt(problems.length)] ?? null;
+  }
   const bucket = buckets[randomInt(buckets.length)];
   return bucket[randomInt(bucket.length)] ?? null;
 }
@@ -221,6 +295,8 @@ export interface DanStageRow {
   claimed_at: number | null; timer_id: string | null;
   outcome: 'cleared' | 'timeout' | 'interrupted' | null;
   seconds: number | null; score_json: string | null;
+  /** 这一道的限时（秒）。NULL = 019 之前的旧行，沿用 session.limit_seconds。 */
+  limit_seconds: number | null;
 }
 
 function transaction<T>(db: DatabaseSync, action: () => T): T {
@@ -307,10 +383,12 @@ export function drawNextDanStage(
     // 当前那道还没 claim / 还没结算，就不再抽 —— 否则会出现两道同时在手的题。
     if (stages.length > 0 && stages[stages.length - 1].outcome === null) return null;
     if (stages.length >= session.stage_count) return null;
+    const tier = danTier(session.tier);
     const options: DanPoolOptions = {
       minRating: session.min_rating,
       maxRating: session.max_rating,
       exclude: danExcludedProblems(db, session.user_id, session.id),
+      draw: tier?.draw ?? 'rating',
     };
     // 每日一题必须**可复现**（同一天刷新不能换题），所以走哈希而不是随机数；
     // 其余模式走 crypto 随机数，服务端不可预测（口径 A）。
@@ -318,9 +396,12 @@ export function drawNextDanStage(
       ? dailyDanCandidate(input.pool, options, `daily:${input.dateKey}:${session.user_id}`)
       : drawDanCandidate(input.pool, options, input.randomInt);
     if (!candidate) throw new DanError('POOL_EMPTY', '这个区间里已经没有你没做过的题了');
-    const info = db.prepare(`INSERT INTO dan_stages(session_id,stage_index,problem_id,difficulty,drawn_at)
-      VALUES(?,?,?,?,?)`)
-      .run(session.id, stages.length + 1, danProblemId(candidate), candidate.rating, input.now);
+    // 限时随题走（随机段位），抽到的那一刻就定下来 —— 与 difficulty 一样是快照，
+    // 之后调档位区间不会把这一轮的规则重新解释一遍。
+    const limit = danStageLimit(tier, candidate.rating, session.limit_seconds);
+    const info = db.prepare(`INSERT INTO dan_stages(session_id,stage_index,problem_id,difficulty,drawn_at,limit_seconds)
+      VALUES(?,?,?,?,?,?)`)
+      .run(session.id, stages.length + 1, danProblemId(candidate), candidate.rating, input.now, limit);
     return db.prepare('SELECT * FROM dan_stages WHERE id=?').get(info.lastInsertRowid) as unknown as DanStageRow;
   });
 }
@@ -394,7 +475,7 @@ function settleDanSession(db: DatabaseSync, session: DanSessionRow, now: number)
       { status: string; started_at: number; ended_at: number | null } | undefined;
     if (!timer) { db.prepare("UPDATE dan_stages SET outcome='interrupted' WHERE id=?").run(stage.id); continue; }
     if (timer.status === 'running') {
-      const deadline = stage.claimed_at + session.limit_seconds;
+      const deadline = stage.claimed_at + danStageLimitOf(stage, session);
       if (now <= deadline) continue; // 还在限时内
       // 超时取消：段位限时是 dan 这一层的规则，语句与 cancelTimer（timer.ts）一致。
       db.prepare("UPDATE practice_timers SET status='cancelled',ended_at=? WHERE id=? AND status='running'")
@@ -436,6 +517,8 @@ function finishDanSession(db: DatabaseSync, session: DanSessionRow, status: 'cle
       difficulty: stage.difficulty,
       outcome: stage.outcome,
       seconds: stage.seconds,
+      // 逐题限时进结算快照：随机段位每题限时不同，历史记录要能按当时的规则解释。
+      limitSeconds: danStageLimitOf(stage, session),
       achievementShown: score?.achievementShown ?? null,
       rank: score?.rank ?? null,
       rating: score?.rating ?? null,
@@ -477,6 +560,8 @@ export interface DanStageView {
   index: number;
   /** 抽到的题目难度。**这是「开始做题」之前唯一允许下发的信息**（口径 A）。 */
   difficulty: number;
+  /** 这一道的限时（秒）。随机段位逐题不同，按当题难度定。 */
+  limitSeconds: number;
   claimed: boolean;
   outcome: 'cleared' | 'timeout' | 'interrupted' | null;
   seconds: number | null;
@@ -514,6 +599,10 @@ export interface DanSessionView {
   finishedAt: number | null;
   expiresAt: number;
   totalRating: number | null;
+  /** 抽题分布（口径 B）。`problem` 只可能是大随机段位。 */
+  draw: 'rating' | 'problem';
+  /** true = 逐题限时按当题难度，此时 `limitSeconds` 只是展示回退值。 */
+  perStageLimit: boolean;
   stages: DanStageView[];
   /** 结算只出单题成绩与总分，**不发段位名**（随机段位認定是挑战模式）。 */
   selfReported: true;
@@ -535,6 +624,8 @@ export function danSessionView(db: DatabaseSync, session: DanSessionRow): DanSes
     finishedAt: session.finished_at,
     expiresAt: session.started_at + DAN_SESSION_TTL_SECONDS,
     totalRating: session.total_rating,
+    draw: tier?.draw ?? 'rating',
+    perStageLimit: tier?.perStageLimit === true,
     stages: stageRows(db, session.id).map((stage) => danStageView(db, stage, session)),
     selfReported: true,
   };
@@ -568,6 +659,7 @@ function danStageView(db: DatabaseSync, stage: DanStageRow, session: DanSessionR
   return {
     index: stage.stage_index,
     difficulty: stage.difficulty,
+    limitSeconds: danStageLimitOf(stage, session),
     claimed: revealed,
     outcome: stage.outcome,
     seconds: stage.seconds,
@@ -576,7 +668,7 @@ function danStageView(db: DatabaseSync, stage: DanStageRow, session: DanSessionR
     rating: typeof score?.rating === 'number' ? score.rating : null,
     problemId: revealed ? stage.problem_id : null,
     problemUrl: revealed ? danProblemUrl(stage.problem_id) : null,
-    deadlineAt: stage.claimed_at === null ? null : stage.claimed_at + session.limit_seconds,
+    deadlineAt: stage.claimed_at === null ? null : stage.claimed_at + danStageLimitOf(stage, session),
     title: revealed ? (problem?.title ?? null) : null,
     verdicts,
     waCount: verdicts.WA ?? 0,
