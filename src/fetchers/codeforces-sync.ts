@@ -9,8 +9,25 @@ const CONTEST_LIST_URL = 'https://codeforces.com/api/contest.list?gym=false';
 /** problemset.problems 一次返回全量题目（含历史）；实测 ~9000 题 / 1.5 MB。 */
 const PROBLEMSET_URL = 'https://codeforces.com/api/problemset.problems';
 /** 全量评级缓存 6 小时：与 contest.list 同一条规矩 —— 既成事实，没必要次次抓。 */
-const RATINGS_CACHE_KEY = 'cf:problemset-ratings:v1';
+/**
+ * 全量题库的缓存键。导出是为了让调用方（读接口、测试）能直接定位这份缓存，
+ * 而不必在别处硬编码同一个字符串。
+ */
+export const PROBLEM_RATINGS_CACHE_KEY = 'cf:problemset-ratings:v1';
+const RATINGS_CACHE_KEY = PROBLEM_RATINGS_CACHE_KEY;
 const RATINGS_TTL_SECONDS = 6 * 3600;
+
+/**
+ * 只读读缓存里的全量题库，**不抓网络**。
+ *
+ * 抽题/每日一题的服务端读接口（GET）用它：那些接口挂在只读连接上
+ * （`PRAGMA query_only = ON`），调 `fetch_problem_ratings` 会因为写 `fetch_cache` 而失败。
+ * 缓存冷时返回 null，由调用方决定是提示「题库未就绪」还是走写接口去抓一次。
+ * 键留在本文件，避免别处硬编码同一个字符串。
+ */
+export function cachedProblemRatings(cache: Cache): ProblemRating[] | null {
+  return cache.get<ProblemRating[]>(RATINGS_CACHE_KEY) ?? null;
+}
 
 // Keep the Phase 1 standalone interface compatible; sync uses shared DB rate slots.
 export class CodeforcesSyncFetcher extends CodeforcesFetcher {

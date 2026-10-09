@@ -1,0 +1,102 @@
+/*
+ * 随机抽题 / 每日一题 / 段位認定。
+ *
+ * 只写这一页特有的布局：按钮、输入、顶栏、卡片底色一律复用 styles.css / ui.css 的
+ * 既有类与变量，避免又开一套视觉语言（这是 public/ 下每个页面一致的做法）。
+ */
+
+.dan-app { display: grid; gap: 18px; max-width: 1080px; }
+
+.dan-hero {
+  background: linear-gradient(140deg, var(--accent-soft), transparent 70%), var(--panel);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 22px 24px; display: grid; gap: 8px;
+}
+.dan-hero h2 { margin: 0; font-size: 1.35rem; }
+.dan-hero p { margin: 0; color: var(--text-dim); font-size: .88rem; line-height: 1.75; max-width: 74ch; }
+.dan-eyebrow { font-family: var(--mono); font-size: .7rem; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+
+.dan-msg { margin: 0; min-height: 1.1rem; font-size: .85rem; color: var(--muted); }
+.dan-msg.error { color: var(--bad); }
+
+.dan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.dan-wide { grid-column: 1 / -1; }
+
+.dan-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px; display: grid; gap: 12px; align-content: start;
+}
+.dan-card > header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dan-card h3 { margin: 0; font-size: 1rem; }
+.dan-chip {
+  font-size: .72rem; color: var(--muted); border: 1px solid var(--border);
+  border-radius: 999px; padding: 2px 9px; white-space: nowrap;
+}
+.dan-note { margin: 0; color: var(--text-dim); font-size: .85rem; line-height: 1.7; }
+
+.dan-difficulty {
+  font-family: var(--mono); font-size: 2.1rem; font-weight: 600; color: var(--accent);
+  line-height: 1.1; display: grid; gap: 2px;
+}
+.dan-difficulty small { font-family: var(--sans); font-size: .7rem; font-weight: 400; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+
+.dan-tiers { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.dan-tier {
+  display: grid; gap: 3px; text-align: left; font: inherit; cursor: pointer;
+  background: var(--bg-soft); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--radius-sm); padding: 11px 13px;
+  transition: border-color .12s, background .12s;
+}
+.dan-tier:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.dan-tier:disabled { opacity: .55; cursor: progress; }
+.dan-tier strong { font-size: .95rem; }
+.dan-tier small { color: var(--muted); font-size: .75rem; }
+
+.dan-active {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; display: grid; gap: 16px;
+}
+.dan-active-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.dan-active-head h2 { margin: 0; font-size: 1.1rem; }
+.dan-badge { font-size: .72rem; border-radius: 999px; padding: 2px 9px; border: 1px solid transparent; white-space: nowrap; }
+.dan-badge.ok { color: var(--ac); background: var(--ac-soft); border-color: rgba(63, 185, 80, .32); }
+.dan-badge.bad { color: var(--bad); background: var(--bad-soft); border-color: rgba(248, 81, 73, .32); }
+.dan-badge.idle { color: var(--warn); background: var(--warn-soft); border-color: rgba(210, 153, 34, .32); }
+
+.dan-progress { display: flex; gap: 6px; }
+.dan-pip { flex: 1; height: 6px; border-radius: 999px; background: var(--border); }
+.dan-pip.now { background: var(--accent); }
+.dan-pip.done { background: var(--ac); }
+.dan-pip.fail { background: var(--bad); }
+
+.dan-stage {
+  display: grid; gap: 10px; padding: 15px; background: var(--bg-soft);
+  border: 1px solid var(--border-soft); border-radius: var(--radius-sm);
+}
+.dan-stage-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dan-clock { font-family: var(--mono); font-size: 1.15rem; color: var(--text); }
+.dan-clock.urgent { color: var(--warn); }
+.dan-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.dan-history { display: grid; gap: 12px; }
+.dan-history-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dan-history-head h2 { margin: 0; font-size: 1rem; }
+.dan-run {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 13px 15px; display: grid; gap: 9px;
+}
+.dan-run-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.dan-total { font-family: var(--mono); font-size: 1.05rem; color: var(--accent); }
+.dan-run-list { display: grid; gap: 4px; font-size: .84rem; color: var(--text-dim); }
+.dan-run-row { display: grid; grid-template-columns: 2.4rem 1fr auto; gap: 10px; align-items: baseline; }
+.dan-run-row:last-child { padding-bottom: 0; }
+.dan-run-row a { color: var(--accent); text-decoration: none; font-family: var(--mono); }
+.dan-run-row a:hover { text-decoration: underline; }
+
+.dan-disclaimer {
+  margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.8;
+  border-top: 1px solid var(--border-soft); padding-top: 14px;
+}
+.dan-disclaimer strong { color: var(--text-dim); }
+
+@media (max-width: 780px) { .dan-grid { grid-template-columns: 1fr; } }

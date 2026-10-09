@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>随机抽题 · Algorithm DX</title><meta name="color-scheme" content="dark"><link rel="icon" href="/algorithm-dx-icon.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/dan.css"><link rel="stylesheet" href="/ui.css">
+</head>
+<body>
+<header class="topbar site-header">
+  <a class="brand" href="/">
+    <img class="mark" src="/algorithm-dx-icon.svg" width="66" height="40" alt="" aria-hidden="true">
+    <div class="brand-text"><h1>Algorithm DX</h1><p>记录练习，查看进步</p></div>
+  </a>
+  <nav class="nav" aria-label="主导航">
+    <a class="btn btn-ghost" href="/">AC 记录</a>
+    <a class="btn btn-ghost" href="/circle.html">题友圈</a>
+    <a class="btn btn-ghost" href="/dx.html">DX Rating</a>
+    <a class="btn btn-ghost" href="/dan.html" aria-current="page">随机抽题</a>
+    <a class="btn btn-ghost" href="/stats.html">练习数据</a>
+    <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
+    <a class="btn btn-ghost" href="/help.html">使用指南</a>
+  </nav>
+</header><main class="app dan-app">
+
+<section class="dan-hero">
+  <span class="dan-eyebrow">DRAW, DON'T PICK</span>
+  <h2>抽一道，别挑。</h2>
+  <p>题目由服务端抽、结果只存在服务端。<strong>在你点「开始做题」之前，这道题的题号与链接根本不在这个页面里</strong> —— 刷新、右键、F12 都提前看不到，因为它还不存在。你只看得到难度。点下去的那一刻同时起计时并跳转 Codeforces。</p>
+</section>
+
+<p class="dan-msg" id="message" role="status" aria-live="polite"></p>
+
+<section class="dan-grid" id="idle" hidden>
+  <article class="dan-card">
+    <header><h3>每日一题</h3><span class="dan-chip" id="dailyDate"></span></header>
+    <p class="dan-note">从四个档位的并集里按当天日期确定性抽取：同一天怎么刷新都是同一道。</p>
+    <div id="dailyDifficulty"></div>
+    <div class="dan-actions"><button class="btn btn-primary" id="dailyStart" type="button">开始今日一题</button></div>
+  </article>
+  <article class="dan-card">
+    <header><h3>随机抽题</h3><span class="dan-chip">单题 · 计时</span></header>
+    <p class="dan-note">按 rating 均匀抽取，不是按题目均匀 —— 否则「初级」会几乎全是 800 分。抽完只显示难度。</p>
+    <div class="dan-tiers" id="singleTiers"></div>
+  </article>
+  <article class="dan-card dan-wide">
+    <header><h3>段位認定</h3><span class="dan-chip">挑战模式 · 连续 3 道 · 逐题限时</span></header>
+    <p class="dan-note">做完一道立刻抽下一道，三道全部在限时内通关才算通过。这是<strong>挑战模式</strong>，不发段位名 —— 发段位名的是固定选曲段，随机段位認定本来就不给。</p>
+    <div class="dan-tiers" id="challengeTiers"></div>
+  </article>
+</section>
+
+<section class="dan-active" id="active" hidden aria-label="进行中的认定"></section>
+
+<section class="dan-history">
+  <div class="dan-history-head"><h2>认定记录</h2><button class="btn btn-ghost" id="refresh" type="button">刷新</button></div>
+  <div id="history"></div>
+</section>
+
+<p class="dan-disclaimer">口径：这是<strong>自测</strong>，不是防作弊。开始做题之后你照样可以查题解、问 AI —— 这一点拦不住，和「辅助解题」自报标签是同一条现实。它唯一能保证的是<strong>你没法挑题</strong>。<br>另外，抽到的题如果正好是你已经提交过的（含只有 WA 的），会被自动排除；排除依据是本机已同步的提交记录，同步不完整时可能仍有漏网。</p>
+
+</main>
+<script type="module" src="/dan.js"></script></body></html>

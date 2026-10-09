@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { recordPractice, type PracticeInput } from './practice.ts';
 import { scoreProblem, buildBoard } from './rating.ts';
+import { advanceDanSessions } from './dan.ts';
 import { listDxEntries } from '../server/queries.ts';
 
 export interface PracticeTimer {
@@ -127,6 +128,10 @@ export function reconcileTimers(db: DatabaseSync, accountId?: number, now = nowS
       }
     }
   });
+  // 挑战/段位認定：计时器落成 completed 之后，那一轮才知道自己第几道做完了。
+  // 放在事务外，且**不调 cancelTimer** —— 它会回调本函数，形成递归
+  // （超时取消在 advanceDanSessions 里直接置状态，见 dan.ts）。
+  advanceDanSessions(db, now);
 }
 
 export function cancelTimer(db: DatabaseSync, userId: number, id: string) {
