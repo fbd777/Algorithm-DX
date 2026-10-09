@@ -531,101 +531,137 @@ function drainSheet() {
 
 /* ---------------- 段位認定结算页（对齐原作 UI_DNM_Result_* 的构成） ---------------- */
 
+/** 难度色号 → 逐曲卡的渐变（与 CF 分色同一套边界；violet 是原作 MASTER 的紫）。 */
+const TRACK_TONE = {
+  red: ['#e8564f', '#a3211c'], orange: ['#f08c3a', '#a85a12'],
+  violet: ['#8b6cf0', '#4a2fb0'], blue: ['#4a7fe0', '#1e3f96'],
+  cyan: ['#3fa8c4', '#166b83'], green: ['#4aa85c', '#1d6b30'],
+  gray: ['#7b8391', '#3f4652'], unrated: ['#7b8391', '#3f4652'],
+};
+
 let resultDialog = null;
 function buildResultDialog() {
   const dialog = el('dialog', 'dan-result');
   dialog.setAttribute('aria-labelledby', 'danRunTitle');
   dialog.innerHTML = `<div class="dan-result-sheet">
-    <button class="dx-result-close dan-result-close" type="button" aria-label="关闭结算">×</button>
-    <div class="dan-result-stamp" data-verdict="cleared">
-      <span class="dan-stamp-ougi left" aria-hidden="true"></span>
-      <span class="dan-stamp-ougi right" aria-hidden="true"></span>
-      <span class="dan-stamp-base" aria-hidden="true"></span>
-      <strong class="dan-stamp-text">合格</strong>
-      <span class="dan-stamp-himo" aria-hidden="true"></span>
-      <span class="dan-stamp-kira" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-    </div>
-    <h2 class="dan-result-title" id="danRunTitle"></h2>
+    <button class="dan-result-close" type="button" aria-label="关闭结算">×</button>
+    <span class="dan-cord left" aria-hidden="true"><i></i></span>
+    <span class="dan-cord right" aria-hidden="true"><i></i></span>
+    <h2 class="dan-result-title" id="danRunTitle">段位認定</h2>
     <p class="dan-result-sub"></p>
-    <div class="dan-result-tiles"></div>
-    <ol class="dan-result-cards"></ol>
+    <ol class="dan-result-tracks"></ol>
+    <div class="dan-result-bottomrow">
+      <div class="dan-result-rankbox"><strong></strong><small></small></div>
+      <div class="dan-result-life"><span></span></div>
+      <div class="dan-result-totalblock">
+        <span class="dan-total-label">总达成率</span>
+        <strong class="dan-total-ach dan-gold"></strong>
+        <span class="dan-total-score"><small>DX分数</small><b></b></span>
+      </div>
+    </div>
     <p class="dan-result-note"></p>
     <div class="dan-result-actions">
-      <button class="btn btn-primary dan-result-again" type="button">再来一轮</button>
-      <button class="btn btn-ghost dan-result-close2" type="button">回到抽题</button>
+      <button class="dan-result-again" type="button"></button>
+      <button class="dan-result-ok" type="button">好</button>
     </div></div>`;
   document.body.append(dialog);
   field(dialog, '.dan-result-close').addEventListener('click', () => dialog.close());
-  field(dialog, '.dan-result-close2').addEventListener('click', () => dialog.close());
+  field(dialog, '.dan-result-ok').addEventListener('click', () => dialog.close());
   return dialog;
+}
+
+/** `.dan-gold` 要两层（描边 ::before + 渐变填充 ::after），两层都读 `data-text`。 */
+function goldNode(cls, text) {
+  const node = el('strong', cls, text);
+  node.dataset.text = text;
+  return node;
 }
 
 function openRunResult(run) {
   resultDialog ??= buildResultDialog();
   const dialog = resultDialog;
   const verdict = run.status === 'cleared' ? 'cleared' : run.status === 'failed' ? 'failed' : 'abandoned';
-  const done = run.stages.filter((stage) => stage.outcome === 'cleared');
-  const rated = run.stages.filter((stage) => stage.rating !== null);
-  const totalSeconds = rated.reduce((sum, stage) => sum + (stage.seconds ?? 0), 0);
+  const cleared = run.stages.filter((stage) => stage.outcome === 'cleared');
+  const scored = cleared.filter((stage) => stage.achievement !== null);
 
-  field(dialog, '.dan-result-stamp').dataset.verdict = verdict;
-  field(dialog, '.dan-stamp-text').textContent = VERDICT_TEXT[run.status] ?? '中断';
-  field(dialog, '#danRunTitle').textContent = `${run.tierName} · ${KIND_LABEL[run.kind] ?? run.kind}`;
-  field(dialog, '.dan-result-sub').textContent = `随机抽题 ${run.minRating}–${run.maxRating} · 共 ${run.stageCount} 道 · 每道独立限时 ${fmtLimit(run.limitSeconds)}`;
+  dialog.dataset.verdict = verdict;
+  field(dialog, '.dan-result-sub').textContent =
+    `随机抽题 · ${run.tierName} ${run.minRating}–${run.maxRating} · 共 ${run.stageCount} 道 · 每道限时 ${fmtLimit(run.limitSeconds)}`;
 
-  const tiles = field(dialog, '.dan-result-tiles');
-  tiles.replaceChildren();
-  const addTile = (caption, value, tone) => {
-    const tile = el('div', 'dan-result-tile');
-    tile.append(el('small', '', caption));
-    tile.append(el('strong', tone, value));
-    tiles.append(tile);
-  };
-  addTile('通关 / 总题数', `${done.length} / ${run.stageCount}`);
-  addTile('本轮单题合计', run.totalRating === null ? '—' : run.totalRating.toFixed(1));
-  addTile('已用时间合计', totalSeconds ? fmtDuration(totalSeconds) : '—');
-  const deltas = run.stages.map((stage) => stage.comparison?.ratingDelta).filter((value) => typeof value === 'number');
-  const boardDelta = deltas.reduce((sum, value) => sum + value, 0);
-  addTile('B50 增量', deltas.length ? signed(Math.round(boardDelta * 10) / 10) : '—', boardDelta > 0 ? 'up' : undefined);
-
-  const cards = field(dialog, '.dan-result-cards');
-  cards.replaceChildren();
+  const tracks = field(dialog, '.dan-result-tracks');
+  tracks.replaceChildren();
   for (const stage of run.stages) {
-    const card = el('li', 'dan-rcard');
-    card.dataset.outcome = stage.outcome ?? 'pending';
-    card.append(el('span', 'dan-rcard-stamp', stage.outcome === 'cleared' ? 'CLEAR' : stage.outcome === 'timeout' ? 'TIME UP' : '—'));
-    const head = el('div', 'dan-rcard-head');
-    if (stage.problemUrl) {
-      const link = el('a', '', stage.problemId ?? '');
-      link.href = stage.problemUrl;
-      link.rel = 'noreferrer noopener';
-      head.append(link);
-    } else head.append(el('span', 'dan-rcard-nolink', '未开始'));
-    head.append(el('span', 'dan-chip', `${stage.difficulty} 分`));
-    card.append(head);
-    card.append(el('div', 'dan-rcard-rank', stage.rank ?? (stage.outcome === 'cleared' ? '—' : '')));
-    card.append(el('div', 'dan-rcard-ach', stage.achievement === null ? '—' : `${stage.achievement.toFixed(4)}%`));
-    const fields = el('div', 'dan-rcard-fields');
-    fields.append(el('span', '', `用时 ${stage.seconds === null ? '—' : fmtHMS(stage.seconds)}`));
-    fields.append(el('span', '', `单题 ${stage.rating === null ? '—' : `${stage.rating.toFixed(1)} 分`}`));
-    if (typeof stage.comparison?.ratingDelta === 'number') fields.append(el('span', 'dan-rcard-board', `B50 ${signed(stage.comparison.ratingDelta)}`));
-    card.append(fields);
-    const bar = el('div', 'dan-rcard-bar');
-    const fill = el('i');
-    fill.style.width = `${Math.max(0, Math.min(100, stage.achievement ?? 0))}%`;
-    bar.append(fill);
-    card.append(bar);
-    cards.append(card);
+    const tone = TRACK_TONE[cfRatingColor(stage.difficulty).tone] ?? TRACK_TONE.violet;
+    const item = el('li', 'dan-track');
+    item.dataset.outcome = stage.outcome ?? 'pending';
+    item.append(el('span', 'dan-track-stamp', stage.outcome === 'cleared' ? '可' : '不可'));
+
+    const card = el('div', 'dan-track-card');
+    card.style.setProperty('--tc1', tone[0]);
+    card.style.setProperty('--tc2', tone[1]);
+
+    // 「封面」那一格放题号：我们抽的是 CF 题、没有曲绘，放题号比放装饰诚实。
+    const [contest, index] = (stage.problemId ?? '').split(':');
+    const jacket = el('div', 'dan-track-jacket');
+    jacket.append(el('b', '', index || '?'), el('small', '', contest || '未开始'));
+    card.append(jacket);
+
+    const info = el('div', 'dan-track-info');
+    const head = el('div', 'dan-track-head');
+    head.append(el('span', 'dan-track-no', `STAGE ${String(stage.index).padStart(2, '0')}`));
+    head.append(el('span', 'dan-track-diff', `${stage.difficulty} 分`));
+    head.append(el('span', 'dan-track-name', stage.title ?? '—'));
+    info.append(head);
+
+    const achievement = el('div', 'dan-track-ach');
+    achievement.append(el('span', 'dan-track-achlabel', '达成率'));
+    achievement.append(goldNode('dan-track-achvalue dan-gold',
+      stage.achievement === null ? '—' : `${stage.achievement.toFixed(4)}%`));
+    achievement.append(el('span', 'dan-track-judge',
+      stage.outcome === 'cleared' ? (stage.rank ?? '通关')
+        : stage.outcome === 'timeout' ? '超时' : stage.outcome === 'interrupted' ? '中断' : '未开始'));
+    info.append(achievement);
+    card.append(info);
+
+    const side = el('div', 'dan-track-side');
+    side.append(el('span', 'dan-track-lv', String(stage.difficulty)));
+    const score = el('span', 'dan-track-score');
+    score.append(el('small', '', 'DX分数'), el('b', '', stage.rating === null ? '—' : stage.rating.toFixed(1)));
+    side.append(score);
+    card.append(side);
+    item.append(card);
+    tracks.append(item);
   }
 
-  field(dialog, '.dan-result-note').textContent = run.status === 'cleared'
+  field(dialog, '.dan-result-rankbox strong').textContent = VERDICT_TEXT[run.status] ?? '中断';
+  field(dialog, '.dan-result-rankbox small').textContent = `${cleared.length} / ${run.stageCount} 道通关`;
+
+  // 原作这一格是显示剩余生命的心；我们没有生命值，用「通关几道」占这一格。
+  const life = field(dialog, '.dan-result-life');
+  life.dataset.state = run.status === 'cleared' ? 'ok' : 'bad';
+  field(dialog, '.dan-result-life span').replaceChildren(
+    document.createTextNode(String(cleared.length)), el('small', '', `/${run.stageCount}`));
+
+  // 原作的「总达成率」是四首歌达成率之和、「DX分数」是四首 DX 分数之和；
+  // 这里对应三道达成率之和与三道单题 rating 之和。
+  const totalAchievement = scored.reduce((sum, stage) => sum + stage.achievement, 0);
+  const totalText = scored.length ? `${totalAchievement.toFixed(4)}%` : '—';
+  const totalNode = field(dialog, '.dan-total-ach');
+  totalNode.textContent = totalText;
+  totalNode.dataset.text = totalText;
+  field(dialog, '.dan-total-score b').textContent = run.totalRating === null ? '—' : run.totalRating.toFixed(1);
+
+  const deltas = run.stages.map((stage) => stage.comparison?.ratingDelta).filter((value) => typeof value === 'number');
+  let note = run.status === 'cleared'
     ? '三道都在限时内解出。每道题的成绩已经作为单题记录存进练习记录，并计入 B50。'
     : run.status === 'failed'
-      ? '有一道超出了限时，本轮就此结束。超时那道没有成绩；已经通过的那几道照样计入 B50。'
-      : '这一轮被中断或放弃，没有生成总成绩。已经通过的那几道照样计入 B50。';
+      ? `有一道超出了限时，本轮就此结束。超时那道没有成绩（计时器被取消、不生成练习记录）；已经通过的 ${cleared.length} 道照样计入 B50。`
+      : `这一轮被中断或放弃，没有生成总成绩。已经通过的 ${cleared.length} 道照样计入 B50。`;
+  if (deltas.length) note += ` 本轮对 B50 总分的影响：${signed(Math.round(deltas.reduce((sum, value) => sum + value, 0) * 10) / 10)}。`;
+  field(dialog, '.dan-result-note').textContent = note;
 
   const again = field(dialog, '.dan-result-again');
-  again.textContent = `再来一轮${run.tierName}`;
+  again.textContent = `再来一轮 · ${run.tierName}`;
   again.onclick = () => { dialog.close(); startRun(run.kind === 'challenge' ? 'challenge' : 'single', run.tier); };
 
   if (!dialog.open) dialog.showModal();

@@ -109,122 +109,163 @@
 .dx-result-time { flex-direction: column; gap: 1px; }
 
 /* ---------- 段位認定结算页 ----------
- * 构成对齐原作 UI_DNM_Clear / UI_DNM_Result_ClearBase_* / UI_DNM_DaniChainCard_*：
- *   底板 312x56、两侧扇饰 116x116 落在 ±66、缎带 212x72 垂在中下方、
- *   星尘两组、合格文字 128x64；下面是逐题卡与合计。
- * 贴图没有从素材包里搬 —— 全部用 CSS 重画，避免把游戏美术带进这个仓库。
+ * 版式照原作段位認定结算（Process/Course/CourseResultProcess）：
+ *   奶油色纸盘 + 两侧水引红绳 + 每道一个「可」印 + 竖排逐曲卡
+ *   （封面 / TRACK 0n / 难度 / 曲名 / 达成率 / LV / DX分数）
+ *   + 底部「十段」框 · 绿心 · 总达成率 · DX分数 + 「好」按钮。
+ * 逐个对得上素材包 resources.assets 里的 UI_DNM_*：那枚「可」印是 UI_DNM_Stamp 的
+ * Clear / NoClear，两侧绳子是 UI_DNM_Separator，底部那块是 UI_DNM_DaniData。
+ * 贴图没有从素材包里搬：全部用 CSS 重画，避免把游戏美术带进这个 MIT 仓库。
+ * 盘面用大圆角而不是正圆 —— 三道题卡竖排进正圆，在常见宽度下会挤到不可读。
  */
 /* dialog 默认是 shrink-to-fit，只写 max-width 撑不宽，这里必须给 width。 */
-.dan-result { border: 0; padding: 0; background: transparent; width: min(1020px, 96vw); max-width: none; color: var(--text); }
-.dan-result::backdrop { background: #05070cd9; }
+.dan-result { border: 0; padding: 0; background: transparent; width: min(1040px, 96vw); max-width: none; color: #2b1c12; }
+.dan-result::backdrop { background: #05070ce0; }
 .dan-result-sheet {
-  position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 22px 24px 20px; display: grid; gap: 14px; justify-items: center;
-  max-height: 88vh; overflow: auto;
+  position: relative; overflow: auto; max-height: 90vh;
+  background: radial-gradient(120% 80% at 50% -10%, #fffaf0, #f7e7cd 55%, #eed7b4), #f7e7cd;
+  border: 9px solid #d8461f; border-radius: 46px;
+  box-shadow: inset 0 0 0 3px #f7b23f, inset 0 0 0 7px #d8461f, inset 0 0 60px #e8b98155, 0 22px 60px #000b;
+  padding: 20px 46px 22px; display: grid; gap: 11px; justify-items: center;
 }
-.dan-result-close { position: absolute; top: 10px; right: 12px; }
-.dan-result-title { margin: 0; font-size: 1.15rem; text-align: center; }
-.dan-result-sub { margin: 0; color: var(--text-dim); font-size: .84rem; text-align: center; }
+.dan-result[data-verdict="failed"] .dan-result-sheet { border-color: #8c2b1a; }
+.dan-result[data-verdict="abandoned"] .dan-result-sheet { border-color: #8a8578; }
+.dan-result-close { position: absolute; top: 12px; right: 18px; padding: 0; font-size: 1.5rem; line-height: 1; color: #a8623a; background: none; border: 0; cursor: pointer; z-index: 2; }
+.dan-result-close:hover { color: #d8461f; }
+.dan-result-title { margin: 2px 0 0; font-size: 1.85rem; font-weight: 900; letter-spacing: .22em; color: #33200f; text-shadow: 0 1px 0 #fff; }
+.dan-result-sub { margin: 0 0 2px; font-size: .8rem; color: #9a7550; text-align: center; }
 
-/* 合格 / 不合格 印章 */
-.dan-result-stamp { position: relative; width: 100%; max-width: 420px; height: 196px; margin-top: 4px; }
-.dan-result-stamp > * { position: absolute; left: 50%; top: 50%; }
-.dan-stamp-base {
-  width: 312px; height: 56px; transform: translate(-50%, calc(-50% + 4.7px));
-  background: linear-gradient(#2b3350, #131a2c 60%, #0d1220);
-  border: 2px solid #f6d24a; border-radius: 6px;
-  box-shadow: inset 0 1px #ffffff30, 0 4px 16px #0009, 0 0 0 1px #00000060;
+/* 两侧水引（UI_DNM_Separator）：上端蝴蝶结 + 竖绳 + 下端流苏 */
+.dan-cord { position: absolute; top: 16px; bottom: 16px; width: 30px; pointer-events: none; }
+.dan-cord.left { left: 14px; }
+.dan-cord.right { right: 14px; }
+.dan-cord::before {
+  content: ''; position: absolute; left: 50%; top: 34px; bottom: 36px; width: 5px; transform: translateX(-50%);
+  background: linear-gradient(#ff9d7a, #e0402a 40%, #c9381f); border-radius: 3px;
 }
-.dan-result-stamp[data-verdict="failed"] .dan-stamp-base { border-color: #f4646c; }
-.dan-result-stamp[data-verdict="abandoned"] .dan-stamp-base { border-color: var(--border); }
-.dan-stamp-ougi {
-  width: 116px; height: 116px; transform: translate(-50%, calc(-50% - 8px));
-  background: linear-gradient(160deg, #ffe98a, #e8b52c 55%, #a9761a);
-  opacity: .95;
+.dan-cord::after {
+  content: ''; position: absolute; left: 50%; top: 8px; width: 22px; height: 22px;
+  transform: translateX(-50%) rotate(45deg); background: #f2603c; border-radius: 4px 13px 6px 13px;
+  box-shadow: inset 0 0 0 2px #ffd2bd, 0 2px 5px #0004;
 }
-.dan-stamp-ougi.left { margin-left: -66px; clip-path: polygon(100% 6%, 100% 94%, 46% 78%, 0 50%, 46% 22%); }
-.dan-stamp-ougi.right { margin-left: 66px; clip-path: polygon(0 6%, 0 94%, 54% 78%, 100% 50%, 54% 22%); }
-.dan-result-stamp[data-verdict="failed"] .dan-stamp-ougi { background: linear-gradient(160deg, #ffb0b4, #e5545e 55%, #9c2830); }
-.dan-result-stamp[data-verdict="abandoned"] .dan-stamp-ougi { background: linear-gradient(160deg, #8f9bb4, #5c6578 55%, #3b4250); }
-.dan-stamp-himo {
-  width: 212px; height: 72px; transform: translate(-50%, calc(-50% + 31.1px));
-  background: linear-gradient(#ffd94d, #d99f1c 60%, #a8760f);
-  clip-path: polygon(0 0, 100% 0, 93% 50%, 100% 100%, 0 100%, 7% 50%);
-  box-shadow: 0 3px 10px #0007;
+.dan-cord i {
+  position: absolute; left: 50%; bottom: 6px; width: 20px; height: 30px; transform: translateX(-50%);
+  background: repeating-linear-gradient(90deg, #e0402a 0 2px, transparent 2px 5px);
 }
-.dan-result-stamp[data-verdict="failed"] .dan-stamp-himo { background: linear-gradient(#f4727a, #c93a44 60%, #93202a); }
-.dan-result-stamp[data-verdict="abandoned"] .dan-stamp-himo { background: linear-gradient(#7d879c, #4e5667 60%, #363d4b); }
-.dan-stamp-text {
-  transform: translate(-50%, -50%); font-size: 46px; font-weight: 900; letter-spacing: .12em;
-  color: #fff8d6; text-shadow: 0 2px 0 #8a5c06, 0 0 18px #ffd94d88;
-  z-index: 2; white-space: nowrap;
-}
-.dan-result-stamp[data-verdict="failed"] .dan-stamp-text { color: #ffe9ea; text-shadow: 0 2px 0 #7d1a22, 0 0 18px #f4646c66; }
-.dan-result-stamp[data-verdict="abandoned"] .dan-stamp-text { color: var(--text-dim); text-shadow: 0 2px 0 #20242e; }
-.dan-stamp-kira { width: 0; height: 0; z-index: 3; }
-.dan-stamp-kira i {
-  position: absolute; width: 18px; height: 18px; background: #fff3b0;
-  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
-  box-shadow: 0 0 10px #ffe37a;
-}
-.dan-stamp-kira i:nth-child(1) { transform: translate(-118px, -6px); }
-.dan-stamp-kira i:nth-child(2) { transform: translate(-70px, 34px); }
-.dan-stamp-kira i:nth-child(3) { transform: translate(70px, -34px); }
-.dan-stamp-kira i:nth-child(4) { transform: translate(118px, 6px); }
-.dan-result-stamp[data-verdict="failed"] .dan-stamp-kira, .dan-result-stamp[data-verdict="abandoned"] .dan-stamp-kira { display: none; }
 
-/* 合计 */
-.dan-result-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; width: 100%; }
-.dan-result-tile {
-  display: grid; gap: 3px; background: var(--bg-soft); border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm); padding: 10px 12px; text-align: center;
+/* 逐曲卡：左边「可」印（UI_DNM_Stamp），右边一条难度配色的横卡 */
+.dan-result-tracks { display: grid; gap: 7px; width: 100%; margin: 0; padding: 0; list-style: none; }
+.dan-track { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 9px; align-items: center; }
+.dan-track-stamp {
+  box-sizing: border-box; width: 46px; height: 50px; display: grid; place-items: center;
+  font-size: 1.15rem; font-weight: 900; color: #e0402a; background: #fff8ec;
+  border: 3px solid #e0402a; border-radius: 2px; box-shadow: 0 2px 6px #0002;
+  clip-path: polygon(29% 0, 71% 0, 100% 29%, 100% 71%, 71% 100%, 29% 100%, 0 71%, 0 29%);
 }
-.dan-result-tile small { color: var(--muted); font-size: .72rem; }
-.dan-result-tile strong { font-family: var(--mono); font-size: 1.05rem; }
-.dan-result-tile strong.up { color: var(--ac); }
+.dan-track[data-outcome="timeout"] .dan-track-stamp,
+.dan-track[data-outcome="interrupted"] .dan-track-stamp { color: #8f8f8f; border-color: #9d9d9d; background: #f4f1ec; }
+.dan-track[data-outcome="pending"] .dan-track-stamp { color: #b9b1a6; border-color: #bcb4a8; background: #f4f1ec; }
+.dan-track-card {
+  display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 6px 12px 6px 6px; border-radius: 9px; border: 2px solid #ffffff59;
+  background: linear-gradient(100deg, var(--tc1, #8b6cf0), var(--tc2, #4a2fb0));
+  box-shadow: 0 3px 10px #0005, inset 0 1px #ffffff40;
+}
+.dan-track-jacket {
+  width: 96px; height: 68px; border-radius: 5px; display: grid; place-items: center;
+  border: 2px solid #ffffff66; box-shadow: inset 0 0 22px #00000066;
+  background: linear-gradient(140deg, #ffffff2e, #00000059);
+}
+.dan-track-jacket b { font-family: var(--mono); font-size: 1.5rem; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 2px 5px #000b; }
+.dan-track-jacket small { font-family: var(--mono); font-size: .58rem; color: #ffffffcc; }
+.dan-track-info { display: grid; gap: 3px; min-width: 0; }
+.dan-track-head { display: flex; gap: 7px; align-items: baseline; flex-wrap: nowrap; min-width: 0; }
+.dan-track-no { font-family: var(--mono); font-size: .66rem; font-weight: 700; letter-spacing: .1em; color: #ffe0b0; white-space: nowrap; }
+.dan-track-diff { font-family: var(--mono); font-size: .64rem; color: #fff; background: #0000004d; border-radius: 3px; padding: 1px 6px; white-space: nowrap; }
+.dan-track-name { flex: 1; min-width: 0; font-size: .76rem; color: #ffffffeb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dan-track-ach { display: flex; align-items: baseline; gap: 8px; }
+.dan-track-achlabel { font-size: .68rem; color: #ffffffd0; }
+.dan-track-achvalue { font-family: var(--mono); font-size: 1.8rem; font-weight: 900; letter-spacing: -.02em; }
+.dan-track-judge { font-size: .62rem; color: #3a2418; background: #ffd76a; border-radius: 999px; padding: 1px 9px; white-space: nowrap; }
+.dan-track[data-outcome="timeout"] .dan-track-judge,
+.dan-track[data-outcome="interrupted"] .dan-track-judge,
+.dan-track[data-outcome="pending"] .dan-track-judge { background: #d9d2c8; }
+.dan-track-side { display: grid; gap: 4px; justify-items: end; }
+.dan-track-lv {
+  font-family: var(--mono); font-size: .95rem; font-weight: 900; color: #fff; padding: 0 8px;
+  border: 2px solid #ffffff8c; border-radius: 6px; background: linear-gradient(#7b5cff, #4628b8);
+}
+.dan-track-score { display: flex; align-items: baseline; gap: 5px; }
+.dan-track-score small { font-size: .58rem; color: #ffffffb8; }
+.dan-track-score b { font-family: var(--mono); font-size: .9rem; color: #fff; }
 
-/* 逐题卡（原作 UI_DNM_DaniChainCard_Main 那一版式） */
-.dan-result-cards {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;
-  width: 100%; margin: 0; padding: 0; list-style: none;
+/* 金色描边数字：白→金→橙渐变填充 + 深棕描边（原作那套 DX 数字，用 CSS 重画）。
+ * 必须分两层，试过两条捷径都不行：
+ *   - 八向 text-shadow：偏移副本会把渐变填充整个盖住，只剩一圈棕边；
+ *   - -webkit-text-stroke + paint-order: stroke fill：Chromium 的 paint-order 只对
+ *     SVG 生效，HTML 文字上描边照样盖在填充之上，6px 描边直接吃掉整个笔画。
+ * 所以描边交给 ::before、渐变填充交给 ::after，两层叠在同一段文字（data-text）上。
+ * 这两点是抠图像素数数出来的，DOM 层面完全看不出来。 */
+.dan-gold { position: relative; display: inline-block; color: transparent; }
+.dan-gold::before, .dan-gold::after {
+  content: attr(data-text); position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none;
 }
-.dan-rcard {
-  position: relative; display: grid; gap: 6px; justify-items: center; text-align: center;
-  background: linear-gradient(#1b2233, #12172290); border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm); padding: 24px 14px 14px;
+.dan-gold::before { color: #5a2a10; -webkit-text-stroke: 6px #5a2a10; }
+.dan-gold::after {
+  background: linear-gradient(#fffce8, #ffd85c 42%, #ff9a1f 68%, #ffd85c);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.dan-rcard[data-outcome="cleared"] { border-color: rgba(63, 185, 80, .35); }
-.dan-rcard[data-outcome="timeout"] { border-color: rgba(248, 81, 73, .35); }
-.dan-rcard-stamp {
-  position: absolute; top: 6px; left: 50%; transform: translateX(-50%) rotate(-4deg);
-  font-family: var(--mono); font-size: .64rem; letter-spacing: .14em; font-weight: 700;
-  padding: 2px 10px; border-radius: 4px; border: 1px solid currentColor;
-}
-.dan-rcard[data-outcome="cleared"] .dan-rcard-stamp { color: var(--ac); }
-.dan-rcard[data-outcome="timeout"] .dan-rcard-stamp { color: var(--bad); }
-.dan-rcard[data-outcome="interrupted"] .dan-rcard-stamp { color: var(--muted); }
-.dan-rcard[data-outcome="pending"] .dan-rcard-stamp { color: var(--muted); }
-.dan-rcard-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
-.dan-rcard-head a { color: var(--accent); font-family: var(--mono); text-decoration: none; font-size: 1rem; }
-.dan-rcard-nolink { color: var(--muted); font-size: .85rem; }
-.dan-rcard-rank { font-size: 2.1rem; font-weight: 900; color: var(--accent); line-height: 1.05; }
-.dan-rcard-ach { font-family: var(--mono); font-size: .95rem; }
-.dan-rcard-fields { display: grid; gap: 2px; font-size: .78rem; color: var(--text-dim); }
-.dan-rcard-board { color: var(--ac); }
-.dan-rcard-bar { width: 100%; height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; margin-top: 4px; }
-.dan-rcard-bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), #f6d24a); }
-.dan-result-note { margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.75; text-align: center; max-width: 66ch; }
-.dan-result-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.dan-gold { filter: drop-shadow(0 4px 7px #00000059); }
 
-@media (max-width: 780px) {
+/* 底部：判定框 · 心 · 总达成率 / DX分数 */
+.dan-result-bottomrow { display: grid; grid-template-columns: minmax(140px, 210px) auto minmax(0, 1fr); gap: 16px; align-items: center; width: 100%; margin-top: 3px; }
+.dan-result-rankbox {
+  display: grid; place-items: center; gap: 1px; padding: 9px 12px; background: #fffdf6;
+  border: 3px solid #e6d3b4; border-radius: 13px; box-shadow: 0 3px 10px #00000030, inset 0 1px #fff;
+}
+.dan-result-rankbox strong { font-size: 2.35rem; font-weight: 900; letter-spacing: .05em; line-height: 1.1; color: #2b1c12; }
+.dan-result[data-verdict="failed"] .dan-result-rankbox strong { color: #b32a15; }
+.dan-result[data-verdict="abandoned"] .dan-result-rankbox strong { color: #7d8794; }
+.dan-result-rankbox small { font-size: .68rem; color: #9a7550; }
+.dan-result-life { position: relative; width: 88px; height: 88px; display: grid; place-items: center; }
+.dan-result-life::before {
+  content: '♥'; position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 92px; line-height: 1; color: #35c257;
+  -webkit-text-stroke: 5px #e6fbec; text-shadow: 0 4px 10px #0000004d;
+}
+.dan-result-life[data-state="bad"]::before { color: #9aa3ae; }
+.dan-result-life span { position: relative; z-index: 1; font-family: var(--mono); font-size: 1.2rem; font-weight: 900; color: #fff; text-shadow: 0 1px 4px #000000b3; }
+.dan-result-life span small { font-size: .62rem; opacity: .9; }
+.dan-result-totalblock { display: grid; gap: 2px; min-width: 0; }
+.dan-total-label { font-size: .74rem; font-weight: 700; letter-spacing: .1em; color: #8a5a2a; }
+.dan-total-ach { font-family: var(--mono); font-size: 2.5rem; font-weight: 900; letter-spacing: -.02em; }
+.dan-total-score { display: inline-flex; align-items: baseline; gap: 7px; justify-self: start; margin-top: 2px; padding: 2px 12px; border-radius: 6px; background: #fffdf699; border: 2px solid #e6d3b4; }
+.dan-total-score small { font-size: .64rem; color: #9a7550; }
+.dan-total-score b { font-family: var(--mono); font-size: 1rem; color: #2b1c12; }
+
+.dan-result-note { margin: 2px 0 0; max-width: 72ch; text-align: center; font-size: .78rem; line-height: 1.7; color: #96714b; }
+.dan-result-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; align-items: center; width: 100%; }
+.dan-result-ok {
+  min-width: 112px; padding: 7px 26px; font-size: 1.25rem; font-weight: 900; color: #fff; cursor: pointer;
+  background: linear-gradient(#ff9a4d, #e8542a); border: 3px solid #c9381f; border-radius: 11px;
+  box-shadow: 0 4px 0 #a32c15, 0 6px 14px #0000004d;
+}
+.dan-result-ok:active { transform: translateY(2px); box-shadow: 0 2px 0 #a32c15; }
+.dan-result-again { padding: 6px 16px; font-weight: 700; color: #7a4a20; background: #fffdf6; border: 2px solid #e6d3b4; border-radius: 9px; cursor: pointer; }
+
+@media (max-width: 860px) {
   .dan-grid { grid-template-columns: 1fr; }
-  .dan-result-sheet { padding: 16px 14px; }
-  .dan-result-stamp { height: 168px; }
-  .dan-stamp-base { width: 254px; }
-  .dan-stamp-ougi { width: 84px; height: 84px; margin-left: -52px; }
-  .dan-stamp-ougi.right { margin-left: 52px; }
-  .dan-stamp-ougi.left { margin-left: -52px; }
-  .dan-stamp-himo { width: 168px; height: 58px; }
-  .dan-stamp-text { font-size: 36px; }
-  .dan-stamp-kira { display: none; }
+  .dan-result-sheet { padding: 16px 22px 18px; border-radius: 30px; }
+  .dan-result-title { font-size: 1.4rem; }
+  .dan-cord { display: none; }
+  .dan-track-card { grid-template-columns: 62px minmax(0, 1fr); row-gap: 6px; }
+  .dan-track-jacket { width: 62px; height: 56px; }
+  .dan-track-jacket b { font-size: 1.15rem; }
+  .dan-track-side { grid-column: 2; grid-auto-flow: column; align-items: baseline; gap: 8px; justify-items: start; }
+  .dan-track-achvalue { font-size: 1.35rem; }
+  .dan-track-name { flex-basis: 8ch; }
+  .dan-result-bottomrow { grid-template-columns: 1fr; justify-items: center; }
+  .dan-total-ach { font-size: 2rem; }
+  .dan-total-score { justify-self: center; }
+  .dan-result-actions { justify-content: center; }
 }
