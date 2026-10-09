@@ -138,132 +138,122 @@
 .dx-result-time .dx-result-limit { color: var(--muted); font-size: .62rem; }
 .dx-result-time { flex-direction: column; gap: 1px; }
 
-/* ---------- 段位認定结算页（原作素材直接上屏） ----------
- * 版式照原作段位認定结算（Process/Course/CourseResultProcess），但整屏不再用 CSS 重画：
- * 底图就是原作那张 980×928 的成品屏（resources.assets 的 UI_DNM_Result_Base_01
- * =「段位認定」、_03 =「ランダム段位認定」），页头文字、格纹页眉、两侧水引、
- * 下半部的色带与白框**全部烘焙在底图里**。动态内容按量出来的分区叠上去：
- *   页头带 0–15.1% · 奶油纸区 15.1–71.6% · 底部色带 71.6–100%
- *   纸区可写横向 26–88%（左边 24.8% 以右是菱形装饰，88.9% 以左是水引）
- *   底部白框 x 8.7–31.6% / y 73.3–94.8% —— 原作那一格放的就是合格印
- * 逐题行底板是 UI_DNM_Result_musicBase_01，可/不可印是 UI_DNM_Icon_Result_01/02，
- * 合格/不合格是 UI_DNM_Icon_Clear / NoClear。素材来源与重新提取见
- * docs/dan.md「结算页的素材来源」与 scripts/extract-maimai-assets.py。
+/* ---------- 段位認定结算页（原作底图 + 官方组件按官方坐标拼） ----------
+ * 版式不是照感觉摆的，是从 resources.assets 的 CourseResultProcess 预制体里量出来的
+ * （dump-layout.py 读每个 RectTransform 的 anchors / anchoredPosition / pivot / sizeDelta，
+ * 再按「美术坐标 = 屏幕中心 + 局部位置」换成 980×928 底图上的像素）。关键坐标：
+ *   逐题行 x 267–843（576 = 官方的 640 × 0.9），第 1 行 y 152–276，行距 122，共四行
+ *   可/不可印 108×108（UI_DNM_Icon_Result 的原始尺寸），圆心 x 203、第 1 行圆心 y 212
+ *   底部白框（原作放段位名牌那一格）x 85–310 / y 680–880
+ *   心（原作剩余生命那一格）100×100，圆心 (434, 790)
+ *   总达成率 / DX分数右下角一区：x ~470–965 / y ~620–845
+ * 组件也全是官方素材，不用 CSS 画：
+ *   数字 = UI_CMN_Num_26p/70p/90p 图集逐格切，配同布局的 _Outline 剪影层叠出描边
+ *   DX 分数 = UI_NUM_Score_0001111_Gold（金色那套，图集里 [13] 就是小数点）
+ *   评级 = UI_CMN_TabTitle_Rank_*，心 = UI_DNM_Base_Life_01/03，DX 标签 = UI_RSL_DXScore_Base
+ *   底图 = UI_DNM_Result_Base_01（段位認定）/ _03（ランダム段位認定），行底板 = ..._musicBase_01
+ * 素材来源、量法与重新提取见 docs/dan.md「结算页的素材来源」与
+ * scripts/extract-maimai-assets.py。
  *
- * 这些数字是拿 Pillow 逐行逐列分类量出来的（analyze 脚本见 docs），不是估的：
- * 例：纸区上边界 y=140/928=15.1%，白框在 y 663–901 之间的近白像素里。
- * 盘面比例锁死 980/928 —— 底图一旦被拉变形，页头那几个字就会糊。
+ * 盘面锁死 980×928、内部一律绝对像素：缩放交给浏览器对整张图等比缩放，
+ * 于是「一个数字多宽」这类关系到还原度的结论可以直接抄官方数字。
  */
-/* dialog 默认是 shrink-to-fit，只写 max-width 撑不宽，这里必须给 width。 */
-.dan-result { border: 0; padding: 0; background: transparent; width: min(1060px, 96vw); max-width: none; color: #23324c; }
+/* dialog 默认 shrink-to-fit，只写 max-width 撑不宽，这里必须给 width。 */
+.dan-result { border: 0; padding: 0; background: transparent; width: min(1000px, 96vw); max-width: none; color: #23324c; }
 .dan-result::backdrop { background: #05070ce8; }
-/* 窄屏不把 980px 的成品屏压扁，而是让盘面横向滚动：压扁了四行字没法读。 */
+/* 窄屏不把 980px 的成品屏压扁，而是让盘面横向滚动：压扁了字没法读，也谈不上还原。 */
 .dan-result-sheet { overflow: auto; max-height: 92vh; border-radius: 18px; }
-.dan-result-body { display: grid; gap: 11px; min-width: 880px; }
+.dan-result-body { display: grid; gap: 11px; width: 980px; }
 
 .dan-result-art {
-  position: relative; width: 100%; aspect-ratio: 980 / 928;
+  position: relative; width: 980px; height: 928px; overflow: hidden; border-radius: 18px;
   background: #f7f1e7 url('/assets/maimai/result-dani.png') 0 0 / 100% 100% no-repeat;
-  border-radius: 18px; box-shadow: 0 18px 50px #000a;
+  box-shadow: 0 18px 50px #000a;
 }
 .dan-result-art[data-art="random"] { background-image: url('/assets/maimai/result-random.png'); }
+/* 980×928 的设计尺寸舞台：所有组件在这层里用官方像素坐标绝对定位。 */
+.dan-result-stage { position: absolute; inset: 0; }
 
 .dan-result-close { position: absolute; top: 10px; right: 16px; z-index: 3; padding: 0; font-size: 1.5rem; line-height: 1; color: #2b6cb8; background: none; border: 0; cursor: pointer; }
 .dan-result-close:hover { color: #d8461f; }
 /* 页头那行字烘焙在底图里，这个 h2 只留给读屏（id 仍挂在 dialog 的 aria-labelledby 上）。 */
 .dan-result-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.dan-result-sub { position: absolute; left: 26%; right: 12%; top: 15.9%; margin: 0; text-align: center; font-size: .78rem; line-height: 1.5; color: #8a6a4a; }
+/* 这一轮的范围说明放在成品屏外面（深色底上）：原作那张纸上没有放这行字的位置，
+ * 硬塞进去就只能压在页头或第一行上。 */
+.dan-result-sub { margin: 0; justify-self: center; text-align: center; font-size: .8rem; line-height: 1.6; color: #c9d2de; }
 
-/* 逐题：左边「可」印，右边一条原作底板（musicBase）撑起来的横卡 */
-.dan-result-tracks {
-  position: absolute; left: 25.5%; right: 11.5%; top: 22.5%; bottom: 29%;
-  display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 8px;
-  margin: 0; padding: 0; list-style: none;
+/* ---------- 官方数字贴图 ----------
+ * 每格是一个 <i>，里面两层 <b>：官方 _Outline 剪影（当遮罩上深色 = 描边）+ 官方填充图集。
+ * 两层都是绝对定位，DOM 顺序决定填充盖在描边之上。图集本身是纯白剪影，
+ * 颜色是运行时给的 —— 和游戏里一样。 */
+.dan-num { display: inline-flex; align-items: center; }
+.dan-num-char { position: relative; display: block; flex: none; }
+.dan-num-char > b { position: absolute; inset: 0; display: block; background-repeat: no-repeat; }
+.dan-num-plain { display: grid; place-items: center; color: #4a3a2a; font-family: var(--mono); font-weight: 900; line-height: 1; }
+
+/* ---------- 逐题行 ---------- */
+.dan-result-tracks { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
+.dan-track { position: absolute; left: 267px; width: 576px; height: 124px; }
+/* 印在行左边、行外那一条（原作里印和底板本来就不在同一个容器里）。 */
+.dan-track-stamp {
+  position: absolute; left: -118px; top: 8px; width: 108px; height: 108px;
+  object-fit: contain; filter: drop-shadow(0 2px 3px #0003);
 }
-.dan-track { display: grid; grid-template-columns: 50px minmax(0, 1fr); gap: 9px; align-items: center; }
-.dan-track-stamp { width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 2px 3px #0003); }
 /* 还没抽到的那道不盖章 —— 印是真的，只是这一格还没轮到他。 */
 .dan-track[data-outcome="pending"] .dan-track-stamp { opacity: .22; filter: grayscale(1); }
-.dan-track-card {
-  display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; gap: 10px; align-items: center;
-  padding: 4px 14px 4px 5px; min-width: 0;
-  background: url('/assets/maimai/track-plate.png') 0 0 / 100% 100% no-repeat;
+.dan-track-plate { position: absolute; inset: 0; background: url('/assets/maimai/track-plate.png') 0 0 / 100% 100% no-repeat; }
+.dan-track-no {
+  position: absolute; left: 128px; top: 18px; white-space: nowrap;
+  font-family: var(--mono); font-size: .66rem; font-weight: 700; letter-spacing: .12em; color: #8a6a4a;
 }
 .dan-track-jacket {
-  width: 88px; height: 62px; border-radius: 5px; display: grid; place-items: center;
+  position: absolute; left: 14px; top: 14px; width: 102px; height: 96px;
+  border-radius: 5px; display: grid; place-items: center;
   border: 2px solid #ffffff8c; box-shadow: inset 0 0 22px #00000059;
   background: linear-gradient(140deg, var(--tc1, #8b6cf0), var(--tc2, #4a2fb0));
 }
-.dan-track-jacket b { font-family: var(--mono); font-size: 1.35rem; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 2px 5px #000b; }
+.dan-track-jacket b { font-family: var(--mono); font-size: 1.45rem; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 2px 5px #000b; }
 .dan-track-jacket small { font-family: var(--mono); font-size: .58rem; color: #ffffffcc; }
-.dan-track-info { display: grid; gap: 2px; min-width: 0; }
-.dan-track-head { display: flex; gap: 7px; align-items: baseline; flex-wrap: nowrap; min-width: 0; }
-.dan-track-no { font-family: var(--mono); font-size: .64rem; font-weight: 700; letter-spacing: .1em; color: #8a6a4a; white-space: nowrap; }
-.dan-track-diff { font-family: var(--mono); font-size: .62rem; color: #fff; background: #33415c; border-radius: 3px; padding: 1px 6px; white-space: nowrap; }
-.dan-track-name { flex: 1; min-width: 0; font-size: .74rem; color: #3b2a18; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dan-track-ach { display: flex; align-items: baseline; gap: 8px; }
-.dan-track-achlabel { font-size: .66rem; color: #7d6244; }
-.dan-track-achvalue { font-family: var(--mono); font-size: 1.6rem; font-weight: 900; letter-spacing: -.02em; color: #8a7355; }
-/* 有成绩才走金色描边数字（.dan-gold 把填充设成透明，两层伪元素接管），
- * 没成绩的那个「—」保持普通文字色 —— 否则描边会把它画成一根小横杠。 */
-.dan-track-achvalue.dan-gold { color: transparent; }
-.dan-track-judge { font-size: .6rem; color: #3a2418; background: #ffd76a; border-radius: 999px; padding: 1px 9px; white-space: nowrap; }
+.dan-track-name {
+  position: absolute; left: 236px; top: 13px; width: 300px; height: 19px;
+  font-size: .76rem; line-height: 19px; color: #3b2a18;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 达成率是这一行最大的一块数字：官方数字贴图，高 46px。 */
+.dan-track-achvalue { position: absolute; left: 99px; top: 44px; }
+.dan-track-badge { position: absolute; left: 540px; top: 5px; height: 38px; }
+.dan-track-judge {
+  position: absolute; left: 540px; top: 5px; height: 38px; display: grid; place-items: center;
+  padding: 0 12px; font-size: .72rem; color: #3a2418; background: #ffd76a; border-radius: 999px;
+}
 .dan-track[data-outcome="timeout"] .dan-track-judge,
 .dan-track[data-outcome="interrupted"] .dan-track-judge,
 .dan-track[data-outcome="pending"] .dan-track-judge { background: #ded6c9; }
-.dan-track-side { display: grid; gap: 3px; justify-items: end; }
 .dan-track-lv {
-  font-family: var(--mono); font-size: .9rem; font-weight: 900; color: #fff; padding: 0 8px;
-  border: 2px solid #ffffff8c; border-radius: 6px; background: linear-gradient(#7b5cff, #4628b8);
+  position: absolute; left: 505px; top: 44px; width: 71px; height: 26px;
+  display: grid; place-items: center; border-radius: 6px;
+  border: 2px solid #ffffff8c; background: linear-gradient(var(--tc1, #7b5cff), var(--tc2, #4628b8));
 }
-.dan-track-score { display: flex; align-items: baseline; gap: 5px; }
-.dan-track-score small { font-size: .56rem; color: #7d6244; }
-.dan-track-score b { font-family: var(--mono); font-size: .86rem; color: #33415c; }
-.dan-track-limit { font-size: .54rem; color: #8a7355; }
+.dan-track-limit { position: absolute; left: 440px; top: 76px; width: 136px; text-align: right; font-size: .56rem; color: #8a7355; }
+.dan-track-dxlabel { position: absolute; left: 396px; top: 100px; font-size: .56rem; color: #7d6244; }
+/* 这几个是「右对齐到官方格子右边界」的容器：必须是 flex，不然 justify-content 不生效
+ * （span 是行内元素，右对齐会静默失效，数字会长到格子外面去）。 */
+.dan-track-dxnum { position: absolute; left: 440px; top: 96px; width: 136px; display: flex; justify-content: flex-end; }
 
-/* 金色描边数字：白→金→橙渐变填充 + 深棕描边（原作那套 DX 数字，用 CSS 重画）。
- * 必须分两层，试过两条捷径都不行：
- *   - 八向 text-shadow：偏移副本会把渐变填充整个盖住，只剩一圈棕边；
- *   - -webkit-text-stroke + paint-order: stroke fill：Chromium 的 paint-order 只对
- *     SVG 生效，HTML 文字上描边照样盖在填充之上，6px 描边直接吃掉整个笔画。
- * 所以描边交给 ::before、渐变填充交给 ::after，两层叠在同一段文字（data-text）上。
- * 这两点是抠图像素数数出来的，DOM 层面完全看不出来。 */
-.dan-gold { position: relative; display: inline-block; color: transparent; }
-.dan-gold::before, .dan-gold::after {
-  content: attr(data-text); position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none;
-}
-.dan-gold::before { color: #5a2a10; -webkit-text-stroke: 6px #5a2a10; }
-.dan-gold::after {
-  background: linear-gradient(#fffce8, #ffd85c 42%, #ff9a1f 68%, #ffd85c);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.dan-gold { filter: drop-shadow(0 4px 7px #00000059); }
-
-/* 底部色带：白框里盖合格印（原作那一格）· 心 · 总达成率 / DX分数 */
-.dan-result-bottomrow {
-  position: absolute; left: 8.5%; right: 5%; top: 73.5%; bottom: 3.5%;
-  display: grid; grid-template-columns: 23% auto minmax(0, 1fr); gap: 4%; align-items: center;
-}
-.dan-result-verdict { display: grid; justify-items: center; gap: 4px; min-width: 0; }
-.dan-result-verdict-img { max-width: 96%; max-height: 92px; object-fit: contain; filter: drop-shadow(0 3px 6px #00000038); }
-.dan-result-verdict-count { font-size: .72rem; font-weight: 700; color: #6b4a24; }
-/* 原作这一格是显示剩余生命的心；我们没有生命值，用「通关几道」占这一格。 */
-.dan-result-life { position: relative; width: 74px; height: 74px; display: grid; place-items: center; }
-.dan-result-life::before {
-  content: '♥'; position: absolute; inset: 0; display: grid; place-items: center;
-  font-size: 78px; line-height: 1; color: #35c257;
-  -webkit-text-stroke: 5px #eefbec; text-shadow: 0 4px 10px #0000004d;
-}
-.dan-result-life[data-state="bad"]::before { color: #9aa3ae; }
-.dan-result-life span { position: relative; z-index: 1; font-family: var(--mono); font-size: 1.05rem; font-weight: 900; color: #fff; text-shadow: 0 1px 4px #000000b3; }
-.dan-result-life span small { font-size: .6rem; opacity: .9; }
-.dan-result-totalblock { display: grid; gap: 2px; min-width: 0; justify-items: end; text-align: right; }
-.dan-total-label { font-size: .72rem; font-weight: 700; letter-spacing: .1em; color: #6b4a24; }
-.dan-total-ach { font-family: var(--mono); font-size: 2.2rem; font-weight: 900; letter-spacing: -.02em; color: #8a7355; }
-.dan-total-ach.dan-gold { color: transparent; }
-.dan-total-score { display: inline-flex; align-items: baseline; gap: 7px; margin-top: 2px; padding: 2px 12px; border-radius: 6px; background: #fffdf6cc; border: 2px solid #d8c09a; }
-.dan-total-score small { font-size: .62rem; color: #8a6a4a; }
-.dan-total-score b { font-family: var(--mono); font-size: .95rem; color: #23324c; }
+/* ---------- 底部色带：白框里的合格印 · 心 · 总达成率 / DX分数 ---------- */
+.dan-bottom { position: absolute; inset: 0; }
+.dan-verdict-count { position: absolute; left: 104px; top: 665px; width: 180px; text-align: center; font-size: .78rem; font-weight: 700; color: #6b4a24; }
+/* 白框那一格原作放段位名牌（UI_DNM_DaniTitle_*）；我们不显示段位名，放合格/不合格印。 */
+.dan-verdict-img { position: absolute; left: 44px; top: 723px; width: 300px; height: 138px; object-fit: contain; filter: drop-shadow(0 3px 6px #00000038); }
+/* 原作这一格是剩余生命的圆心；我们没有生命值，用「通关几道」占这一格。 */
+.dan-life { position: absolute; left: 382px; top: 738px; width: 104px; height: 104px; }
+.dan-life-base { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 3px 8px #00000038); }
+.dan-life-count { position: absolute; inset: 0; display: grid; place-items: center; }
+.dan-total-label { position: absolute; left: 534px; top: 618px; width: 160px; text-align: center; font-size: .8rem; font-weight: 700; letter-spacing: .12em; color: #6b4a24; }
+.dan-total-num { position: absolute; left: 420px; top: 718px; width: 480px; display: flex; justify-content: flex-end; }
+.dan-total-pct { position: absolute; left: 906px; top: 726px; }
+.dan-dxscore-label { position: absolute; left: 566px; top: 796px; width: 192px; height: 40px; object-fit: contain; }
+.dan-dxscore-num { position: absolute; left: 772px; top: 806px; width: 166px; display: flex; justify-content: flex-end; }
 
 /* 说明与按钮在成品屏之外（深色底上），不往那张纸上塞东西。 */
 .dan-result-note { margin: 0; max-width: 92ch; justify-self: center; text-align: center; font-size: .78rem; line-height: 1.7; color: #a9b4c4; }

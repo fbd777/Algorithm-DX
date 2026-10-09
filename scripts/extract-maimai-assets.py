@@ -31,6 +31,28 @@ WANTED: dict[str, str] = {
     "UI_DNM_Icon_Result_02": "stamp-fail.png",        # 逐题「不可」印
     "UI_DNM_Icon_Clear": "verdict-clear.png",         # 「合格」252×104
     "UI_DNM_Icon_NoClear": "verdict-fail.png",        # 「不合格…」220×64
+    # 数字图集：规整 4×4 网格，逐格由同名 Sprite 定 rect（见 dan.js 的 NUM_FONTS）。
+    # 图集里全是**纯白剪影**（游戏运行时才染色），所以描边要另外提一层 _Outline。
+    "UI_CMN_Num_26p": "num-26p.png",                  # 小号数字 136×160，格 34×40
+    "UI_CMN_Num_26p_Outline": "num-26p-outline.png",  #   同布局的描边剪影
+    "UI_CMN_Num_70p": "num-70p.png",                  # 达成率用，300×348，格 75×87
+    "UI_CMN_Num_70p_Outline": "num-70p-outline.png",
+    "UI_CMN_Num_90p": "num-90p.png",                  # 总达成率用，356×420，格 89×105
+    "UI_CMN_Num_90p_Outline": "num-90p-outline.png",
+    "UI_NUM_Score_0001111_Gold": "num-score-gold.png",  # 金色 DX 分数数字 296×392（自带金色）
+    # 逐题评级徽章：SSS+ / SSS / SS+ / SS / S+ / S 各一版，A~AAA 与 B 及以下各共用一版
+    "UI_CMN_TabTitle_Rank_SSSp": "rank-sssp.png",
+    "UI_CMN_TabTitle_Rank_SSS": "rank-sss.png",
+    "UI_CMN_TabTitle_Rank_SSp": "rank-ssp.png",
+    "UI_CMN_TabTitle_Rank_SS": "rank-ss.png",
+    "UI_CMN_TabTitle_Rank_Sp": "rank-sp.png",
+    "UI_CMN_TabTitle_Rank_S": "rank-s.png",
+    "UI_CMN_TabTitle_Rank_AAA": "rank-aaa.png",
+    "UI_CMN_TabTitle_Rank_BBB": "rank-bbb.png",
+    # 右下角那两个组件：剩余生命底盘（绿 / 红）与「でらっくスコア」标签
+    "UI_DNM_Base_Life_01": "life-base-green.png",
+    "UI_DNM_Base_Life_03": "life-base-red.png",
+    "UI_RSL_DXScore_Base": "dxscore-label.png",
 }
 
 

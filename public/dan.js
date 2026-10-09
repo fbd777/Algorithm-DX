@@ -602,26 +602,31 @@ let resultDialog = null;
 function buildResultDialog() {
   const dialog = el('dialog', 'dan-result');
   dialog.setAttribute('aria-labelledby', 'danRunTitle');
+  // 盘面是一张 980×928 的固定设计尺寸舞台，里面所有组件都用**官方预制体量出来的像素坐标**
+  // （见 dan.css 顶部注释）。窄屏横向滚动，不做响应式重排 —— 重排就还原不出来了。
   dialog.innerHTML = `<div class="dan-result-sheet">
     <button class="dan-result-close" type="button" aria-label="关闭结算">×</button>
     <div class="dan-result-body">
       <div class="dan-result-art">
-        <h2 class="dan-result-title" id="danRunTitle">段位認定</h2>
-        <p class="dan-result-sub"></p>
-        <ol class="dan-result-tracks"></ol>
-        <div class="dan-result-bottomrow">
-          <div class="dan-result-verdict">
-            <img class="dan-result-verdict-img" alt="">
-            <small class="dan-result-verdict-count"></small>
-          </div>
-          <div class="dan-result-life"><span></span></div>
-          <div class="dan-result-totalblock">
+        <div class="dan-result-stage">
+          <h2 class="dan-result-title" id="danRunTitle">段位認定</h2>
+          <ol class="dan-result-tracks"></ol>
+          <div class="dan-bottom">
+            <small class="dan-verdict-count"></small>
+            <img class="dan-verdict-img" alt="">
+            <div class="dan-life">
+              <img class="dan-life-base" alt="">
+              <span class="dan-life-count"></span>
+            </div>
             <span class="dan-total-label">总达成率</span>
-            <strong class="dan-total-ach dan-gold"></strong>
-            <span class="dan-total-score"><small>DX分数</small><b></b></span>
+            <span class="dan-total-num"></span>
+            <span class="dan-total-pct"></span>
+            <img class="dan-dxscore-label" src="/assets/maimai/dxscore-label.png" alt="DX SCORE">
+            <span class="dan-dxscore-num"></span>
           </div>
         </div>
       </div>
+      <p class="dan-result-sub"></p>
       <p class="dan-result-note"></p>
       <div class="dan-result-actions">
         <button class="dan-result-again" type="button"></button>
@@ -634,12 +639,88 @@ function buildResultDialog() {
   return dialog;
 }
 
-/** `.dan-gold` 要两层（描边 ::before + 渐变填充 ::after），两层都读 `data-text`。 */
-function goldNode(cls, text) {
-  const node = el('strong', cls, text);
-  node.dataset.text = text;
-  return node;
+/* ---------- 官方数字字体（图集逐格切） ----------
+ * 图集是规整的 4×4 网格，每格的位置由素材包里同名的 Sprite 给出
+ * （UI_CMN_Num_70p_0 … _14），不用自己量。
+ * 「下标 → 字符」是拿对照表一张张看出来的：
+ *   数字族（UI_CMN_Num_26p/70p/90p）0-9 · [10]'+' · [11]'-' · [12]',' · [13]'.' · [14]'%'
+ *   金色分数族（UI_NUM_Score_0001111_Gold）0-9 · [10]'+' · [11]'/' · [12]'%' · [13]'.'
+ * 数字族各带一层 _Outline（同布局的实心剪影）—— 官方就是这么叠出描边数字的：
+ * 两个背景层同一位置，填充层画在描边层之上。
+ */
+const NUM_INDEX = {
+  '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+  '+': 10, '-': 11, ',': 12, '.': 13, '%': 14,
+};
+const SCORE_INDEX = {
+  '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+  '+': 10, '/': 11, '%': 12, '.': 13,
+};
+const NUM_FONTS = {
+  n26: { fill: 'num-26p', outline: 'num-26p-outline', atlas: [136, 160], cell: [34, 40], chars: NUM_INDEX },
+  n70: { fill: 'num-70p', outline: 'num-70p-outline', atlas: [300, 348], cell: [75, 87], chars: NUM_INDEX },
+  n90: { fill: 'num-90p', outline: 'num-90p-outline', atlas: [356, 420], cell: [89, 105], chars: NUM_INDEX },
+  score: { fill: 'num-score-gold', outline: '', atlas: [296, 392], cell: [74, 98], chars: SCORE_INDEX },
+};
+const NUM_COLS = 4;
+
+/**
+ * 把一串字符渲染成官方数字贴图。`height` 是字高（px，按 980×928 的设计尺寸）。
+ * 每格拆成两个叠起来的层：官方 `_Outline` 剪影上深色（描边）+ 官方填充图集。
+ * 之所以要两个真元素而不是两个 background 层：图集是**纯白剪影**（游戏运行时才上色），
+ * background 层没法单独染色，而伪元素又只能画在宿主背景之上（描边会盖住填充）。
+ * 字体里没有的字符（例如数字族没有 '/'）退回普通文字，不会静默丢字符。
+ */
+const NUM_OUTLINE_COLOR = '#2b3350';
+function numText(text, fontKey, height) {
+  const font = NUM_FONTS[fontKey];
+  const scale = height / font.cell[1];
+  const wrap = el('span', `dan-num dan-num-${fontKey}`);
+  wrap.setAttribute('role', 'img');
+  wrap.setAttribute('aria-label', text);
+  wrap.style.height = `${height}px`;
+  for (const ch of text) {
+    const cell = el('i', 'dan-num-char');
+    cell.style.height = `${height}px`;
+    const index = font.chars[ch];
+    if (index === undefined) {
+      cell.textContent = ch;
+      cell.classList.add('dan-num-plain');
+      wrap.append(cell);
+      continue;
+    }
+    const sx = (index % NUM_COLS) * font.cell[0];
+    const sy = Math.floor(index / NUM_COLS) * font.cell[1];
+    const size = `${font.atlas[0] * scale}px ${font.atlas[1] * scale}px`;
+    const pos = `${-sx * scale}px ${-sy * scale}px`;
+    cell.style.width = `${font.cell[0] * scale}px`;
+    if (font.outline) {
+      const outline = el('b', 'dan-num-outline');
+      const url = `url(/assets/maimai/${font.outline}.png)`;
+      outline.style.setProperty('background-color', NUM_OUTLINE_COLOR);
+      for (const prop of ['mask-image', '-webkit-mask-image']) outline.style.setProperty(prop, url);
+      for (const prop of ['mask-size', '-webkit-mask-size']) outline.style.setProperty(prop, size);
+      for (const prop of ['mask-position', '-webkit-mask-position']) outline.style.setProperty(prop, pos);
+      for (const prop of ['mask-repeat', '-webkit-mask-repeat']) outline.style.setProperty(prop, 'no-repeat');
+      cell.append(outline);
+    }
+    const fill = el('b', 'dan-num-fill');
+    fill.style.backgroundImage = `url(/assets/maimai/${font.fill}.png)`;
+    fill.style.backgroundSize = size;
+    fill.style.backgroundPosition = pos;
+    cell.append(fill);
+    wrap.append(cell);
+  }
+  return wrap;
 }
+
+/** 官方评级徽章：UI_CMN_TabTitle_Rank_*（S/SS/SSS/SSS+ 各自一版，A~AAA 与 B 及以下共用一版）。 */
+const RANK_ART = {
+  'SSS+': 'rank-sssp.png', SSS: 'rank-sss.png', 'SS+': 'rank-ssp.png', SS: 'rank-ss.png',
+  'S+': 'rank-sp.png', S: 'rank-s.png',
+  AAA: 'rank-aaa.png', AA: 'rank-aaa.png', A: 'rank-aaa.png',
+  BBB: 'rank-bbb.png', BB: 'rank-bbb.png', B: 'rank-bbb.png', C: 'rank-bbb.png', D: 'rank-bbb.png',
+};
 
 function openRunResult(run) {
   resultDialog ??= buildResultDialog();
@@ -654,10 +735,11 @@ function openRunResult(run) {
   // 页头文字与两侧水引都烘焙在底图里，所以标题 h2 只留给读屏。
   field(dialog, '.dan-result-art').dataset.art =
     run.tier === 'small_random' || run.tier === 'big_random' ? 'random' : 'dani';
-  const verdictImg = field(dialog, '.dan-result-verdict-img');
-  verdictImg.src = run.status === 'cleared' ? '/assets/maimai/verdict-clear.png' : '/assets/maimai/verdict-fail.png';
+  const clearedRun = run.status === 'cleared';
+  const verdictImg = field(dialog, '.dan-verdict-img');
+  verdictImg.src = clearedRun ? '/assets/maimai/verdict-clear.png' : '/assets/maimai/verdict-fail.png';
   verdictImg.alt = VERDICT_TEXT[run.status] ?? '中断';
-  field(dialog, '.dan-result-verdict-count').textContent = `${cleared.length} / ${run.stageCount} 道通关`;
+  field(dialog, '.dan-verdict-count').textContent = `${cleared.length} / ${run.stageCount} 道通关`;
 
   const limitText = run.perStageLimit ? '每道限时按当题难度' : `每道限时 ${fmtLimit(run.limitSeconds)}`;
   field(dialog, '.dan-result-sub').textContent =
@@ -671,68 +753,75 @@ function openRunResult(run) {
     const tone = TRACK_TONE[cfRatingColor(stage.difficulty).tone] ?? TRACK_TONE.violet;
     const item = el('li', 'dan-track');
     item.dataset.outcome = stage.outcome ?? 'pending';
-    // 可 / 不可 用原作那两枚印（UI_DNM_Icon_Result_01/02），不再用 CSS 画。
+    // 逐题行的纵向节距是官方的 122px（见 dan.css）。
+    item.style.top = `${152 + 122 * (stage.index - 1)}px`;
+    // 可 / 不可 用原作那两枚印（UI_DNM_Icon_Result_01/02）。
     const stamp = el('img', 'dan-track-stamp');
     stamp.src = stage.outcome === 'cleared' ? '/assets/maimai/stamp-clear.png' : '/assets/maimai/stamp-fail.png';
     stamp.alt = stage.outcome === 'cleared' ? '通过' : '未通过';
     item.append(stamp);
 
-    const card = el('div', 'dan-track-card');
-    card.style.setProperty('--tc1', tone[0]);
-    card.style.setProperty('--tc2', tone[1]);
+    const plate = el('div', 'dan-track-plate');
+    // 底色变量挂在底板这一层：封面块和 LV 块都要读它。
+    plate.style.setProperty('--tc1', tone[0]);
+    plate.style.setProperty('--tc2', tone[1]);
+    plate.append(el('span', 'dan-track-no', `STAGE ${String(stage.index).padStart(2, '0')}`));
 
     // 「封面」那一格放题号：我们抽的是 CF 题、没有曲绘，放题号比放装饰诚实。
     const [contest, index] = (stage.problemId ?? '').split(':');
     const jacket = el('div', 'dan-track-jacket');
     jacket.append(el('b', '', index || '?'), el('small', '', contest || '未开始'));
-    card.append(jacket);
+    plate.append(jacket);
 
-    const info = el('div', 'dan-track-info');
-    const head = el('div', 'dan-track-head');
-    head.append(el('span', 'dan-track-no', `STAGE ${String(stage.index).padStart(2, '0')}`));
-    head.append(el('span', 'dan-track-diff', `${stage.difficulty} 分`));
-    head.append(el('span', 'dan-track-name', stage.title ?? '—'));
-    info.append(head);
+    plate.append(el('span', 'dan-track-name', stage.title ?? '—'));
 
-    const achievement = el('div', 'dan-track-ach');
-    achievement.append(el('span', 'dan-track-achlabel', '达成率'));
-    // 没有成绩时别套金色描边数字：6px 描边会把一个破折号画成一根小横杠。
-    achievement.append(stage.achievement === null
-      ? goldNode('dan-track-achvalue', '—')
-      : goldNode('dan-track-achvalue dan-gold', `${stage.achievement.toFixed(4)}%`));
-    achievement.append(el('span', 'dan-track-judge',
-      stage.outcome === 'cleared' ? (stage.rank ?? '通关')
-        : stage.outcome === 'timeout' ? '超时' : stage.outcome === 'interrupted' ? '中断' : '未开始'));
-    info.append(achievement);
-    card.append(info);
+    // 达成率用官方数字（UI_CMN_Num_70p + 描边层）—— 这是结算屏上最大的一块数字。
+    const ach = numText(stage.achievement === null ? '—' : `${stage.achievement.toFixed(4)}%`, 'n70', 46);
+    ach.classList.add('dan-track-achvalue');
+    plate.append(ach);
 
-    const side = el('div', 'dan-track-side');
-    side.append(el('span', 'dan-track-lv', String(stage.difficulty)));
-    const score = el('span', 'dan-track-score');
-    score.append(el('small', '', 'DX分数'), el('b', '', stage.rating === null ? '—' : stage.rating.toFixed(1)));
-    side.append(score);
-    side.append(el('small', 'dan-track-limit', `限时 ${fmtLimit(stage.limitSeconds)}`));
-    card.append(side);
-    item.append(card);
+    // 评级用官方徽章；超时／中断／未开始没有评级，退回文字。
+    if (stage.outcome === 'cleared' && RANK_ART[stage.rank]) {
+      const badge = el('img', 'dan-track-badge');
+      badge.src = `/assets/maimai/${RANK_ART[stage.rank]}`;
+      badge.alt = stage.rank;
+      plate.append(badge);
+    } else {
+      plate.append(el('span', 'dan-track-judge',
+        stage.outcome === 'timeout' ? '超时' : stage.outcome === 'interrupted' ? '中断' : '未开始'));
+    }
+
+    const lv = el('span', 'dan-track-lv');
+    lv.append(numText(String(stage.difficulty), 'n26', 20));
+    plate.append(lv);
+    plate.append(el('small', 'dan-track-limit', `限时 ${fmtLimit(stage.limitSeconds)}`));
+    plate.append(el('small', 'dan-track-dxlabel', 'DX分数'));
+    // 单题 rating 是带小数的，用官方金色分数数字（那套图集里 [13] 就是小数点）。
+    const dx = numText(stage.rating === null ? '—' : String(stage.rating.toFixed(1)), 'score', 24);
+    dx.classList.add('dan-track-dxnum');
+    plate.append(dx);
+
+    item.append(plate);
     tracks.append(item);
   }
 
   // 原作这一格是显示剩余生命的心；我们没有生命值，用「通关几道」占这一格。
-  const life = field(dialog, '.dan-result-life');
+  // 底盘用原作 UI_DNM_Base_Life_01（绿）/ _03（红），数字用官方数字贴图。
+  const life = field(dialog, '.dan-life');
   life.dataset.state = run.status === 'cleared' ? 'ok' : 'bad';
-  field(dialog, '.dan-result-life span').replaceChildren(
-    document.createTextNode(String(cleared.length)), el('small', '', `/${run.stageCount}`));
+  field(dialog, '.dan-life-base').src = clearedRun
+    ? '/assets/maimai/life-base-green.png' : '/assets/maimai/life-base-red.png';
+  field(dialog, '.dan-life-base').alt = clearedRun ? '通关' : '未通关';
+  field(dialog, '.dan-life-count').replaceChildren(numText(`${cleared.length}/${run.stageCount}`, 'n26', 22));
 
   // 原作的「总达成率」是四首歌达成率之和、「DX分数」是四首 DX 分数之和；
   // 这里对应各道达成率之和与各道单题 rating 之和。
   const totalAchievement = scored.reduce((sum, stage) => sum + stage.achievement, 0);
-  const totalText = scored.length ? `${totalAchievement.toFixed(4)}%` : '—';
-  const totalNode = field(dialog, '.dan-total-ach');
-  totalNode.textContent = totalText;
-  totalNode.dataset.text = totalText;
-  // 同理：四道全没成绩时这里是一个破折号，套上金色描边会变成一根横杠。
-  totalNode.classList.toggle('dan-gold', scored.length > 0);
-  field(dialog, '.dan-total-score b').textContent = run.totalRating === null ? '—' : run.totalRating.toFixed(1);
+  field(dialog, '.dan-total-num').replaceChildren(
+    numText(scored.length ? totalAchievement.toFixed(4) : '—', 'n90', 60));
+  field(dialog, '.dan-total-pct').replaceChildren(numText('%', 'n90', 54));
+  field(dialog, '.dan-dxscore-num').replaceChildren(
+    numText(run.totalRating === null ? '—' : String(run.totalRating.toFixed(1)), 'score', 26));
 
   const deltas = run.stages.map((stage) => stage.comparison?.ratingDelta).filter((value) => typeof value === 'number');
   let note = run.status === 'cleared'
