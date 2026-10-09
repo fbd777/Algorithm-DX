@@ -487,6 +487,17 @@ export interface DanStageView {
   problemId: string | null;
   problemUrl: string | null;
   deadlineAt: number | null;
+  /** 题目名，来自已同步的提交；结算卡要显示。 */
+  title: string | null;
+  /** 这一次计时窗口内的判定计数 / WA 数，与普通计时结算同一口径。 */
+  verdicts: Record<string, number>;
+  waCount: number;
+  /**
+   * 计时器结算时冻结的 B50 对比（`{year,previousScore,currentScore,ratingBefore,ratingAfter,ratingDelta}`）。
+   * 段位認定不另算一套分：这里读的就是 `reconcileTimers` 写进 `practice_timers.settlement_json` 的那份。
+   */
+  comparison: Record<string, unknown> | null;
+  practiceKind: string | null;
 }
 
 export interface DanSessionView {
@@ -524,15 +535,36 @@ export function danSessionView(db: DatabaseSync, session: DanSessionRow): DanSes
     finishedAt: session.finished_at,
     expiresAt: session.started_at + DAN_SESSION_TTL_SECONDS,
     totalRating: session.total_rating,
-    stages: stageRows(db, session.id).map((stage) => danStageView(stage, session)),
+    stages: stageRows(db, session.id).map((stage) => danStageView(db, stage, session)),
     selfReported: true,
   };
 }
 
-function danStageView(stage: DanStageRow, session: DanSessionRow): DanStageView {
+function danStageView(db: DatabaseSync, stage: DanStageRow, session: DanSessionRow): DanStageView {
   const score = stage.score_json ? JSON.parse(stage.score_json) as Record<string, unknown> : null;
   // 口径 A：没 claim 过就不下发题号与链接。
   const revealed = stage.claimed_at !== null;
+  const timer = stage.timer_id
+    ? db.prepare('SELECT * FROM practice_timers WHERE id=?').get(stage.timer_id) as unknown as
+      { account_id: number; started_at: number; ended_at: number | null; attempt_id: string | null;
+        practice_kind: string; settlement_json: string | null } | undefined
+    : undefined;
+  const problem = revealed
+    ? db.prepare(`SELECT MAX(problem_title) AS title FROM submissions
+        WHERE platform='codeforces' AND problem_id=?`).get(stage.problem_id) as unknown as { title: string | null } | undefined
+    : undefined;
+  const verdicts: Record<string, number> = {};
+  if (timer?.ended_at !== null && timer?.ended_at !== undefined) {
+    const rows = db.prepare(`SELECT status,COUNT(*) AS count FROM submissions
+      WHERE account_id=? AND platform='codeforces' AND problem_id=? AND submitted_at>? AND submitted_at<=?
+      GROUP BY status`).all(timer.account_id, stage.problem_id, timer.started_at, timer.ended_at) as unknown as
+      { status: string; count: number }[];
+    for (const row of rows) verdicts[String(row.status)] = Number(row.count);
+  }
+  const attempt = timer?.attempt_id
+    ? db.prepare('SELECT practice_kind FROM practice_attempts WHERE id=?').get(timer.attempt_id) as unknown as
+      { practice_kind: string } | undefined
+    : undefined;
   return {
     index: stage.stage_index,
     difficulty: stage.difficulty,
@@ -545,6 +577,11 @@ function danStageView(stage: DanStageRow, session: DanSessionRow): DanStageView 
     problemId: revealed ? stage.problem_id : null,
     problemUrl: revealed ? danProblemUrl(stage.problem_id) : null,
     deadlineAt: stage.claimed_at === null ? null : stage.claimed_at + session.limit_seconds,
+    title: revealed ? (problem?.title ?? null) : null,
+    verdicts,
+    waCount: verdicts.WA ?? 0,
+    comparison: timer?.settlement_json ? JSON.parse(timer.settlement_json) as Record<string, unknown> : null,
+    practiceKind: attempt?.practice_kind ?? timer?.practice_kind ?? null,
   };
 }
 

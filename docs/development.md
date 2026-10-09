@@ -112,6 +112,7 @@ Schema 以 `PRAGMA user_version` 标记，当前版本由 `src/db/database.ts` �
 | `GET /api/dan` | 抽题面板与记录页：档位表、题库缓存是否就绪、每日一题的**难度**、进行中的一轮、历史记录。只读，冷缓存时返回 `poolReady: false` |
 | `POST /api/dan/start` | 开一轮随机抽题 / 挑战 / 每日一题；已有一轮没结束时回 **409 `SESSION_ACTIVE`** |
 | `POST /api/dan/claim` | 起计时并**唯一一次**下发题号与链接；幂等，重复点击返回同一道题。未 claim 的题只含难度，见 [dan.md](dan.md#口径-a开始做题之前链接不下发) |
+| `POST /api/dan/settle` | **只结算、不抽题**。轮询走这条，所以出了成绩会停在结算页上；抽下一道要用户点「抽选下一题」走 `next` |
 | `POST /api/dan/next` | 结算已同步到的 AC 并抽下一道；区间里没题了回 `poolEmpty` |
 | `POST /api/dan/abandon` | 放弃进行中的一轮，释放进行中的计时器 |
 | `POST /api/accounts` | 绑定账号；可选带凭据，直接写进 `.env`，值不回显 |

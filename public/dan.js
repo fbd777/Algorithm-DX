@@ -1,4 +1,5 @@
 import { startAutoSync } from './auto-sync.js';
+import { cfRatingColor } from './cf-rating-colors.js';
 
 /*
  * 随机抽题 / 每日一题 / 段位認定 的页面逻辑。
@@ -6,6 +7,12 @@ import { startAutoSync } from './auto-sync.js';
  * 这一页刻意**不缓存、不预取**任何题目信息：服务端在下发时就不给未开始的题号与链接
  * （见 src/dx/dan.ts 的口径 A），所以这里也没有任何「提前藏起来」的东西可以做 ——
  * 唯一的入口是 beginStage()，它在 claim 成功之后才拿到 url 并立刻跳转。
+ *
+ * 结算是两层的，和街机原作一致：
+ *   - 每道题做完 → 单题结算（复用 public/dx-result.css 那套，与普通计时结算同一张皮）；
+ *   - 三道打完 → 段位認定结算页（`合格`/`不合格` 印章 + 逐题卡 + 合计）。
+ * 轮询只调 /api/dan/settle（只结算不抽题），所以出了成绩会停在结算上；
+ * 下一道由用户在单题结算上点「抽选下一题」才抽（/api/dan/next）。
  */
 
 const $ = (id) => document.getElementById(id);
@@ -13,6 +20,10 @@ const KIND_LABEL = { challenge: '段位認定', single: '随机抽题', daily: '
 const STATUS_LABEL = { active: '进行中', cleared: '通过', failed: '未通过', abandoned: '已放弃' };
 const OUTCOME_LABEL = { cleared: '通关', timeout: '超时', interrupted: '中断' };
 const STATUS_CLASS = { active: 'idle', cleared: 'ok', failed: 'bad', abandoned: 'bad' };
+/** 结算页的印章文字：对齐原作的「合格 / 不合格」。 */
+const VERDICT_TEXT = { cleared: '合格', failed: '不合格', abandoned: '中断' };
+/** 页面加载时，结束在这个秒数以内的一轮会把结算补弹一次（只补一次，不反复弹旧成绩）。 */
+const FRESH_RUN_SECONDS = 90;
 
 const tz = -new Date().getTimezoneOffset();
 let userId = null;
@@ -22,6 +33,10 @@ let pollTimer = null;
 let tickTimer = null;
 let lastActiveId = null;
 let busy = false;
+/** 已经弹过结算的那几道题（`sessionId:index`），避免轮询反复弹窗。 */
+let shownStages = null;
+/** 待展示的单题结算；有值就弹。 */
+let pendingSheet = null;
 
 const el = (tag, cls, text) => {
   const node = document.createElement(tag);
@@ -29,6 +44,7 @@ const el = (tag, cls, text) => {
   if (text !== undefined) node.textContent = text;
   return node;
 };
+const field = (root, selector) => root.querySelector(selector);
 
 function setMessage(text, isError = false) {
   $('message').textContent = text || '';
@@ -53,11 +69,28 @@ const fmtClock = (seconds) => {
 const fmtLimit = (seconds) => `${Math.round(seconds / 60)} 分钟`;
 const fmtDuration = (seconds) => (seconds == null ? '—'
   : seconds >= 60 ? `${Math.floor(seconds / 60)} 分 ${String(seconds % 60).padStart(2, '0')} 秒` : `${seconds} 秒`);
+const fmtHMS = (seconds) => [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60]
+  .map((n) => String(n).padStart(2, '0')).join(':');
+const signed = (value, digits = 1) => `${value >= 0 ? '+' : ''}${value.toFixed(digits)}`;
 
 function difficultyNode(value, caption) {
   const wrap = el('div', 'dan-difficulty');
   wrap.append(document.createTextNode(String(value)), el('small', '', caption));
   return wrap;
+}
+
+/** DX Rating 的分段数字（与 dx-timer.js 同一套 class，样式来自 dx-result.css）。 */
+function ratingDigits(text) {
+  const host = el('strong');
+  host.setAttribute('aria-label', text);
+  for (const character of text.padStart(Math.max(6, text.length), ' ')) {
+    const node = el('span', character === '.' ? 'dx-rating-point' : 'dx-rating-digit');
+    node.dataset.empty = String(character === ' ');
+    node.setAttribute('aria-hidden', 'true');
+    if (character === ' ') node.textContent = '\u00a0'; else node.textContent = character;
+    host.append(node);
+  }
+  return host;
 }
 
 async function boot() {
@@ -82,19 +115,67 @@ async function refresh() {
 
 function render() {
   if (!board) return;
-  // 刚结束的那一轮：把结果说出来，而不是让进行中的面板静默消失。
-  if (lastActiveId && !board.active) {
-    const finished = (board.history ?? []).find((run) => run.id === lastActiveId);
-    if (finished) setMessage(`本轮已结束：${STATUS_LABEL[finished.status] ?? finished.status}${finished.totalRating === null ? '' : ` · 总分 ${finished.totalRating.toFixed(1)}`}`, finished.status !== 'cleared');
-    lastActiveId = null;
-  } else if (board.active) {
-    lastActiveId = board.active.id;
-  }
+  detectFinished();
   renderIdle();
   renderActive();
   renderHistory();
   if (!board.poolReady) setMessage('本地还没有题库缓存。点任意一个档位会自动抓一次全量题目（约 1.5 MB，之后 6 小时内复用）。');
   schedule();
+  drainSheet();
+}
+
+/**
+ * 找出「刚刚结算」的那道题。
+ * 第一次渲染只建立基线，不弹窗 —— 否则中途刷新页面会把旧成绩全部弹一遍。
+ */
+/** 已结束的一轮要弹哪一屏：有成绩就弹最后一道的单题结算，按钮上给「查看本轮结算」。 */
+function sheetFor(run, finished) {
+  const last = run.stages.filter((stage) => stage.outcome).at(-1) ?? null;
+  return last ? { session: run, stage: last, finished, run } : { session: run, stage: null, finished, run };
+}
+
+function detectFinished() {
+  const session = board.active;
+  const settled = new Set();
+  if (session) {
+    for (const stage of session.stages) if (stage.outcome) settled.add(`${session.id}:${stage.index}`);
+    // 记下来：下一帧 active 消失时就靠它判断「刚刚结束的是哪一轮」。
+    lastActiveId = session.id;
+  }
+
+  if (shownStages === null) {
+    shownStages = settled;
+    // 页面加载时这一轮其实已经打完了（服务端的同步任务常常比刷新更快把 AC 结算掉）：
+    // 把结果补给你，但只补刚结束不久的那一轮，避免每次打开页面都把旧成绩弹一遍。
+    if (!session) {
+      const run = (board.history ?? []).find((row) => row.finishedAt !== null && serverNow() - row.finishedAt < FRESH_RUN_SECONDS);
+      if (run) {
+        for (const stage of run.stages) shownStages.add(`${run.id}:${stage.index}`);
+        pendingSheet = sheetFor(run, true);
+      }
+    }
+    return;
+  }
+
+  if (session) {
+    const fresh = session.stages.filter((stage) => stage.outcome && !shownStages.has(`${session.id}:${stage.index}`));
+    shownStages = settled;
+    if (fresh.length) pendingSheet = { session, stage: fresh[fresh.length - 1], finished: false };
+    return;
+  }
+
+  // 进行中的那一轮消失了：刚打完（或刚被放弃）。
+  if (lastActiveId) {
+    const finished = (board.history ?? []).find((run) => run.id === lastActiveId);
+    lastActiveId = null;
+    if (finished) {
+      const key = finished.stages.map((stage) => `${finished.id}:${stage.index}`).filter((k) => !shownStages.has(k));
+      for (const stage of finished.stages) shownStages.add(`${finished.id}:${stage.index}`);
+      setMessage(`本轮已结束：${STATUS_LABEL[finished.status] ?? finished.status}${finished.totalRating === null ? '' : ` · 总分 ${finished.totalRating.toFixed(1)}`}`, finished.status !== 'cleared');
+      // 最后一道的单题结算先弹，按钮上给「查看本轮结算」；没有可弹的就直接弹整轮。
+      pendingSheet = key.length ? sheetFor(finished, true) : { session: finished, stage: null, finished: true, run: finished };
+    }
+  }
 }
 
 function tierButton(tier, kind) {
@@ -162,10 +243,10 @@ function stageCard(session, stage) {
     go.href = stage.problemUrl ?? '#';
     go.rel = 'noreferrer noopener';
     actions.append(go);
-    const done = el('button', 'btn btn-ghost', '已 AC，抽下一道');
+    const done = el('button', 'btn btn-ghost', '立即检查 AC');
     done.type = 'button';
     done.disabled = busy;
-    done.addEventListener('click', () => advance());
+    done.addEventListener('click', () => settleNow());
     actions.append(done);
     if (stage.problemId) actions.append(el('span', 'dan-chip', stage.problemId));
   }
@@ -190,12 +271,25 @@ function renderActive() {
 
   const current = session.stages.find((stage) => !stage.outcome);
   if (current) host.append(stageCard(session, current));
+  else if (session.stages.some((stage) => stage.outcome)) {
+    // 出了成绩就停在这儿，等用户点了「抽选下一题」再抽。
+    const last = session.stages.filter((stage) => stage.outcome).at(-1);
+    host.append(el('p', 'dan-note', `第 ${last.index} 道已结算，正在等你看结算 —— 点结算页上的按钮才会抽下一道。`));
+  }
+  if (session.stages.some((stage) => stage.outcome)) {
+    const review = el('button', 'btn btn-ghost', '再看一次上一道结算');
+    review.type = 'button';
+    review.addEventListener('click', () => { pendingSheet = { session, stage: session.stages.filter((s) => s.outcome).at(-1), finished: false }; drainSheet(); });
+    const actions0 = el('div', 'dan-actions');
+    actions0.append(review);
+    host.append(actions0);
+  }
 
-  for (const stage of session.stages.filter((row) => row.outcome)) {
-    const line = el('p', 'dan-note', `第 ${stage.index} 道 ${stage.difficulty} 分 · ${OUTCOME_LABEL[stage.outcome] ?? stage.outcome}`
-      + (stage.rank ? ` · ${stage.rank} ${stage.achievement?.toFixed(2) ?? ''}%` : '')
-      + (stage.rating !== null ? ` · ${stage.rating.toFixed(1)} 分` : ''));
-    host.append(line);
+  const settled = session.stages.filter((row) => row.outcome);
+  if (settled.length) {
+    const list = el('div', 'dan-run-list');
+    for (const stage of settled) list.append(settledLine(stage));
+    host.append(list);
   }
 
   const actions = el('div', 'dan-actions');
@@ -205,6 +299,19 @@ function renderActive() {
   abandon.addEventListener('click', () => abandonRun(session.id));
   actions.append(abandon);
   host.append(actions);
+}
+
+function settledLine(stage) {
+  const row = el('div', 'dan-run-row');
+  row.append(el('span', '', `#${stage.index}`));
+  const middle = el('span');
+  middle.append(document.createTextNode(`${stage.difficulty} 分`));
+  if (stage.rank) middle.append(document.createTextNode(` · ${stage.rank} ${stage.achievement?.toFixed(2) ?? ''}%`));
+  if (stage.rating !== null) middle.append(document.createTextNode(` · ${stage.rating.toFixed(1)} 分`));
+  middle.append(document.createTextNode(` · ${OUTCOME_LABEL[stage.outcome] ?? stage.outcome}`));
+  row.append(middle);
+  row.append(el('span', '', stage.problemId ?? '—'));
+  return row;
 }
 
 function renderHistory() {
@@ -249,8 +356,282 @@ function runCard(run) {
     list.append(row);
   }
   card.append(list);
+
+  const actions = el('div', 'dan-actions');
+  const open = el('button', 'btn btn-ghost', '查看结算');
+  open.type = 'button';
+  open.addEventListener('click', () => openRunResult(run));
+  actions.append(open);
+  card.append(actions);
   return card;
 }
+
+/* ---------------- 单题结算（与普通计时结算同一张皮） ---------------- */
+
+let stageDialog = null;
+function buildStageDialog() {
+  const dialog = el('dialog', 'dx-result');
+  dialog.setAttribute('aria-labelledby', 'danResultTitle');
+  dialog.innerHTML = `<div class="dx-result-sheet">
+    <button class="dx-result-close" type="button" aria-label="关闭结算">×</button>
+    <div class="dx-result-kicker">STAGE <b></b><span></span></div>
+    <h2 id="danResultTitle" class="dx-result-clear"></h2>
+    <div class="dx-result-track"><div class="dx-result-track-icon" aria-hidden="true">DX<span>✦</span></div>
+      <div class="dx-result-track-content"><div class="dx-result-track-heading"><span class="dx-result-kind"></span><span class="dx-result-problem"></span><i>DX</i></div>
+        <h3 class="dx-result-name"></h3></div>
+      <div class="dx-result-level"><small>LEVEL</small><strong></strong></div></div>
+    <section class="dx-result-achievement-section" aria-label="达成率结算">
+      <div class="dx-result-achievement-top"><div class="dx-result-achievement-label">达成率 <span>›››✦</span></div>
+        <div class="dx-result-best"><span>此前最佳 <b></b></span><span class="dx-result-achievement-delta"></span></div></div>
+      <div class="dx-result-achievement"><span class="dx-result-achievement-value"></span></div>
+      <span class="dx-result-record" hidden>NEW RECORD</span></section>
+    <div class="dx-result-main"><div class="dx-result-performance">
+        <div class="dx-result-rank" aria-label="本次评级"></div>
+        <div class="dx-result-badges"><div class="dx-result-award"><span class="dx-result-medal" aria-label="accepted"><b>AC</b><small>Accepted</small></span></div>
+          <div class="dx-result-award dx-result-award-cs"><span class="dx-result-medal dx-result-medal-cs" aria-label="clean solve"><b>CS</b><small>Clean Solve</small></span></div></div></div>
+      <div class="dx-result-detail"><div class="dx-result-time"><small>PLAY TIME</small><strong></strong><small class="dx-result-limit"></small></div>
+        <div class="dx-result-verdicts" aria-label="本次提交判定"></div>
+        <div class="dx-result-rating"><small>Rating</small><strong></strong><span class="dx-result-single-delta"></span></div></div></div>
+    <div class="dx-result-bottom"><div class="dx-result-total"><div class="dx-result-total-label"><b>DX</b><span>RATING</span></div>
+      <div class="dx-result-total-score"></div><span class="dx-result-total-delta"></span></div></div>
+    <div class="dan-sheet-strip"></div>
+    <div class="dx-result-footer"><button class="dx-result-next" type="button"></button></div></div>`;
+  document.body.append(dialog);
+  field(dialog, '.dx-result-close').addEventListener('click', () => dialog.close());
+  return dialog;
+}
+
+function showStageSheet(pending) {
+  const { session, stage, finished } = pending;
+  if (!stage) { openRunResult(pending.run ?? session); return; }
+  stageDialog ??= buildStageDialog();
+  const dialog = stageDialog;
+  const score = stage.comparison?.currentScore ?? null;
+  const comparison = stage.comparison ?? null;
+
+  field(dialog, '.dx-result-kicker b').textContent = String(stage.index).padStart(2, '0');
+  field(dialog, '.dx-result-kicker span').textContent = `${session.tierName} · ${session.stageCount} 道中的第 ${stage.index} 道`;
+  field(dialog, '#danResultTitle').textContent = stage.outcome === 'cleared' ? 'CLEAR!' : stage.outcome === 'timeout' ? 'TIME UP' : 'INTERRUPTED';
+  field(dialog, '.dx-result-kind').textContent = KIND_LABEL[session.kind] ?? session.kind;
+  field(dialog, '.dx-result-problem').textContent = stage.problemId ?? '';
+  field(dialog, '.dx-result-name').textContent = stage.title ?? stage.problemId ?? '';
+  field(dialog, '.dx-result-level strong').textContent = String(stage.difficulty);
+
+  const achievement = field(dialog, '.dx-result-achievement-value');
+  achievement.textContent = stage.achievement === null ? (stage.outcome === 'cleared' ? '已通关' : '没有成绩') : `${stage.achievement.toFixed(4)}%`;
+  const previous = comparison?.previousScore ?? null;
+  const delta = field(dialog, '.dx-result-achievement-delta');
+  if (previous && score) {
+    const improvement = score.achievementShown - previous.achievementShown;
+    delta.textContent = `${signed(improvement, 4)}%`;
+    delta.dataset.direction = improvement < 0 ? 'down' : 'up';
+  } else {
+    delta.textContent = previous ? '暂无对比' : '首次通过';
+    delta.dataset.direction = 'up';
+  }
+  field(dialog, '.dx-result-best b').textContent = previous ? `${previous.achievementShown.toFixed(4)}%` : '—';
+  field(dialog, '.dx-result-record').hidden = !(previous && score && score.achievementShown > previous.achievementShown);
+
+  field(dialog, '.dx-result-rank').textContent = stage.rank ?? (stage.outcome === 'timeout' ? '—' : '');
+  field(dialog, '.dx-result-time strong').textContent = stage.seconds === null ? '—' : fmtHMS(stage.seconds);
+  field(dialog, '.dx-result-limit').textContent = `限时 ${Math.round(session.limitSeconds / 60)}:00`;
+  field(dialog, '.dx-result-rating strong').textContent = String(stage.difficulty);
+  field(dialog, '.dx-result-rating').lastElementChild.textContent = previous && score ? signed(score.rating - previous.rating, 1) : '';
+
+  // AC / CS 勋章
+  const verdicts = stage.verdicts ?? {};
+  const cleanSolve = (verdicts.AC ?? 0) > 0 && Object.entries(verdicts).every(([verdict, count]) => verdict === 'AC' || count === 0);
+  field(dialog, '.dx-result-award-cs').hidden = !cleanSolve;
+  const verdictHost = field(dialog, '.dx-result-verdicts');
+  verdictHost.replaceChildren();
+  for (const verdict of ['AC', 'WA', 'TLE', 'RE', 'CE', 'MLE', 'OTHER']) {
+    const count = verdicts[verdict] ?? 0;
+    if (!count && !['AC', 'WA'].includes(verdict)) continue;
+    const tag = el('div', `dx-result-verdict dx-result-verdict-${verdict.toLowerCase()}`);
+    tag.append(el('span', '', verdict), el('strong', '', String(count)));
+    verdictHost.append(tag);
+  }
+
+  const totalHost = field(dialog, '.dx-result-total-score');
+  totalHost.replaceChildren();
+  const totalFrame = field(dialog, '.dx-result-total');
+  if (comparison) {
+    const totalText = Number(comparison.ratingAfter).toFixed(1);
+    totalHost.append(ratingDigits(totalText));
+    field(dialog, '.dx-result-total-delta').textContent = signed(Number(comparison.ratingDelta), 1);
+    const color = cfRatingColor(Number(comparison.ratingAfter));
+    totalFrame.dataset.ratingTone = color.tone;
+    totalFrame.title = `DX Rating · ${color.label}（${color.range}）`;
+  } else {
+    totalHost.append(ratingDigits('—'));
+    field(dialog, '.dx-result-total-delta').textContent = '—';
+    delete totalFrame.dataset.ratingTone;
+    totalFrame.title = '本次没有生成 B50 对比（超时或中断不计分）';
+  }
+
+  const done = session.stages.filter((row) => row.outcome);
+  const accumulated = done.reduce((sum, row) => sum + (row.rating ?? 0), 0);
+  const strip = field(dialog, '.dan-sheet-strip');
+  strip.replaceChildren(
+    el('span', '', `本轮 ${done.length} / ${session.stageCount} 完成`),
+    el('span', '', `已累计 ${accumulated.toFixed(1)} 分`),
+    el('span', '', finished || done.length >= session.stageCount ? '三道已打完' : `下一道仍是${session.tierName}，限时 ${fmtLimit(session.limitSeconds)}`),
+  );
+
+  const next = field(dialog, '.dx-result-next');
+  const isLast = finished || done.length >= session.stageCount;
+  next.textContent = isLast ? '查看本轮结算 ›' : '抽选下一题 ›';
+  next.onclick = () => { dialog.close(); if (isLast) openRunResult(pending.run ?? session); else settleThenDraw(); };
+
+  if (!dialog.open) dialog.showModal();
+}
+
+/** 轮询/按钮触发的「只结算」：不抽题。 */
+async function settleNow() {
+  if (busy) return;
+  busy = true;
+  try {
+    const data = await post('/api/dan/settle', { userId, tz });
+    clockOffset = data.serverNow - Date.now() / 1000;
+    await refresh();
+  } catch (error) {
+    setMessage(error.message, true);
+  } finally {
+    busy = false;
+    render();
+  }
+}
+
+/** 「抽选下一题」：这一步才真的抽。 */
+async function settleThenDraw() {
+  if (busy) return;
+  busy = true;
+  setMessage('正在抽下一道…');
+  try {
+    const data = await post('/api/dan/next', { userId, tz });
+    clockOffset = data.serverNow - Date.now() / 1000;
+    if (data.poolEmpty) setMessage('这个档位已经没有你没做过的题了，换一个档位吧。', true);
+    else setMessage('');
+    await refresh();
+  } catch (error) {
+    setMessage(error.message, true);
+  } finally {
+    busy = false;
+    render();
+  }
+}
+
+function drainSheet() {
+  if (!pendingSheet) return;
+  if (stageDialog?.open) return;
+  const pending = pendingSheet;
+  pendingSheet = null;
+  showStageSheet(pending);
+}
+
+/* ---------------- 段位認定结算页（对齐原作 UI_DNM_Result_* 的构成） ---------------- */
+
+let resultDialog = null;
+function buildResultDialog() {
+  const dialog = el('dialog', 'dan-result');
+  dialog.setAttribute('aria-labelledby', 'danRunTitle');
+  dialog.innerHTML = `<div class="dan-result-sheet">
+    <button class="dx-result-close dan-result-close" type="button" aria-label="关闭结算">×</button>
+    <div class="dan-result-stamp" data-verdict="cleared">
+      <span class="dan-stamp-ougi left" aria-hidden="true"></span>
+      <span class="dan-stamp-ougi right" aria-hidden="true"></span>
+      <span class="dan-stamp-base" aria-hidden="true"></span>
+      <strong class="dan-stamp-text">合格</strong>
+      <span class="dan-stamp-himo" aria-hidden="true"></span>
+      <span class="dan-stamp-kira" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    </div>
+    <h2 class="dan-result-title" id="danRunTitle"></h2>
+    <p class="dan-result-sub"></p>
+    <div class="dan-result-tiles"></div>
+    <ol class="dan-result-cards"></ol>
+    <p class="dan-result-note"></p>
+    <div class="dan-result-actions">
+      <button class="btn btn-primary dan-result-again" type="button">再来一轮</button>
+      <button class="btn btn-ghost dan-result-close2" type="button">回到抽题</button>
+    </div></div>`;
+  document.body.append(dialog);
+  field(dialog, '.dan-result-close').addEventListener('click', () => dialog.close());
+  field(dialog, '.dan-result-close2').addEventListener('click', () => dialog.close());
+  return dialog;
+}
+
+function openRunResult(run) {
+  resultDialog ??= buildResultDialog();
+  const dialog = resultDialog;
+  const verdict = run.status === 'cleared' ? 'cleared' : run.status === 'failed' ? 'failed' : 'abandoned';
+  const done = run.stages.filter((stage) => stage.outcome === 'cleared');
+  const rated = run.stages.filter((stage) => stage.rating !== null);
+  const totalSeconds = rated.reduce((sum, stage) => sum + (stage.seconds ?? 0), 0);
+
+  field(dialog, '.dan-result-stamp').dataset.verdict = verdict;
+  field(dialog, '.dan-stamp-text').textContent = VERDICT_TEXT[run.status] ?? '中断';
+  field(dialog, '#danRunTitle').textContent = `${run.tierName} · ${KIND_LABEL[run.kind] ?? run.kind}`;
+  field(dialog, '.dan-result-sub').textContent = `随机抽题 ${run.minRating}–${run.maxRating} · 共 ${run.stageCount} 道 · 每道独立限时 ${fmtLimit(run.limitSeconds)}`;
+
+  const tiles = field(dialog, '.dan-result-tiles');
+  tiles.replaceChildren();
+  const addTile = (caption, value, tone) => {
+    const tile = el('div', 'dan-result-tile');
+    tile.append(el('small', '', caption));
+    tile.append(el('strong', tone, value));
+    tiles.append(tile);
+  };
+  addTile('通关 / 总题数', `${done.length} / ${run.stageCount}`);
+  addTile('本轮单题合计', run.totalRating === null ? '—' : run.totalRating.toFixed(1));
+  addTile('已用时间合计', totalSeconds ? fmtDuration(totalSeconds) : '—');
+  const deltas = run.stages.map((stage) => stage.comparison?.ratingDelta).filter((value) => typeof value === 'number');
+  const boardDelta = deltas.reduce((sum, value) => sum + value, 0);
+  addTile('B50 增量', deltas.length ? signed(Math.round(boardDelta * 10) / 10) : '—', boardDelta > 0 ? 'up' : undefined);
+
+  const cards = field(dialog, '.dan-result-cards');
+  cards.replaceChildren();
+  for (const stage of run.stages) {
+    const card = el('li', 'dan-rcard');
+    card.dataset.outcome = stage.outcome ?? 'pending';
+    card.append(el('span', 'dan-rcard-stamp', stage.outcome === 'cleared' ? 'CLEAR' : stage.outcome === 'timeout' ? 'TIME UP' : '—'));
+    const head = el('div', 'dan-rcard-head');
+    if (stage.problemUrl) {
+      const link = el('a', '', stage.problemId ?? '');
+      link.href = stage.problemUrl;
+      link.rel = 'noreferrer noopener';
+      head.append(link);
+    } else head.append(el('span', 'dan-rcard-nolink', '未开始'));
+    head.append(el('span', 'dan-chip', `${stage.difficulty} 分`));
+    card.append(head);
+    card.append(el('div', 'dan-rcard-rank', stage.rank ?? (stage.outcome === 'cleared' ? '—' : '')));
+    card.append(el('div', 'dan-rcard-ach', stage.achievement === null ? '—' : `${stage.achievement.toFixed(4)}%`));
+    const fields = el('div', 'dan-rcard-fields');
+    fields.append(el('span', '', `用时 ${stage.seconds === null ? '—' : fmtHMS(stage.seconds)}`));
+    fields.append(el('span', '', `单题 ${stage.rating === null ? '—' : `${stage.rating.toFixed(1)} 分`}`));
+    if (typeof stage.comparison?.ratingDelta === 'number') fields.append(el('span', 'dan-rcard-board', `B50 ${signed(stage.comparison.ratingDelta)}`));
+    card.append(fields);
+    const bar = el('div', 'dan-rcard-bar');
+    const fill = el('i');
+    fill.style.width = `${Math.max(0, Math.min(100, stage.achievement ?? 0))}%`;
+    bar.append(fill);
+    card.append(bar);
+    cards.append(card);
+  }
+
+  field(dialog, '.dan-result-note').textContent = run.status === 'cleared'
+    ? '三道都在限时内解出。每道题的成绩已经作为单题记录存进练习记录，并计入 B50。'
+    : run.status === 'failed'
+      ? '有一道超出了限时，本轮就此结束。超时那道没有成绩；已经通过的那几道照样计入 B50。'
+      : '这一轮被中断或放弃，没有生成总成绩。已经通过的那几道照样计入 B50。';
+
+  const again = field(dialog, '.dan-result-again');
+  again.textContent = `再来一轮${run.tierName}`;
+  again.onclick = () => { dialog.close(); startRun(run.kind === 'challenge' ? 'challenge' : 'single', run.tier); };
+
+  if (!dialog.open) dialog.showModal();
+}
+
+/* ---------------- 动作 ---------------- */
 
 async function startRun(kind, tier) {
   if (busy) return;
@@ -284,22 +665,6 @@ async function beginStage(session) {
   }
 }
 
-async function advance() {
-  if (busy) return;
-  busy = true;
-  try {
-    const data = await post('/api/dan/next', { userId, tz });
-    clockOffset = data.serverNow - Date.now() / 1000;
-    if (data.poolEmpty) setMessage('这个档位已经没有你没做过的题了，换一个档位吧。', true);
-    await refresh();
-  } catch (error) {
-    setMessage(error.message, true);
-  } finally {
-    busy = false;
-    render();
-  }
-}
-
 async function abandonRun(sessionId) {
   if (busy || !window.confirm('放弃这一轮？本轮会记为「已放弃」，不计入成绩。')) return;
   busy = true;
@@ -315,7 +680,10 @@ async function abandonRun(sessionId) {
   }
 }
 
-/** 做了题就轮询：等后台同步发现 CF 上的 AC，服务端结算后自动抽下一道。没在计时就不轮询。 */
+/**
+ * 做了题就轮询。这里调的是 **settle 而不是 next**：只结算、不抽题，
+ * 所以出了成绩会停在结算页上，等用户自己点「抽选下一题」。没在计时就不轮询。
+ */
 function schedule() {
   clearTimeout(pollTimer);
   clearInterval(tickTimer);
@@ -324,9 +692,8 @@ function schedule() {
   if (session && current?.claimed) {
     pollTimer = setTimeout(async () => {
       try {
-        const data = await post('/api/dan/next', { userId, tz });
+        const data = await post('/api/dan/settle', { userId, tz });
         clockOffset = data.serverNow - Date.now() / 1000;
-        if (data.poolEmpty) setMessage('这个档位已经没有你没做过的题了，换一个档位吧。', true);
         await refresh();
       } catch {
         schedule();

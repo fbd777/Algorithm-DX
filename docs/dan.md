@@ -88,8 +88,35 @@ active ──三道全部通关──→ cleared（通过）
 
 ### 路径失败也算失败
 
-- 某题超时 → 本轮 `failed`。
-- 结算时该题按实际用时正常计分（超时那一刻计时器被释放，时间是真实的），但**本轮**已经判为失败。
+- 某题超时 → 本轮 `failed`，立即结束。
+- 超时那道**没有成绩**：计时器在超时那一刻被取消（`practice_timers.status='cancelled'`），不会生成 `practice` 记录，自然也不进 B50。已经通过的那几道不受影响，照常计分。
+- 超时时间取的是**限时截止那一刻**（`claimed_at + limit_seconds`），不是「发现超时的那一刻」—— 否则一次晚同步会把用时和分数一起撑大。
+
+### 结算分两层
+
+**第一层是单题结算**，在每道题出成绩时弹出：用的就是普通计时练习那张结算皮（`public/dx-result.css` 的 `.dx-result-sheet`），显示达成率、此前最佳、评级、用时、判定计数、单题 rating，以及结算那一刻的 DX Rating 总分与增量。这段对比读的是 `practice_timers.settlement_json` 里冻结的那一份 —— 段位認定不另算一套分。
+
+**第二层是整轮结算页**，三道打完（或中途失败）后出现，照着街机原作的段位認定结算做的：
+
+- **`合格` / `不合格` 印章**：缎带、两侧扇饰、合格文字与星尘，失败时整体换成红色并且不出星尘，放弃时是灰色。
+- **逐题卡**：每题一张，卡顶挂 `CLEAR` / `TIME UP` 印，显示题号、难度、评级、达成率、用时、单题分与这道题的 B50 增量，底部一条达成率进度条。
+- **合计**：通关题数、本轮单题合计、已用时间合计、B50 增量。
+
+布局取自 156 版《舞萌 DX》素材包里 `resources.assets` 的 `UI_DNM_Result_ClearBase_*`、`UI_DNM_Clear_Parts_*`、`UI_DNM_Icon_Clear/_NoClear`、`UI_DNM_Image_Clear` 与 `UI_DNM_DaniChainCard_*`（用 UnityPy 解出的 GameObject / RectTransform 层级：底板 312×56、两侧扇饰 116×116 落在 ±66、缎带 212×72 垂在中下方、合格文字 128×64）。
+
+**贴图没有从素材包里搬**：这些全部用 CSS 重画。游戏美术是有版权的，把它打进一个 MIT 仓库、再提到上游是不合适的；这里只沿用它的版式与构成。
+
+### 下一道由你点，不由轮询抽
+
+出成绩之后页面停在结算上，不会自己往下抽：
+
+- 轮询调的是 `POST /api/dan/settle` —— **只结算、不抽题**；
+- 只有点单题结算上的「抽选下一题」才会调 `POST /api/dan/next` 去抽下一道；
+- 最后一道的按钮是「查看本轮结算」，点了进整轮结算页。
+
+否则你还在看这一道的成绩，下一道就已经悄悄抽好了，等于把「抽题」这一步藏起来。（`tests/dan.test.ts` 里有一条断言盯这个：调 `settle` 之后 `dan_stages` 不得多出一道。）
+
+如果结算比页面刷新更快（服务端同步任务常常如此），打开页面时会把 90 秒内刚结束的那一轮结算补弹一次，只补一次。
 
 ## 成绩的去向
 
@@ -125,10 +152,11 @@ active ──三道全部通关──→ cleared（通过）
 | GET | `/api/dan?user=&tz=` | 抽题面板与记录页。档位表、题库是否就绪、每日一题的**难度**、进行中的一轮、历史记录 |
 | POST | `/api/dan/start` | 开一轮：`{userId, kind, tier?, tz?}`。kind 为 `daily` 时忽略 tier |
 | POST | `/api/dan/claim` | **唯一一次下发题号与链接**：`{userId, sessionId}`。幂等，重复点击返回同一道题 |
-| POST | `/api/dan/next` | 结算已同步到的 AC 并抽下一道：`{userId, tz?}` |
+| POST | `/api/dan/settle` | **只结算、不抽题**：`{userId}`。轮询用这条，所以出成绩会停在结算页上 |
+| POST | `/api/dan/next` | 结算已同步到的 AC 并抽下一道：`{userId, tz?}`。由「抽选下一题」触发 |
 | POST | `/api/dan/abandon` | 放弃进行中的一轮：`{userId, sessionId}` |
 
-四个 POST 都登记在 `src/server/api.ts` 的 `WRITE_ROUTES` 里。`GET /api/dan` 是只读的：它只从 `fetch_cache` 读题库缓存，读连接是 `PRAGMA query_only = ON`，所以冷缓存时如实返回 `poolReady: false`，由前端引导走一次写接口去抓。
+五个 POST 都登记在 `src/server/api.ts` 的 `WRITE_ROUTES` 里。`GET /api/dan` 是只读的：它只从 `fetch_cache` 读题库缓存，读连接是 `PRAGMA query_only = ON`，所以冷缓存时如实返回 `poolReady: false`，由前端引导走一次写接口去抓。
 
 错误码：区间里没有没做过的题是 `POOL_EMPTY`（以 `poolEmpty` 标记返回，不静默抽区间外的题）；已有一轮没结束时 `start` 返回 **409** `SESSION_ACTIVE`；其余 `DanError` 一律 400。
 

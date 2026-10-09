@@ -169,6 +169,7 @@ export const WRITE_ROUTES = new Set([
   '/api/dx/attempts/edit',
   '/api/dan/start',
   '/api/dan/claim',
+  '/api/dan/settle',
   '/api/dan/next',
   '/api/dan/abandon',
 ]);
@@ -977,6 +978,18 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
             problemId: stage.problem_id, url: danProblemUrl(stage.problem_id), timerId: stage.timer_id,
             deadlineAt: (stage.claimed_at ?? now) + session.limit_seconds, serverNow: now,
           } };
+        }
+        case '/api/dan/settle': {
+          // 只结算、不抽题。轮询用这个：出了成绩就停在结算页上，等用户自己点「抽选下一题」。
+          const input = objectBody(body), userId = positiveInt(input, 'userId');
+          const now = Math.floor(Date.now() / 1000), db = ctx.openWrite();
+          reconcileTimers(db);
+          advanceDanSessions(db, now);
+          const session = activeDanSession(db, userId);
+          const state = timerState(db, userId);
+          if (state.timer?.status === 'running') void ctx.syncJobs.checkTimer(state.timer.account_id);
+          return { status: 200, body: { session: session ? danSessionView(db, session) : null,
+            timer: state.timer, serverNow: now } };
         }
         case '/api/dan/next': {
           const input = objectBody(body), userId = positiveInt(input, 'userId');

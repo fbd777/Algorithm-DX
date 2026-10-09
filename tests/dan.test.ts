@@ -354,14 +354,78 @@ test('挑战的成绩同时进入普通练习记录与 B50 计分（段位認定
     const entry = listDxEntries(s.db, s.user, 'codeforces').find((row) => row.problemId === stage.problem_id)!;
     assert.equal(entry.recordedSeconds, 900);
     assert.equal(scoreProblem(entry).rating, viewOf(s, 's1').stages[0].rating);
+
+    // 结算页要用的字段：B50 对比（来自 practice_timers.settlement_json，不是另算一套）、
+    // 判定计数、题目名 —— 这样单题结算才能和普通计时结算显示同一个 DX RATING 与增量。
+    const view = viewOf(s, 's1').stages[0]!;
+    const comparison = view.comparison!;
+    assert.ok(comparison, '结算后必须带上 reconcileTimers 冻结的 B50 对比');
+    assert.equal(comparison.ratingDelta, Math.round((comparison.ratingAfter - comparison.ratingBefore) * 10) / 10);
+    assert.equal(view.verdicts.AC, 1);
+    assert.equal(view.waCount, 0);
+    assert.equal(view.practiceKind, 'unknown');
+    assert.ok(view.title, '结算卡要显示题目名');
   } finally { s.db.close(); }
 });
 
-test('四个抽题接口都登记在 WRITE_ROUTES 里（写端点清单是安全边界的一部分）', () => {
-  for (const path of ['/api/dan/start', '/api/dan/claim', '/api/dan/next', '/api/dan/abandon']) {
+test('未开始的那道不下发题目名，也不带结算数据（口径 A 覆盖到新字段）', () => {
+  const s = setup();
+  try {
+    const t0 = 1_000_000;
+    createDanSession(s.db, { id: 's1', userId: s.user, kind: 'single', tierKey: 'advanced', now: t0 });
+    drawNextDanStage(s.db, { sessionId: 's1', pool: at(1800, 5, 1), now: t0, dateKey: '2026-10-09' });
+    const stage = viewOf(s, 's1').stages[0]!;
+    assert.equal(stage.problemId, null);
+    assert.equal(stage.problemUrl, null);
+    assert.equal(stage.title, null);
+    assert.equal(stage.comparison, null);
+    assert.deepEqual(stage.verdicts, {});
+  } finally { s.db.close(); }
+});
+
+test('五个抽题接口都登记在 WRITE_ROUTES 里（写端点清单是安全边界的一部分）', () => {
+  for (const path of ['/api/dan/start', '/api/dan/claim', '/api/dan/settle', '/api/dan/next', '/api/dan/abandon']) {
     assert.ok(WRITE_ROUTES.has(path), `${path} 必须登记为写端点`);
   }
   assert.ok(!WRITE_ROUTES.has('/api/dan'), 'GET /api/dan 是只读端点，不应登记为写端点');
+});
+
+test('API：settle 只结算不抽题，抽下一道必须由 next 触发（结算页才停得住）', async () => {
+  const s = setup();
+  try {
+    s.db.prepare('INSERT INTO fetch_cache(cache_key,payload,expires_at) VALUES(?,?,unixepoch()+3600)')
+      .run(PROBLEM_RATINGS_CACHE_KEY, JSON.stringify(at(1800, 40, 1)));
+    const ctx = { db: s.db, dbPath: ':memory:', platforms: ['codeforces'], envFile: 'unused',
+      openWrite: () => s.db, syncJobs: { checkTimer: () => {}, timerCheckState: () => null } as never };
+    const call = (method: string, pathname: string, params: Record<string, string> = {}, body?: unknown) =>
+      handleApi(ctx, { method, pathname, params: new URLSearchParams(params), body });
+
+    const started = await call('POST', '/api/dan/start', {}, { userId: s.user, kind: 'challenge', tier: 'advanced', tz: 480 });
+    const sessionId = (started.body as { session: { id: string } }).session.id;
+    const claimed = (await call('POST', '/api/dan/claim', {}, { userId: s.user, sessionId })).body as
+      { problemId: string; timerId: string; serverNow: number; difficulty: number };
+
+    // 计时器往前挪 600 秒，并在「现在」交掉这道题（reconcileTimers 要求 submitted_at 严格晚于起点、且不晚于 now）。
+    s.db.prepare('UPDATE practice_timers SET started_at = started_at - 600 WHERE id = ?').run(claimed.timerId);
+    s.repo.saveSubmissions(s.account, [submission('codeforces', {
+      submission_id: 'settle-sub-1', problem_id: claimed.problemId, problem_title: '段位認定',
+      status: 'AC', submitted_at: claimed.serverNow, difficulty: claimed.difficulty,
+    })]);
+
+    // settle：出成绩、就停在结算上，不抽下一道。
+    const settled = (await call('POST', '/api/dan/settle', {}, { userId: s.user, tz: 480 })).body as
+      { session: { stages: { outcome: string | null; seconds: number | null; claimed: boolean }[] } };
+    assert.equal(settled.session.stages.length, 1, 'settle 不得顺手把下一道抽出来');
+    assert.equal(settled.session.stages[0].outcome, 'cleared');
+    assert.equal(settled.session.stages[0].seconds, 600);
+
+    // next：用户点了「抽选下一题」才抽，而且新抽的那道依旧不下发题号。
+    const next = (await call('POST', '/api/dan/next', {}, { userId: s.user, tz: 480 })).body as
+      { session: { stages: { claimed: boolean; problemId: string | null }[] } };
+    assert.equal(next.session.stages.length, 2, 'next 才抽下一道');
+    assert.equal(next.session.stages[1].claimed, false);
+    assert.equal(next.session.stages[1].problemId, null);
+  } finally { s.db.close(); }
 });
 
 test('API：抽题前不下发链接，claim 才下发，重复 claim 幂等', async () => {
