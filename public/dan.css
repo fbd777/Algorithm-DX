@@ -329,20 +329,20 @@
 /* 右边两行**右对齐到同一条边**（x 945）：标签贴着各自数字，不再一个飘在数字上面
  * 一个飘在左下角。 */
 .dan-total-row {
-  position: absolute; left: 470px; top: 664px; width: 475px;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+  position: absolute; left: 470px; top: 686px; width: 475px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
 }
-.dan-total-label { font-size: .74rem; font-weight: 700; letter-spacing: .16em; color: #6b4a24; }
+.dan-total-label { font-size: .92rem; font-weight: 800; letter-spacing: .14em; color: #6b4a24; }
 .dan-total-num { display: flex; align-items: center; gap: 3px; }
-/* でらっくスコア 那一行**摆在底图那条白缎带上**（缎带实测 y 812–852 / x 609–968）——
- * 官方这一步就是拿缎带当分数面板的；浮在它旁边会剩一块看起来像空框的白。 */
-.dan-dxscore-row {
-  position: absolute; left: 600px; top: 812px; width: 345px; height: 40px;
-  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+/* 「でらっくスコア」那张官方标签**本身是个框**：上半 226×54 里 y 0–25 是蓝底字，
+ * y 26–50 留了一块 218×25 的白 —— 那块白就是给分数用的，数字要写在框里，
+ * 不是排在框右边。整张按原尺寸放，正好落在底图那条白缎带（y 812–852）上。 */
+.dan-dxscore-row { position: absolute; left: 719px; top: 805px; width: 226px; height: 54px; }
+.dan-dxscore-label { display: block; width: 226px; height: 54px; }
+.dan-dxscore-num {
+  position: absolute; left: 6px; top: 26px; width: 214px; height: 25px;
+  display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;
 }
-/* 官方那张「でらっくスコア」牌 226×54，按 40 高放。 */
-.dan-dxscore-label { width: 167px; height: 40px; object-fit: contain; }
-.dan-dxscore-num { display: flex; align-items: center; }
 
 /* 说明与按钮在成品屏之外（深色底上），不往那张纸上塞东西。 */
 .dan-result-note { margin: 0; max-width: 92ch; justify-self: center; text-align: center; font-size: .78rem; line-height: 1.7; color: #a9b4c4; }

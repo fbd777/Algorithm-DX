@@ -905,8 +905,9 @@ function openRunResult(run) {
   const totalAchievement = scored.reduce((sum, stage) => sum + stage.achievement, 0);
   field(dialog, '.dan-total-num').replaceChildren(
     scored.length ? achievementNumber(totalAchievement, 60) : numText('—', 'n90', 60, DX_NUM_COLOR));
+  // 数字写在官方标签框里那块白（25px 高）上，所以字高只能到 20 上下。
   field(dialog, '.dan-dxscore-num').replaceChildren(
-    numText(run.totalRating === null ? '—' : String(run.totalRating.toFixed(1)), 'n90', 26, DX_NUM_COLOR));
+    numText(run.totalRating === null ? '—' : String(run.totalRating.toFixed(1)), 'n90', 20, DX_NUM_COLOR));
 
   const deltas = run.stages.map((stage) => stage.comparison?.ratingDelta).filter((value) => typeof value === 'number');
   let note = run.status === 'cleared'
