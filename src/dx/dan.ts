@@ -319,13 +319,26 @@ export function activeDanSession(db: DatabaseSync, userId: number): DanSessionRo
 
 /**
  * 「已经见过的题」——任何提交（不只是 AC）都排除。
+ *
  * 拿到 WA 也算见过，重新抽到它就失去了「抽题」的意义；而只排 AC 会让
  * 「做过但没做出来」的题反复出现。
+ *
+ * 这个集**故意不看 `accounts.is_archived`**，与其他地方「只算当前账号」的口径
+ * 不一样（B50、题友圈、练习记录都带 `is_archived=0`）。理由：归档的含义是
+ * 「这个账号不再同步了」（换 handle、换号时旧账号会被归档），**不是**
+ * 「那些题我没做过」。带上 `is_archived=0` 的后果是：换过一次 handle 的人，
+ * 之前 AC 过的题会全部重新变成可抽 —— 这正是「别抽我做过的题」要防的事。
+ *
+ * 另外把**正在计时的题**也排除：计时可以不经提交直接对题号开始，
+ * 于是不看这一处的话，段位有可能抽到你手上正在做的那道。
  */
 export function danExcludedProblems(db: DatabaseSync, userId: number, sessionId?: string): Set<string> {
   const rows = db.prepare(`SELECT DISTINCT s.problem_id FROM submissions s JOIN accounts a ON a.id=s.account_id
-    WHERE a.user_id=? AND a.is_archived=0 AND s.platform='codeforces'`).all(userId) as { problem_id: string }[];
+    WHERE a.user_id=? AND s.platform='codeforces'`).all(userId) as { problem_id: string }[];
   const exclude = new Set(rows.map((row) => String(row.problem_id).toUpperCase()));
+  const timers = db.prepare('SELECT DISTINCT problem_id FROM practice_timers WHERE user_id=?')
+    .all(userId) as { problem_id: string }[];
+  for (const row of timers) exclude.add(String(row.problem_id).toUpperCase());
   if (sessionId) {
     const drawn = db.prepare('SELECT problem_id FROM dan_stages WHERE session_id=?').all(sessionId) as { problem_id: string }[];
     for (const row of drawn) exclude.add(String(row.problem_id).toUpperCase());

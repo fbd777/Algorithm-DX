@@ -265,6 +265,54 @@ test('已提交过的题不再抽到，且题号大小写不敏感', () => {
   } finally { s.db.close(); }
 });
 
+test('归档账号做过的题同样排除（归档 = 不再同步，不是「那些题我没做过」）', () => {
+  const s = setup();
+  try {
+    // 换 handle 的典型场景：旧账号被归档，新账号接管。
+    const old = s.repo.addAccount(s.user, 'codeforces', 'old-handle');
+    s.db.prepare('UPDATE accounts SET is_archived=1 WHERE id=?').run(old);
+    s.repo.saveSubmissions(old, [submission('codeforces', {
+      submission_id: 'old-1', problem_id: '1900:A', problem_title: '换号之前做过的题',
+      status: 'AC', submitted_at: 1000, difficulty: 1900,
+    })]);
+
+    const exclude = danExcludedProblems(s.db, s.user);
+    assert.ok(exclude.has('1900:A'), '归档账号上 AC 过的题必须仍在排除集里');
+
+    // 池子里只有这一道，排除后应当抽不到 —— 不抛错，而是明确报「没题了」。
+    assert.throws(
+      () => {
+        createDanSession(s.db, { id: 's1', userId: s.user, kind: 'single', tierKey: 'advanced', now: 1000 });
+        drawNextDanStage(s.db, { sessionId: 's1', pool: at(1900, 1, 1900), now: 1000, dateKey: '2026-10-09' });
+      },
+      (error: unknown) => error instanceof DanError && error.code === 'POOL_EMPTY',
+      '归档账号做过的题不该被抽到',
+    );
+  } finally { s.db.close(); }
+});
+
+test('正在计时的题不会被抽到（计时可以不经提交直接开始）', () => {
+  const s = setup();
+  try {
+    const pool = [{ contestId: 1950, index: 'A', rating: 1700 }, { contestId: 1951, index: 'A', rating: 1700 }];
+    // 直接对题号起计时，不经过任何提交 —— 这是「专注计时」的正常用法。
+    startTimer(s.db, { userId: s.user, problemId: '1950:A', practiceKind: 'unknown', requestId: 'manual-timer' }, 1000);
+    const exclude = danExcludedProblems(s.db, s.user);
+    assert.ok(exclude.has('1950:A'), '正在计时的题必须在排除集里');
+
+    // 池子里剩另一道 1700，所以还能抽出题，但绝不会是手上那道。
+    createDanSession(s.db, { id: 's1', userId: s.user, kind: 'single', tierKey: 'advanced', now: 1000 });
+    for (let i = 0; i < 200; i += 1) {
+      const drawn = drawNextDanStage(s.db, { sessionId: 's1', pool, now: 1000, dateKey: '2026-10-09' });
+      if (!drawn) break;
+      assert.notEqual(drawn.problem_id, '1950:A', '不该抽到正在计时的那道题');
+      // 清掉这一道好继续抽下一轮：把它标成已结算。
+      s.db.prepare("UPDATE dan_stages SET outcome='cleared' WHERE id=?").run(drawn.id);
+      if (i === 0) break; // 抽到一次就够证明；重复抽会因为排除同轮已抽而变复杂
+    }
+  } finally { s.db.close(); }
+});
+
 test('每日一题可复现：同一天同一用户抽到同一道', () => {
   const pool = at(1500, 40, 1);
   const options = { minRating: DAILY_TIER.minRating, maxRating: DAILY_TIER.maxRating, exclude: ANY };
