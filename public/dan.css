@@ -149,9 +149,13 @@
  *   总达成率 / DX分数右下角一区：x ~470–965 / y ~620–845
  * 组件也全是官方素材，不用 CSS 画：
  *   数字 = UI_CMN_Num_26p/70p/90p 图集逐格切，配同布局的 _Outline 剪影层叠出描边
- *   DX 分数 = UI_NUM_Score_0001111_Gold（金色那套，图集里 [13] 就是小数点）
+ *   达成率 = UI_NUM_Score_0001111_{Blue,Gold,Red} 三色分数图集（按分数换色）+ 官方彩色「%」
+ *            （同名那套 Base 是空图集，不能用；「%」字形也正好只有三张 ⇒ 官方就是三档）
  *   评级 = UI_CMN_TabTitle_Rank_*，心 = UI_DNM_Base_Life_01/03，DX 标签 = UI_RSL_DXScore_Base
  *   底图 = UI_DNM_Result_Base_01（段位認定）/ _03（ランダム段位認定），行底板 = ..._musicBase_01
+ * 唯一的例外是逐题行的**乐曲边框**：官方那张 `UI_CMN_RSL_KopMBase_*` 把难度色与难度名
+ * 烘死在图里（五种难度各一张），套不上我们自己的 CF 分档，所以照它逐像素量出来的版式
+ * 重画一层（见下面的「逐题行」一节），颜色由 CF 分档给。
  * 素材来源、量法与重新提取见 docs/dan.md「结算页的素材来源」与
  * scripts/extract-maimai-assets.py。
  *
@@ -191,9 +195,23 @@
 .dan-num-char > b { position: absolute; inset: 0; display: block; background-repeat: no-repeat; }
 .dan-num-plain { display: grid; place-items: center; color: #4a3a2a; font-family: var(--mono); font-weight: 900; line-height: 1; }
 
-/* ---------- 逐题行 ---------- */
+/* ---------- 逐题行 ----------
+ * 一行 = 原作的行底板（UI_DNM_Result_musicBase_01，576×124）+ 一层**乐曲边框**。
+ * 边框照原作 `UI_CMN_RSL_KopMBase_*`（640×140，五种难度各一张）画 —— 官方那张的颜色和
+ * 难度名（BASIC/ADVANCED/…）都烘死在图里，套不上我们自己的 CF 分档，所以按它的版式重画，
+ * 颜色由 --tc1/--tc2 给。下面每个数字都是从那张 640×140 贴图里逐像素量出来再 ×0.9：
+ *   边框本体   (12,12) 616×122（四边留 12px 透明边，圆角 ~14）→ 行内 (11,11) 554×110
+ *   曲绘槽     (12,12) 116×116 白底（官方 JacketImage_S (14,14) 113×113 落在槽里）
+ *   标题条     (257,12) 371×20 深蓝圆角条（官方 MusicPlate_Mask (262,13) 359×18）
+ *   难度名牌   (138,14) 90×22  白字深描边（官方烘的是难度名）
+ *   达成率白框 (136,42) 364×65 白底圆角（官方小字 ACHIEVEMENT 在框内左上 (147,48)）
+ *   行首小牌   (6,6) 68×28（官方 JaketTrack 贴图就是 68×28）
+ *   评级位     (555,34) 84×28（官方 UI_GameType 那一格）
+ *   LV 位      (549,50) 112×66（官方 UI_Difficulty 含 Lv/NUM_Single/NUM_Double 三个子节点）
+ *   DX分数牌   (495,108) 135×26 白底圆角（官方 DerakkuScore_NUM (488,112) 140×20 落在牌上）
+ */
 .dan-result-tracks { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
-.dan-track { position: absolute; left: 267px; width: 576px; height: 124px; }
+.dan-track { position: absolute; left: 267px; width: 576px; height: 126px; }
 /* 印在行左边、行外那一条（原作里印和底板本来就不在同一个容器里）。 */
 .dan-track-stamp {
   position: absolute; left: -118px; top: 8px; width: 108px; height: 108px;
@@ -202,43 +220,78 @@
 /* 还没抽到的那道不盖章 —— 印是真的，只是这一格还没轮到他。 */
 .dan-track[data-outcome="pending"] .dan-track-stamp { opacity: .22; filter: grayscale(1); }
 .dan-track-plate { position: absolute; inset: 0; background: url('/assets/maimai/track-plate.png') 0 0 / 100% 100% no-repeat; }
+
+/* 乐曲边框：主色场（背景渐变）+ 外圈浅色环（inset 阴影）+ 底部浅色带（背景最上面那一层）。
+ * 环与带都画在背景层里，所以边框**不是**真 border —— 真 border 会把子元素坐标系推进 8px。 */
+.dan-track-frame {
+  position: absolute; left: 11px; top: 11px; width: 554px; height: 110px; border-radius: 16px;
+  box-shadow: inset 0 0 0 8px #ffffff7a;
+  background:
+    linear-gradient(#ffffff5e, #ffffff5e) left bottom / 100% 24px no-repeat,
+    linear-gradient(180deg, var(--tc1, #8b6cf0) 0 66%, var(--tc2, #4a2fb0) 66% 100%);
+}
+/* 边框里的组件用**边框内坐标**（= 行内坐标 − 11，因为边框自己在行内 (11,11)）。 */
+/* 深蓝标题条（官方烘在边框里的那一条）+ 官方那圈浅色描边，题目名写在里面。 */
+.dan-track-titlebar {
+  position: absolute; left: 220px; top: 0; width: 334px; height: 18px;
+  border-radius: 9px; background: #0d2a63; box-shadow: 0 0 0 2px #ffffff8c;
+}
 .dan-track-no {
-  position: absolute; left: 128px; top: 18px; white-space: nowrap;
-  font-family: var(--mono); font-size: .66rem; font-weight: 700; letter-spacing: .12em; color: #8a6a4a;
+  position: absolute; left: 5px; top: 5px; width: 61px; height: 25px; display: grid; place-items: center;
+  font-family: var(--mono); font-size: .58rem; font-weight: 700; letter-spacing: .04em;
+  color: #fff; background: #0d2a63; border-radius: 4px;
 }
+/* 官方的曲绘槽：白底、左上角跟着边框的圆角（方角会戳到边框圆角外面去），槽里放题号。 */
 .dan-track-jacket {
-  position: absolute; left: 14px; top: 14px; width: 102px; height: 96px;
-  border-radius: 5px; display: grid; place-items: center;
-  border: 2px solid #ffffff8c; box-shadow: inset 0 0 22px #00000059;
-  background: linear-gradient(140deg, var(--tc1, #8b6cf0), var(--tc2, #4a2fb0));
+  position: absolute; left: 11px; top: 11px; width: 104px; height: 104px;
+  border-radius: 16px 4px 4px 4px; display: grid; place-items: center;
+  background: #fff; box-shadow: inset 0 0 0 1px #ffffffcc;
 }
-.dan-track-jacket b { font-family: var(--mono); font-size: 1.45rem; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 2px 5px #000b; }
-.dan-track-jacket small { font-family: var(--mono); font-size: .58rem; color: #ffffffcc; }
+.dan-track-jacket b { font-family: var(--mono); font-size: 1.45rem; font-weight: 900; line-height: 1; color: #0d2a63; }
+.dan-track-jacket small { font-family: var(--mono); font-size: .58rem; color: #5a6b8c; }
+/* 难度名牌那一格：官方是「白字 + 一圈浅色描边」（烘在边框贴图里的 MASTER 就是这个样子）。 */
+.dan-track-diff {
+  position: absolute; left: 122px; top: 12px; width: 104px; height: 22px;
+  font-size: .8rem; font-weight: 900; line-height: 22px; color: #fff;
+  -webkit-text-stroke: 3px #ffffffb0; paint-order: stroke fill; text-shadow: 0 1px 3px #2a1155a6;
+}
 .dan-track-name {
-  position: absolute; left: 236px; top: 13px; width: 300px; height: 19px;
-  font-size: .76rem; line-height: 19px; color: #3b2a18;
+  position: absolute; left: 220px; top: 0; width: 334px; height: 18px; padding: 0 10px;
+  font-size: .68rem; line-height: 18px; color: #fff;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 达成率是这一行最大的一块数字：官方数字贴图，高 46px。 */
-.dan-track-achvalue { position: absolute; left: 99px; top: 44px; }
-.dan-track-badge { position: absolute; left: 540px; top: 5px; height: 38px; }
+/* 达成率白框：官方那一格是 `UI_AchivementCounter`，白底圆角，小字在框内左上。 */
+.dan-track-achbox {
+  position: absolute; left: 111px; top: 27px; width: 328px; height: 59px;
+  border-radius: 9px 9px 9px 4px; background: #fff;
+}
+.dan-track-achlabel {
+  position: absolute; left: 8px; top: 3px; font-size: .56rem; font-weight: 900; letter-spacing: .08em; color: #0d2a63;
+}
+.dan-track-achvalue { position: absolute; left: 8px; top: 15px; width: 312px; height: 41px; display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+.dan-per { display: block; }
+/* 评级 / LV / 限时 都在官方那一列（x 494–570）里自上而下排。 */
+.dan-track-badge { position: absolute; left: 500px; top: 29px; height: 22px; }
 .dan-track-judge {
-  position: absolute; left: 540px; top: 5px; height: 38px; display: grid; place-items: center;
-  padding: 0 12px; font-size: .72rem; color: #3a2418; background: #ffd76a; border-radius: 999px;
+  position: absolute; left: 500px; top: 29px; height: 22px; display: grid; place-items: center;
+  padding: 0 10px; font-size: .62rem; color: #0d2a63; background: #ffd76a; border-radius: 999px;
 }
 .dan-track[data-outcome="timeout"] .dan-track-judge,
 .dan-track[data-outcome="interrupted"] .dan-track-judge,
-.dan-track[data-outcome="pending"] .dan-track-judge { background: #ded6c9; }
+.dan-track[data-outcome="pending"] .dan-track-judge { background: #e8e2d6; }
 .dan-track-lv {
-  position: absolute; left: 505px; top: 44px; width: 71px; height: 26px;
+  position: absolute; left: 489px; top: 54px; width: 76px; height: 26px;
   display: grid; place-items: center; border-radius: 6px;
-  border: 2px solid #ffffff8c; background: linear-gradient(var(--tc1, #7b5cff), var(--tc2, #4628b8));
+  border: 2px solid #ffffffa6; background: #0d2a63a6;
 }
-.dan-track-limit { position: absolute; left: 440px; top: 76px; width: 136px; text-align: right; font-size: .56rem; color: #8a7355; }
-.dan-track-dxlabel { position: absolute; left: 396px; top: 100px; font-size: .56rem; color: #7d6244; }
-/* 这几个是「右对齐到官方格子右边界」的容器：必须是 flex，不然 justify-content 不生效
- * （span 是行内元素，右对齐会静默失效，数字会长到格子外面去）。 */
-.dan-track-dxnum { position: absolute; left: 440px; top: 96px; width: 136px; display: flex; justify-content: flex-end; }
+.dan-track-limit { position: absolute; left: 489px; top: 82px; width: 76px; text-align: right; font-size: .56rem; color: #fff; text-shadow: 0 1px 2px #0006; }
+/* DX分数白牌（官方 DerakkuScore_NUM 那一格）。 */
+.dan-track-dxbox {
+  position: absolute; left: 433px; top: 86px; width: 121px; height: 23px;
+  border-radius: 4px 11px 11px 4px; background: #fff; display: flex; align-items: center; padding: 0 6px;
+}
+.dan-track-dxlabel { flex: none; font-size: .56rem; font-weight: 700; color: #0d2a63; }
+.dan-track-dxnum { margin-left: auto; }
 
 /* ---------- 底部色带：白框里的合格印 · 心 · 总达成率 / DX分数 ---------- */
 .dan-bottom { position: absolute; inset: 0; }
@@ -250,8 +303,7 @@
 .dan-life-base { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 3px 8px #00000038); }
 .dan-life-count { position: absolute; inset: 0; display: grid; place-items: center; }
 .dan-total-label { position: absolute; left: 534px; top: 618px; width: 160px; text-align: center; font-size: .8rem; font-weight: 700; letter-spacing: .12em; color: #6b4a24; }
-.dan-total-num { position: absolute; left: 420px; top: 718px; width: 480px; display: flex; justify-content: flex-end; }
-.dan-total-pct { position: absolute; left: 906px; top: 726px; }
+.dan-total-num { position: absolute; left: 420px; top: 718px; width: 480px; display: flex; justify-content: flex-end; align-items: center; gap: 3px; }
 .dan-dxscore-label { position: absolute; left: 566px; top: 796px; width: 192px; height: 40px; object-fit: contain; }
 .dan-dxscore-num { position: absolute; left: 772px; top: 806px; width: 166px; display: flex; justify-content: flex-end; }
 

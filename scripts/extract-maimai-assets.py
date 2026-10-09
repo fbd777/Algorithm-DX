@@ -23,6 +23,12 @@ from pathlib import Path
 import UnityPy
 
 # 仓库里用的文件名 ← 游戏里的贴图名。只搬这几件，不是整个 UI_DNM 家族（159 张）。
+#
+# 故意**不**搬的一件：逐题行的乐曲边框 `UI_CMN_RSL_KopMBase_{BSC,ADV,EXP,MST,MST_Re}`
+# （640×140，五种难度各一张）。它是逐题行那一圈底色，但颜色与难度名（BASIC/ADVANCED/
+# EXPERT/MASTER/Re:MASTER）都烘死在图里，套不上我们自己的 CF 难度分档。所以边框按它的
+# 版式用 CSS 画一层（见 dan.css 的 .dan-track-frame）：外圈浅色环 + 主色场 + 底部浅色带
+# + 左侧白曲绘槽 + 深蓝标题条 + 白色达成率框，尺寸全按这张贴图量出来的像素。
 WANTED: dict[str, str] = {
     "UI_DNM_Result_Base_01": "result-dani.png",       # 「段位認定」整屏底图 980×928
     "UI_DNM_Result_Base_03": "result-random.png",     # 「ランダム段位認定」整屏底图
@@ -35,11 +41,19 @@ WANTED: dict[str, str] = {
     # 图集里全是**纯白剪影**（游戏运行时才染色），所以描边要另外提一层 _Outline。
     "UI_CMN_Num_26p": "num-26p.png",                  # 小号数字 136×160，格 34×40
     "UI_CMN_Num_26p_Outline": "num-26p-outline.png",  #   同布局的描边剪影
-    "UI_CMN_Num_70p": "num-70p.png",                  # 达成率用，300×348，格 75×87
-    "UI_CMN_Num_70p_Outline": "num-70p-outline.png",
-    "UI_CMN_Num_90p": "num-90p.png",                  # 总达成率用，356×420，格 89×105
+    "UI_CMN_Num_90p": "num-90p.png",                  # 没有成绩时的占位「—」用，356×420，格 89×105
     "UI_CMN_Num_90p_Outline": "num-90p-outline.png",
-    "UI_NUM_Score_0001111_Gold": "num-score-gold.png",  # 金色 DX 分数数字 296×392（自带金色）
+    # 分数数字：同布局的三套（blue / gold / red）296×392，格 74×98，自带颜色、
+    # 不用描边层 —— 原作就是按达成率高低换这一套的颜色。
+    # 同名的 `UI_NUM_Score_0001111_Base` 故意不搬：那是一张**空图集**（16 格里一个字形都没有，
+    # 整张只有几列杂散像素），照它渲染数字会得到一片看不见的灰影。
+    "UI_NUM_Score_0001111_Blue": "num-score-blue.png",
+    "UI_NUM_Score_0001111_Gold": "num-score-gold.png",
+    "UI_NUM_Score_0001111_Red": "num-score-red.png",
+    # 达成率末尾那个大「%」字形：同样按分数分色（没有 base 那版，低档用图集里的 % 格）
+    "UI_RSL_Score_Per_Gold": "score-per-gold.png",     # 80×80
+    "UI_RSL_Score_Per_Blue": "score-per-blue.png",
+    "UI_RSL_Score_Per_Red": "score-per-red.png",
     # 逐题评级徽章：SSS+ / SSS / SS+ / SS / S+ / S 各一版，A~AAA 与 B 及以下各共用一版
     "UI_CMN_TabTitle_Rank_SSSp": "rank-sssp.png",
     "UI_CMN_TabTitle_Rank_SSS": "rank-sss.png",
