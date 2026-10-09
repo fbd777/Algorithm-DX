@@ -39,7 +39,7 @@ export class TimerSubmissionChecker {
       db.exec('SAVEPOINT timer_public_check');
       try {
         new Repository(db).saveSubmissions(accountId, batch.submissions);
-        reconcileTimers(db);
+        reconcileTimers(db, accountId);
         db.exec('RELEASE timer_public_check');
       } catch (error) {
         db.exec('ROLLBACK TO timer_public_check; RELEASE timer_public_check');

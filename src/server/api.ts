@@ -1009,13 +1009,21 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
             custom = { minRating: Number(input.minRating), maxRating: Number(input.maxRating), tags: requested };
           }
           const sessionId = newDanSessionId();
-          // 先建轮次再抽题：抽题要题库（可能触发一次网络抓取），失败时不该留下半截状态。
-          const session = createDanSession(db, { id: sessionId, userId, kind, tierKey, now, ...custom });
+          // Fetch before opening a transaction; creation and drawing must commit together.
           pool ??= await danPool(db);
-          const drawn = drawNextDanStage(db, { sessionId, pool, now, dateKey: danDateKey(now, tzFromBody(input)) });
-          // 只回难度。题号与链接留到 claim 那一次（口径 A）。
-          return { status: 200, body: { session: danSessionView(db, session), poolSize: pool.length,
-            stage: drawn ? { index: drawn.stage_index, difficulty: drawn.difficulty } : null } };
+          const band = kind === 'daily' ? dailyBand(danEquivalentRating(db, userId)) : {};
+          db.exec('SAVEPOINT dan_start');
+          try {
+            const session = createDanSession(db, { id: sessionId, userId, kind, tierKey, now, ...band, ...custom });
+            const drawn = drawNextDanStage(db, { sessionId, pool, now, dateKey: danDateKey(now, tzFromBody(input)) });
+            const view = danSessionView(db, session);
+            db.exec('RELEASE dan_start');
+            return { status: 200, body: { session: view, poolSize: pool.length,
+              stage: drawn ? { index: drawn.stage_index, difficulty: drawn.difficulty } : null } };
+          } catch (error) {
+            db.exec('ROLLBACK TO dan_start; RELEASE dan_start');
+            throw error;
+          }
         }
         case '/api/dan/claim': {
           const input = objectBody(body), userId = positiveInt(input, 'userId');

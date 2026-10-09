@@ -214,7 +214,7 @@ test('019 之前的旧行没有 limit_seconds，结算时沿用 session 的统�
     // 3000 秒内不算超时，3001 秒算 —— 证明用的确实是回退值。
     advanceDanSessions(s.db, t0 + 3000);
     assert.equal(activeDanSession(s.db, s.user)!.status, 'active');
-    advanceDanSessions(s.db, t0 + 3001);
+    advanceDanSessions(s.db, t0 + 3001, s.account);
     assert.equal(activeDanSession(s.db, s.user), null);
     assert.equal(danHistory(s.db, s.user)[0].status, 'failed');
   } finally { s.db.close(); }
@@ -232,7 +232,7 @@ test('随机段位：逐题限时按当题难度，不是按 session 的统一�
     assert.equal(viewOf(s, 's1').stages[0].limitSeconds, 1800);
     advanceDanSessions(s.db, t0 + 1800);
     assert.equal(activeDanSession(s.db, s.user)!.status, 'active', '1800 秒内不应判负');
-    advanceDanSessions(s.db, t0 + 1801);
+    advanceDanSessions(s.db, t0 + 1801, s.account);
     assert.equal(activeDanSession(s.db, s.user), null, '过了 1800 秒就超时（若误用 3600 就不会结束）');
     assert.equal(danHistory(s.db, s.user)[0].stages[0].outcome, 'timeout');
   } finally { s.db.close(); }
@@ -540,6 +540,12 @@ test('API：有计分成绩时，每日一题按等效 Rating 定带', async () 
     assert.equal(panel.dailyBand.center, 1500);
     assert.deepEqual([panel.dailyBand.minRating, panel.dailyBand.maxRating], [1300, 1700]);
     assert.ok([1300, 1700].includes(panel.daily!.difficulty), '每日一题必须落在带内');
+    const started = await handleApi(ctx, { method: 'POST', pathname: '/api/dan/start',
+      params: new URLSearchParams(), body: { userId: s.user, kind: 'daily', tz: 480 } });
+    assert.equal(started.status, 200);
+    const actual = (started.body as { session: { minRating: number; maxRating: number; stages: { difficulty: number }[] } }).session;
+    assert.deepEqual([actual.minRating, actual.maxRating], [1300, 1700]);
+    assert.equal(actual.stages[0].difficulty, panel.daily!.difficulty, '实际抽题必须与预览一致');
   } finally { s.db.close(); }
 });
 
@@ -623,7 +629,7 @@ test('单题超时：那一轮判为失败并结束，进行中的计时器被�
     advanceDanSessions(s.db, t0 + 1799);
     assert.equal(activeDanSession(s.db, s.user)!.status, 'active', '限时内不应判负');
 
-    advanceDanSessions(s.db, t0 + 1801);
+    advanceDanSessions(s.db, t0 + 1801, s.account);
     assert.equal(activeDanSession(s.db, s.user), null);
     const session = danHistory(s.db, s.user)[0];
     assert.equal(session.status, 'failed');
@@ -899,5 +905,69 @@ test('API：claim 之后视图才揭示题号与链接（刷新页面不会提�
     await call('POST', '/api/dan/claim', {}, { userId: s.user, sessionId: panel.active.id });
     panel = (await call('GET', '/api/dan', { user: String(s.user), tz: '480' })).body as typeof panel;
     assert.ok(panel.active.stages[0].problemId, 'claim 之后才揭示题号');
+  } finally { s.db.close(); }
+});
+
+test('超时 AC 不生成计时成绩，也不能通关', () => {
+  const s = setup(), now = 1_000_000;
+  try {
+    createDanSession(s.db, { id: 'late', userId: s.user, kind: 'single', tierKey: 'beginner', now });
+    drawNextDanStage(s.db, { sessionId: 'late', pool: at(1000, 2, 1), now, dateKey: '2026-10-09' });
+    playStage(s, 'late', now, 2400, 'late');
+    assert.equal(danHistory(s.db, s.user)[0].status, 'failed');
+    assert.equal(danHistory(s.db, s.user)[0].stages[0].outcome, 'timeout');
+    assert.equal(listPractice(s.db, s.user).length, 0);
+  } finally { s.db.close(); }
+});
+
+for (const seconds of [1790, 1800]) test(`及时 AC（${seconds} 秒）延迟同步仍通关，其他账号同步不能提前判负`, () => {
+  const s = setup(), now = 1_000_000;
+  try {
+    createDanSession(s.db, { id: 'delay', userId: s.user, kind: 'single', tierKey: 'beginner', now });
+    drawNextDanStage(s.db, { sessionId: 'delay', pool: at(1000, 2, 1), now, dateKey: '2026-10-09' });
+    const stage = beginStage(s, 'delay', now, 'delay-timer');
+    reconcileTimers(s.db, undefined, now + 1801);
+    reconcileTimers(s.db, s.account + 1, now + 1802);
+    assert.ok(activeDanSession(s.db, s.user));
+    s.repo.saveSubmissions(s.account, [submission('codeforces', {
+      submission_id: 'delayed', problem_id: stage.problem_id, problem_title: 'delayed',
+      status: 'AC', submitted_at: now + seconds, difficulty: 1000,
+    })]);
+    reconcileTimers(s.db, s.account, now + 86410);
+    assert.equal(danHistory(s.db, s.user)[0].status, 'cleared', '即使离线超过一天也按提交时间结算');
+    assert.equal(listPractice(s.db, s.user)[0].seconds, seconds);
+  } finally { s.db.close(); }
+});
+
+test('限时内的 PENDING 等待最终判定，成功检查后没有及时 AC 才判负', () => {
+  const s = setup(), now = 1_000_000;
+  try {
+    createDanSession(s.db, { id: 'pending', userId: s.user, kind: 'single', tierKey: 'beginner', now });
+    drawNextDanStage(s.db, { sessionId: 'pending', pool: at(1000, 2, 1), now, dateKey: '2026-10-09' });
+    const stage = beginStage(s, 'pending', now, 'pending-timer');
+    const entry = { submission_id: 'pending', problem_id: stage.problem_id, problem_title: 'pending',
+      submitted_at: now + 1799, difficulty: 1000 };
+    s.repo.saveSubmissions(s.account, [submission('codeforces', { ...entry, status: 'PENDING' })]);
+    reconcileTimers(s.db, s.account, now + 1801);
+    assert.ok(activeDanSession(s.db, s.user));
+    s.repo.saveSubmissions(s.account, [submission('codeforces', { ...entry, status: 'WA' })]);
+    reconcileTimers(s.db, s.account, now + 1805);
+    assert.equal(danHistory(s.db, s.user)[0].status, 'failed');
+  } finally { s.db.close(); }
+});
+
+test('API：空题池回滚轮次，可立即换档位重试', async () => {
+  const s = setup();
+  try {
+    s.db.prepare('INSERT INTO fetch_cache(cache_key,payload,expires_at) VALUES(?,?,unixepoch()+3600)')
+      .run(PROBLEM_RATINGS_CACHE_KEY, JSON.stringify(at(1800, 5, 1)));
+    const ctx = { db: s.db, dbPath: ':memory:', platforms: ['codeforces'], envFile: 'unused',
+      openWrite: () => s.db, syncJobs: { checkTimer: () => {}, timerCheckState: () => null } as never };
+    const start = (tier: string) => handleApi(ctx, { method: 'POST', pathname: '/api/dan/start',
+      params: new URLSearchParams(), body: { userId: s.user, kind: 'single', tier } });
+    assert.equal((await start('beginner')).status, 400);
+    assert.equal(activeDanSession(s.db, s.user), null);
+    assert.equal(s.db.prepare('SELECT count(*) AS n FROM dan_sessions').get()!.n, 0);
+    assert.equal((await start('advanced')).status, 200);
   } finally { s.db.close(); }
 });

@@ -923,7 +923,7 @@ function openRunResult(run) {
     // 自定义轮次的「再来」要带上当时的条件，否则变成全段乱抽。
     else if (run.tier === 'custom') startRun('single', 'custom',
       { minRating: run.minRating, maxRating: run.maxRating, tags: run.tags ?? [] });
-    else startRun('single', run.tier);
+    else startRun(run.kind === 'daily' ? 'daily' : 'single', run.tier);
   };
 
   if (!dialog.open) dialog.showModal();
@@ -1006,7 +1006,7 @@ function schedule() {
 
 function tick(node) {
   const left = Number(node.dataset.deadline) - serverNow();
-  node.textContent = left > 0 ? `剩 ${fmtClock(left)}` : '已超时';
+  node.textContent = left > 0 ? `剩 ${fmtClock(left)}` : '限时已到 · 等待同步判定';
   node.classList.toggle('urgent', left > 0 && left <= 60);
 }
 

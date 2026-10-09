@@ -478,8 +478,8 @@ export function createDanSession(
       VALUES(?,?,?,?,?,?,?,?,'active',?,?)`)
       .run(input.id, input.userId, tier.key, input.kind, danStageCount(input.kind),
         tier.limitSeconds,
-        customRange ? customRange.minRating : tier.minRating,
-        customRange ? customRange.maxRating : tier.maxRating,
+        customRange ? customRange.minRating : input.kind === 'daily' ? (input.minRating ?? tier.minRating) : tier.minRating,
+        customRange ? customRange.maxRating : input.kind === 'daily' ? (input.maxRating ?? tier.maxRating) : tier.maxRating,
         input.now,
         customRange && customRange.tags.length ? JSON.stringify(customRange.tags) : null);
     return sessionRow(db, input.id)!;
@@ -569,17 +569,18 @@ export function claimDanStage(
  * 它**不抽题**：抽题要题库（网络），而计时器结算不该依赖网络。新一道由读接口
  * 按需抽（见口径 A）。
  */
-export function advanceDanSessions(db: DatabaseSync, now: number): void {
+export function advanceDanSessions(db: DatabaseSync, now: number, checkedAccountId?: number): void {
   transaction(db, () => {
     const sessions = db.prepare("SELECT * FROM dan_sessions WHERE status='active'").all() as unknown as DanSessionRow[];
-    for (const session of sessions) settleDanSession(db, session, now);
+    for (const session of sessions) settleDanSession(db, session, now, checkedAccountId);
   });
 }
 
-function settleDanSession(db: DatabaseSync, session: DanSessionRow, now: number): void {
+function settleDanSession(db: DatabaseSync, session: DanSessionRow, now: number, checkedAccountId?: number): void {
   // 整轮超期（抽了不点）就作废，否则会永久占住 `one_active_dan_per_user`。
-  // 放在循环外：单题限时最长 3600 秒，所以整轮超期时每道题的限时必然也已经过了。
-  if (now > session.started_at + DAN_SESSION_TTL_SECONDS) {
+  // 已开始的题先按提交时间结算；TTL 只清理未开始或等待下一题的轮次。
+  if (now > session.started_at + DAN_SESSION_TTL_SECONDS
+    && !stageRows(db, session.id).some(stage => stage.claimed_at !== null && stage.outcome === null)) {
     for (const stage of stageRows(db, session.id)) {
       if (stage.outcome !== null) continue;
       if (stage.timer_id) {
@@ -595,11 +596,17 @@ function settleDanSession(db: DatabaseSync, session: DanSessionRow, now: number)
     if (stage.outcome !== null) continue;
     if (stage.claimed_at === null || stage.timer_id === null) continue; // 还没开始做
     const timer = db.prepare('SELECT * FROM practice_timers WHERE id=?').get(stage.timer_id) as unknown as
-      { status: string; started_at: number; ended_at: number | null } | undefined;
+      { status: string; account_id: number; started_at: number; ended_at: number | null } | undefined;
     if (!timer) { db.prepare("UPDATE dan_stages SET outcome='interrupted' WHERE id=?").run(stage.id); continue; }
     if (timer.status === 'running') {
       const deadline = stage.claimed_at + danStageLimitOf(stage, session);
-      if (now <= deadline) continue; // 还在限时内
+      if (now <= deadline) continue;
+      // A local poll cannot prove there was no timely AC. Only the account's
+      // successful submission check may time out a stage; pending verdicts wait.
+      if (checkedAccountId !== timer.account_id) continue;
+      if (db.prepare(`SELECT 1 FROM submissions WHERE account_id=? AND platform='codeforces'
+        AND problem_id=? AND status='PENDING' AND submitted_at>? AND submitted_at<=?`)
+        .get(timer.account_id, stage.problem_id, timer.started_at, deadline)) continue;
       // 超时取消：段位限时是 dan 这一层的规则，语句与 cancelTimer（timer.ts）一致。
       db.prepare("UPDATE practice_timers SET status='cancelled',ended_at=? WHERE id=? AND status='running'")
         .run(deadline, stage.timer_id);
@@ -608,6 +615,10 @@ function settleDanSession(db: DatabaseSync, session: DanSessionRow, now: number)
     }
     if (timer.status === 'completed' && timer.ended_at !== null) {
       const seconds = timer.ended_at - timer.started_at;
+      if (timer.ended_at > stage.claimed_at + danStageLimitOf(stage, session)) {
+        db.prepare("UPDATE dan_stages SET outcome='timeout' WHERE id=?").run(stage.id);
+        continue;
+      }
       const score = scoreProblem({
         platform: 'codeforces', problemId: stage.problem_id, problemTitle: stage.problem_id, problemUrl: null,
         problemRating: stage.difficulty, solvedAt: timer.ended_at, releasedAt: null, recordedSeconds: seconds,

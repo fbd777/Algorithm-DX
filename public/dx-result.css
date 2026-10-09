@@ -246,7 +246,8 @@
 }
 
 /* CF-tier rating frames: restrained silver through layered ruby and gold. */
-.dx-result-bottom .dx-result-total {
+.dx-result-bottom .dx-result-total,
+.dx-board-rating-frame {
   --frame-edge:#8d969e; --frame-light:#f0f2f3; --frame-dark:#626d76; --frame-number:#edf0f3;
   position:relative; isolation:isolate; display:grid; grid-template-columns:112px max-content;
   column-gap:18px; width:max-content; max-width:100%; padding:8px 16px; margin-bottom:22px;
@@ -318,3 +319,11 @@
   100% { transform:scale(1); box-shadow:0 0 0 0 #ffe29400,0 0 0 #ffcc6200; }
 }
 @media (prefers-reduced-motion:reduce) { .dx-b50-grid .dx-b50-arrival { animation:none; box-shadow:0 0 0 3px #ffe29430; } }
+
+/* Reuse the settlement frame on the B50 summary, including its rating colors. */
+.dx-board-rating .dx-board-rating-frame {
+  grid-template-columns:1fr; justify-items:center; gap:8px;
+  width:100%; box-sizing:border-box; margin:4px 0; padding:12px;
+}
+.dx-board-rating-frame .dx-result-total-score { box-sizing:border-box; max-width:100%; }
+.dx-board-rating-frame .dx-result-total-score strong { font-size:clamp(20px,3vw,28px); }
