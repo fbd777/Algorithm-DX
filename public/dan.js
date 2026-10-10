@@ -665,9 +665,7 @@ const SCORE_INDEX = {
   '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
   '+': 10, '/': 11, '%': 12, '.': 13,
 };
-/** 白字族借用的小数点（分数族 `[13]`，见 NUM_FONTS 的说明）。
- *  `baseline` 是这一格的墨迹底线（`y 41..81` / 98），借来的字形按它对齐到本族的基线上。 */
-const DECIMAL_GLYPH = { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], index: 13, baseline: 0.827 };
+/** 白字族借用的小数点已经不需要了：注释见 NUM_FONTS 的 `dotBaseline`。 */
 /**
  * 图集每格留了空白边（90p 那格 89px 宽、字形只有 63px），照格宽排字会读起来「一个字一个字
  * 分开」。官方是等距密排（字与字几乎贴上），所以每格按 `advance` 收回去一点，见 numText。
@@ -678,15 +676,18 @@ const DECIMAL_GLYPH = { fill: 'num-score-blue', outline: '', atlas: [296, 392], 
  * `decimal`：**借来的小数点**。白字族里没有句点这一格 —— `[13]` 是中黑点（画在字高中线上）、
  * `[12]` 是逗号，都不是小数点该有的样子（小字号下读出来像断字符）。分数族 `[13]` 才是这套
  * 数字里真正的句点（方形、压在基线附近），官方达成率图里的「101.0000%」用的就是它。
+ * `dotBaseline`：小数点那一格（`[13]`）墨迹底线在格高里的比例。这一格在字高中线上
+ * （26p 只有 8×8、90p 24×24），照原样排出来是浮在数字中间的一粒、像断字符 —— 官方那只
+ * 方块的底边压在数字基线上，所以按它压下去（字号小的那两个族才需要，见 numText）。
  */
 const NUM_FONTS = {
   n26: {
     fill: 'num-26p', outline: 'num-26p-outline', atlas: [136, 160], cell: [34, 40], advance: 24,
-    baseline: 0.825, chars: NUM_INDEX, decimal: DECIMAL_GLYPH,
+    baseline: 0.825, dotBaseline: 0.775, chars: NUM_INDEX,
   },
   n90: {
     fill: 'num-90p', outline: 'num-90p-outline', atlas: [356, 420], cell: [89, 105], advance: 67,
-    baseline: 0.886, chars: NUM_INDEX, decimal: DECIMAL_GLYPH,
+    baseline: 0.886, dotBaseline: 0.6, chars: NUM_INDEX,
   },
   // 分数数字是**三套**同布局不同颜色的图集（自带颜色，不再叠描边层）：
 // blue / gold / red，按达成率高低换。官方还有一张 `UI_NUM_Score_0001111_Base`，
@@ -777,11 +778,7 @@ function numText(text, fontKey, height, color, opts = {}) {
     const cell = el('i', 'dan-num-char');
     cell.style.height = `${height}px`;
     if (index === chars.length - 1) cell.classList.add('dan-num-last');
-    // 白字族那格是中黑点（不是句点），所以小数点一律用借来的字形 —— 不是「本族缺字才借」，
-    // 是「本族这一格画得不对」，所以这里覆盖掉 `chars` 里的映射。
-    const borrowed = ch === '.' && font.decimal;
-    const glyph = borrowed ? font.decimal : font;
-    const idx = borrowed ? glyph.index : font.chars[ch];
+    const idx = font.chars[ch];
     if (idx === undefined) {
       cell.textContent = ch;
       cell.classList.add('dan-num-plain');
@@ -789,18 +786,18 @@ function numText(text, fontKey, height, color, opts = {}) {
       wrap.append(cell);
       return;
     }
-    // 借来的字形按**自己**的格子高定比例（保持形状比例），再在本族格子里横向居中、
-    // 纵向把它的墨迹底线压到本族的基线上（官方那句点的底边就是压在数字基线上的）。
-    const gs = height / glyph.cell[1];
-    const sx = (idx % NUM_COLS) * glyph.cell[0];
-    const sy = Math.floor(idx / NUM_COLS) * glyph.cell[1];
-    const size = `${glyph.atlas[0] * gs}px ${glyph.atlas[1] * gs}px`;
-    const dy = borrowed ? (font.baseline - glyph.baseline) * height : 0;
-    const pos = `${-sx * gs + (font.cell[0] * scale - glyph.cell[0] * gs) / 2}px ${-sy * gs + dy}px`;
+    const sx = (idx % NUM_COLS) * font.cell[0];
+    const sy = Math.floor(idx / NUM_COLS) * font.cell[1];
+    const size = `${font.atlas[0] * scale}px ${font.atlas[1] * scale}px`;
+    // 小数点那一格画在字高中线上（26p 只有 8×8、90p 24×24），照原样排出来就是浮在数字中间
+    // 的一粒，像断字符。官方那只方块是**底边压在数字基线上**的，所以按 `dotBaseline`
+    // （那一格墨迹底线在格高里的比例）把它压下去 —— 字体自己的字形，只是摆到该在的位置。
+    const dy = ch === '.' && font.dotBaseline ? (font.baseline - font.dotBaseline) * height : 0;
+    const pos = `${-sx * scale}px ${-sy * scale + dy}px`;
     cell.style.width = `${font.cell[0] * scale}px`;
-    if (glyph.outline && opts.outline !== false) {
+    if (font.outline && opts.outline !== false) {
       const outline = el('b', 'dan-num-outline');
-      const url = `url(/assets/maimai/${glyph.outline}.png)`;
+      const url = `url(/assets/maimai/${font.outline}.png)`;
       outline.style.setProperty('background-color', NUM_OUTLINE_COLOR);
       for (const prop of ['mask-image', '-webkit-mask-image']) outline.style.setProperty(prop, url);
       for (const prop of ['mask-size', '-webkit-mask-size']) outline.style.setProperty(prop, size);
@@ -809,7 +806,7 @@ function numText(text, fontKey, height, color, opts = {}) {
       cell.append(outline);
     }
     const fill = el('b', 'dan-num-fill');
-    const fillUrl = `url(/assets/maimai/${glyph.fill}.png)`;
+    const fillUrl = `url(/assets/maimai/${font.fill}.png)`;
     if (color) {
       // 白字族是纯白剪影：当遮罩 + 纯色背景 = 想染什么色就什么色（游戏里也是运行时染色）。
       fill.style.setProperty('background-color', color);
@@ -936,10 +933,6 @@ function openRunResult(run) {
       el('small', '', stage.problemId && stage.difficulty != null ? String(stage.difficulty) : '—'),
     );
     item.append(jacket);
-
-    // 官方的 JaketTrack 那一格（行首那块小牌）：放第几道。
-    // **排在曲绘槽之后 append**：官方那张小牌就在 MusicJacket_Base 里、压在曲绘槽左上角上。
-    item.append(el('span', 'dan-track-no', `STAGE ${String(stage.index).padStart(2, '0')}`));
 
     // 题目名写在标题条上（两者坐标相同，都是边框内坐标）。抽到的题在本人提交里还没有
     // 记录时，退回题号 —— 空着比写「—」更难看，题号至少能对上。

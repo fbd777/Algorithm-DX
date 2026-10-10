@@ -245,11 +245,9 @@
   position: absolute; left: 122px; top: 0; width: 432px; height: 18px;
   border-radius: 9px; background: #0d2a63; box-shadow: 0 0 0 2px #ffffff8c;
 }
-.dan-track-no {
-  position: absolute; left: 5px; top: 5px; width: 61px; height: 25px; display: grid; place-items: center;
-  font-family: var(--mono); font-size: .58rem; font-weight: 700; letter-spacing: .04em;
-  color: #fff; background: #0d2a63; border-radius: 4px; box-shadow: 0 1px 3px #00000047;
-}
+/* 行首那块「STAGE 01」小牌删掉了：官方那张牌压在曲绘上，我们没有曲绘，它就只是在左上角
+ * 多挂一块深蓝方块。样式留成 display:none（不再渲染这个节点，这条只是兜底）。 */
+.dan-track-no { display: none; }
 /* 官方的曲绘槽（JacketImage_S）：我们抽的是 CF 题、没有曲绘 —— 槽里放题号本身
  * （`1554C` 这种「题号 + 小问」的写法）与这题在 CF 上的 rating。
  * 底色是**卡片主色的浅色版本**（原版那格是曲绘，换成白牌会像挖了个洞）。 */
@@ -290,7 +288,9 @@
   position: absolute; left: 8px; top: 3px; font-size: .56rem; font-weight: 900; letter-spacing: .08em; color: #0d2a63;
 }
 /* 官方那一格数字是**贴着白框左边**排的（不是右对齐），而且几乎顶满框高。 */
-.dan-track-achvalue { position: absolute; left: 10px; top: 14px; width: 290px; height: 45px; display: flex; align-items: center; justify-content: flex-start; }
+/* 达成率数字**右对齐**：满 100 的那串（`100.8000%`）右端永远贴在同一个位置，不到 100 的
+ * 少一位数就少在**左边**（`96.0000%` 的右端仍与 100 的齐平）。左对齐时短的那串右端会缩回来。 */
+.dan-track-achvalue { position: absolute; left: 10px; top: 14px; width: 290px; height: 45px; display: flex; align-items: center; justify-content: flex-end; }
 .dan-per { display: block; }
 /* 右边一列两件：评级徽章（官方 `UI_GAM_Rank_*`，游戏内那套单级全套）与限时白牌。
  * 徽章源图是紧裁的（SSS+ 110×44、D 38×42），给 132×52 的框按高度贴齐 —— 比原来
