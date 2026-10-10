@@ -191,7 +191,11 @@
  * 两层都是绝对定位，DOM 顺序决定填充盖在描边之上。图集本身是纯白剪影，
  * 颜色是运行时给的 —— 和游戏里一样。 */
 .dan-num { display: inline-flex; align-items: center; }
-.dan-num-char { position: relative; display: block; flex: none; }
+/* 图集每格都留了空白边，照格宽排会读成「一个字一个字分开」。官方数字是密排的，
+ * 所以 numText 会把「格宽 − 步进」写成 --dan-num-trim，每格右边收回这么多；
+ * 最后一格不收回，免得数字尾巴多出一段空白。 */
+.dan-num-char { position: relative; display: block; flex: none; margin-right: calc(-1 * var(--dan-num-trim, 0px)); }
+.dan-num-char.dan-num-last { margin-right: 0; }
 .dan-num-char > b { position: absolute; inset: 0; display: block; background-repeat: no-repeat; }
 .dan-num-plain { display: grid; place-items: center; color: #4a3a2a; font-family: var(--mono); font-weight: 900; line-height: 1; }
 
@@ -267,17 +271,16 @@
 }
 .dan-track-dxlabel { flex: none; font-size: .54rem; font-weight: 900; color: #0d2a63; }
 .dan-track-dxnum { margin-left: auto; }
-/* 难度名牌那一格：官方烘的是难度名 + Lv，我们写「档位 rating（大字）+ CF 区间（小字）」。
- * 它跟标题条同一水平线起（行内 y 11），高度正好顶到达成率白框（行内 y 38）。 */
+/* 难度名牌那一格：官方烘的是难度名 + Lv。这一格原来写「CF 分 + 分数分组」两行，
+ * 但同一张卡上达成率与单题分已经给了具体分数，再把分数摆一遍只是重复 —— 只留名字一行。 */
 .dan-track-diff {
   position: absolute; left: 122px; top: 11px; width: 104px; height: 27px;
-  display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 1px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
 .dan-track-diff b {
-  font-size: .88rem; font-weight: 900; line-height: 15px; color: #fff;
-  -webkit-text-stroke: 3px #ffffffb0; paint-order: stroke fill; text-shadow: 0 1px 3px #2a1155a6;
+  font-size: .82rem; font-weight: 900; line-height: 1; color: #fff; white-space: nowrap;
+  -webkit-text-stroke: 3px #ffffffa0; paint-order: stroke fill; text-shadow: 0 1px 3px #2a1155a6;
 }
-.dan-track-diff small { font-size: .54rem; font-weight: 700; line-height: 11px; letter-spacing: .02em; color: #ffffffd9; }
 .dan-track-name {
   position: absolute; left: 220px; top: 0; width: 334px; height: 18px; padding: 0 10px;
   font-size: .68rem; line-height: 18px; color: #fff;
@@ -291,12 +294,15 @@
 .dan-track-achlabel {
   position: absolute; left: 8px; top: 3px; font-size: .56rem; font-weight: 900; letter-spacing: .08em; color: #0d2a63;
 }
-.dan-track-achvalue { position: absolute; left: 8px; top: 15px; width: 312px; height: 41px; display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+/* 官方那一格数字是**贴着白框左边**排的（不是右对齐），而且几乎顶满框高。 */
+.dan-track-achvalue { position: absolute; left: 10px; top: 14px; width: 318px; height: 45px; display: flex; align-items: center; justify-content: flex-start; gap: 2px; }
 .dan-per { display: block; }
-/* 右边一列只剩两件：评级徽章（占官方 UI_GameType/UI_Difficulty 那一格）与限时白牌。 */
-.dan-track-badge { position: absolute; left: 452px; top: 40px; width: 106px; height: 51px; object-fit: contain; filter: drop-shadow(0 2px 5px #0000003d); }
+/* 右边一列两件：评级徽章（官方 `UI_GAM_Rank_*`，游戏内那套单级全套）与限时白牌。
+ * 徽章源图是紧裁的（SSS+ 110×44、D 38×42），给 132×52 的框按高度贴齐 —— 比原来
+ * 106×51 那张「页签标题区间图」的字面大一圈，且不再把 A～AAA 当成 AAA。 */
+.dan-track-badge { position: absolute; left: 436px; top: 40px; width: 132px; height: 52px; object-fit: contain; filter: drop-shadow(0 2px 5px #0000003d); }
 .dan-track-judge {
-  position: absolute; left: 452px; top: 40px; width: 106px; height: 51px;
+  position: absolute; left: 436px; top: 40px; width: 132px; height: 52px;
   display: grid; place-items: center; font-size: .78rem; font-weight: 900; color: #0d2a63;
   background: #ffd76a; border-radius: 12px; box-shadow: inset 0 0 0 2px #ffffffa6, 0 2px 5px #0000003d;
 }
@@ -311,38 +317,60 @@
   font-size: .56rem; font-weight: 700; box-shadow: 0 1px 4px #00000033;
 }
 
-/* ---------- 底部色带：白框里的合格印 · 心 · 总达成率 / DX分数 ---------- */
+/* ---------- 底部：段位名牌 · 心 · 总达成率 / DX分数 ----------
+ * 底图在这一块**预留了三处白**（官方在那儿写运行时文字）：(503,663) 与 (753,677) 是
+ * 「総達成率」那个标签的白格（中间被折页的斜边切开），(608,810) 360×80 是「DX分数」
+ * 那条白牌（左端还有个空的圆白圆头）。所以这三块的**位置不用猜**，照白格摆：
+ * 标签进白格 → 大数字落在下面的色带上 → DX 分数进下面那条白牌。 */
 .dan-bottom { position: absolute; inset: 0; }
-/* 左下白框那一格原作放的是段位名牌（UI_DNM_DaniTitle_*）。我们不显示段位名，就在框里
- * 盖判定印 + 通关题数 —— 印要**落在白框里面**（之前印比框大，两边各糊出去 30px）。
- * 白框本身烘在底图上，量出来是 (74,672) 240×230。 */
+/* 左下白框（底图 (74,672) 240×230）：原版这里写段位名（十段/皆伝…）。
+ * 我们发的是档位、不发段位名，所以照原版把**档位名**写进去：
+ * 深棕重字 + 米白描边 + 一点投影（原版那一路毛笔字我们寄不出字体，用系统里的重明朝近似）。 */
 .dan-verdict {
   position: absolute; left: 74px; top: 672px; width: 240px; height: 230px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
 }
-.dan-verdict-img { width: 216px; height: 95px; object-fit: contain; filter: drop-shadow(0 3px 6px #00000038); }
-.dan-verdict-count { font-size: .8rem; font-weight: 700; color: #6b4a24; }
-/* 原作这一格是剩余生命的圆心；我们没有生命值，用「通关几道」占这一格。 */
-.dan-life { position: absolute; left: 382px; top: 738px; width: 104px; height: 104px; }
+.dan-plate-name {
+  /* 原版那两个字是**重毛笔字**。客户端里它是烘死的贴图，我们只能用系统字体近似：
+   * 先取思源宋体的 900（这台机器上是 `NotoSerifSC-VF`，最重的一档），再退回系统宋体/
+   * 楷体那一类衬线。SimSun 那种细宋差得太远（笔画只有原版一半粗）。 */
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STKaiti", "KaiTi", "SimSun", serif;
+  font-size: 104px; font-weight: 900; line-height: 1.08; letter-spacing: .01em;
+  color: #3a2114; paint-order: stroke fill;
+  /* 原版那两个字是深棕重字 + 很淡的米白边缘 + 一点投影；描边给厚了会像贴纸。 */
+  -webkit-text-stroke: 7px #fff6e6;
+  text-shadow: 0 3px 0 #00000024;
+}
+/* 名字长的档位（小随机段位 / 大随机段位）自动缩号，别顶穿白框。 */
+.dan-plate-name[data-len="3"] { font-size: 88px; }
+.dan-plate-name[data-len="4"] { font-size: 68px; }
+.dan-plate-name[data-len="5"], .dan-plate-name[data-len="6"] { font-size: 54px; }
+.dan-verdict-count { font-size: .76rem; font-weight: 800; letter-spacing: .04em; color: #7a5a34; }
+/* 原作这一格是剩余生命的圆心。素材本身是 272×272，之前压到 104 —— 照官方放大到 200，
+ * 位置保持原来那个圆心（434,790）。 */
+.dan-life { position: absolute; left: 334px; top: 690px; width: 200px; height: 200px; }
 .dan-life-base { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 3px 8px #00000038); }
 .dan-life-count { position: absolute; inset: 0; display: grid; place-items: center; }
-/* 右边两行**右对齐到同一条边**（x 945）：标签贴着各自数字，不再一个飘在数字上面
- * 一个飘在左下角。 */
-.dan-total-row {
-  position: absolute; left: 470px; top: 686px; width: 475px;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+/* 总达成率：标签写进底图预留的白格，大数字落在下面的色带上，右端对齐 x 945
+ * （与下面那条 DX 分数白牌的右端同一条边）。 */
+.dan-total-row { position: absolute; inset: 0; }
+.dan-total-label {
+  position: absolute; left: 503px; top: 663px; width: 354px; height: 52px;
+  display: grid; place-items: center;
+  font-size: 30px; font-weight: 800; letter-spacing: .1em; color: #16306b;
 }
-.dan-total-label { font-size: .92rem; font-weight: 800; letter-spacing: .14em; color: #6b4a24; }
-.dan-total-num { display: flex; align-items: center; gap: 3px; }
-/* 「でらっくスコア」那张官方标签**本身是个框**：上半 226×54 里 y 0–25 是蓝底字，
- * y 26–50 留了一块 218×25 的白 —— 那块白就是给分数用的，数字要写在框里，
- * 不是排在框右边。整张按原尺寸放，正好落在底图那条白缎带（y 812–852）上。 */
-.dan-dxscore-row { position: absolute; left: 719px; top: 805px; width: 226px; height: 54px; }
-.dan-dxscore-label { display: block; width: 226px; height: 54px; }
-.dan-dxscore-num {
-  position: absolute; left: 6px; top: 26px; width: 214px; height: 25px;
-  display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;
+.dan-total-num {
+  position: absolute; left: 490px; top: 719px; width: 455px; height: 60px;
+  display: flex; align-items: center; justify-content: flex-end; gap: 2px;
 }
+/* DX 分数：官方这条白牌就是底图预留的 (608,810) 360×80，标签在左、数字在右，
+ * 都是深蓝（和每题那张卡上的 DX 分数同一个色）。 */
+.dan-dxscore-row {
+  position: absolute; left: 608px; top: 810px; width: 360px; height: 80px;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 46px;
+}
+.dan-dxscore-label { font-size: 30px; font-weight: 800; letter-spacing: .06em; color: #16306b; }
+.dan-dxscore-num { display: flex; align-items: center; }
 
 /* 说明与按钮在成品屏之外（深色底上），不往那张纸上塞东西。 */
 .dan-result-note { margin: 0; max-width: 92ch; justify-self: center; text-align: center; font-size: .78rem; line-height: 1.7; color: #a9b4c4; }

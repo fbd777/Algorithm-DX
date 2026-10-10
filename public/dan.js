@@ -612,20 +612,24 @@ function buildResultDialog() {
           <h2 class="dan-result-title" id="danRunTitle">段位認定</h2>
           <ol class="dan-result-tracks"></ol>
           <div class="dan-bottom">
+            <!-- 左下那格：原版是段位名牌（十段/皆伝…）。我们发的是档位不是段位名，
+                 所以照原版的字重与描边把**档位名**写在里面，而不是盖一枚合格印。 -->
             <div class="dan-verdict">
-              <img class="dan-verdict-img" alt="">
+              <span class="dan-plate-name"></span>
               <small class="dan-verdict-count"></small>
             </div>
             <div class="dan-life">
               <img class="dan-life-base" alt="">
               <span class="dan-life-count"></span>
             </div>
+            <!-- 原作这两块的**位置**写在底图的预留白格里（见 dan.css）：标签进白格，
+                 大数字落在色带上，下面是官方那个白底的「DX分数」条。 -->
             <div class="dan-total-row">
               <span class="dan-total-label">总达成率</span>
               <span class="dan-total-num"></span>
             </div>
             <div class="dan-dxscore-row">
-              <img class="dan-dxscore-label" src="/assets/maimai/dxscore-label.png" alt="DX SCORE">
+              <span class="dan-dxscore-label">DX分数</span>
               <span class="dan-dxscore-num"></span>
             </div>
           </div>
@@ -661,16 +665,20 @@ const SCORE_INDEX = {
   '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
   '+': 10, '/': 11, '%': 12, '.': 13,
 };
+/**
+ * 图集每格留了空白边（90p 那格 89px 宽、字形只有 63px），照格宽排字会读起来「一个字一个字
+ * 分开」。官方是等距密排（字与字几乎贴上），所以每格按 `advance` 收回去一点，见 numText。
+ */
 const NUM_FONTS = {
-  n26: { fill: 'num-26p', outline: 'num-26p-outline', atlas: [136, 160], cell: [34, 40], chars: NUM_INDEX },
-  n90: { fill: 'num-90p', outline: 'num-90p-outline', atlas: [356, 420], cell: [89, 105], chars: NUM_INDEX },
+  n26: { fill: 'num-26p', outline: 'num-26p-outline', atlas: [136, 160], cell: [34, 40], advance: 24, chars: NUM_INDEX },
+  n90: { fill: 'num-90p', outline: 'num-90p-outline', atlas: [356, 420], cell: [89, 105], advance: 67, chars: NUM_INDEX },
   // 分数数字是**三套**同布局不同颜色的图集（自带颜色，不再叠描边层）：
 // blue / gold / red，按达成率高低换。官方还有一张 `UI_NUM_Score_0001111_Base`，
 // 但那是一张**空图集**（整张几乎全透明，量下来 16 格一个字形都没有），不能用；
 // 「%」字形也正好只有蓝/金/红三张 —— 所以官方的档位就是三档，不是四档。
-'score-blue': { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], chars: SCORE_INDEX },
-  'score-gold': { fill: 'num-score-gold', outline: '', atlas: [296, 392], cell: [74, 98], chars: SCORE_INDEX },
-  'score-red': { fill: 'num-score-red', outline: '', atlas: [296, 392], cell: [74, 98], chars: SCORE_INDEX },
+'score-blue': { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, chars: SCORE_INDEX },
+  'score-gold': { fill: 'num-score-gold', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, chars: SCORE_INDEX },
+  'score-red': { fill: 'num-score-red', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, chars: SCORE_INDEX },
 };
 const NUM_COLS = 4;
 /** 达成率末尾那个大「%」字形：官方按分数分色，蓝/金/红三张。 */
@@ -715,32 +723,43 @@ const DX_NUM_COLOR = '#0d2a63';
  * `color` 给定时就用图集当**遮罩**把数字染成这个颜色 —— 这正是游戏里给白字族上色的做法
  * （分数族自带颜色，不走这条路；注意 `UI_NUM_Score_0001111_Base` 是张空图集，不能用）。
  * 字体里没有的字符（例如数字族没有 '/'）退回普通文字，不会静默丢字符。
+ *
+ * `opts.outline === false`：**不叠描边层**。小号的 DX 分数在官方那里是干净的深蓝数字，
+ * 叠一层 4px 描边会糊成一团 —— 小字一律不用描边。
+ * `opts.trim === false`：不收紧字距（留给需要等宽对齐的场景）。
  */
 const NUM_OUTLINE_COLOR = '#2b3350';
-function numText(text, fontKey, height, color) {
+function numText(text, fontKey, height, color, opts = {}) {
   const font = NUM_FONTS[fontKey];
   const scale = height / font.cell[1];
   const wrap = el('span', `dan-num dan-num-${fontKey}`);
   wrap.setAttribute('role', 'img');
   wrap.setAttribute('aria-label', text);
   wrap.style.height = `${height}px`;
-  for (const ch of text) {
+  const chars = [...text];
+  if (opts.trim !== false) {
+    // 每格右边收回 (格宽 − 步进)：官方数字是密排的，留白会把一串数字读散。
+    // 注意是**负**边距 —— 这里给的是「要收回多少」，CSS 里带负号用。
+    wrap.style.setProperty('--dan-num-trim', `${(font.cell[0] - (font.advance ?? font.cell[0])) * scale}px`);
+  }
+  chars.forEach((ch, index) => {
     const cell = el('i', 'dan-num-char');
     cell.style.height = `${height}px`;
-    const index = font.chars[ch];
-    if (index === undefined) {
+    if (index === chars.length - 1) cell.classList.add('dan-num-last');
+    const idx = font.chars[ch];
+    if (idx === undefined) {
       cell.textContent = ch;
       cell.classList.add('dan-num-plain');
       if (color) cell.style.color = color;
       wrap.append(cell);
-      continue;
+      return;
     }
-    const sx = (index % NUM_COLS) * font.cell[0];
-    const sy = Math.floor(index / NUM_COLS) * font.cell[1];
+    const sx = (idx % NUM_COLS) * font.cell[0];
+    const sy = Math.floor(idx / NUM_COLS) * font.cell[1];
     const size = `${font.atlas[0] * scale}px ${font.atlas[1] * scale}px`;
     const pos = `${-sx * scale}px ${-sy * scale}px`;
     cell.style.width = `${font.cell[0] * scale}px`;
-    if (font.outline) {
+    if (font.outline && opts.outline !== false) {
       const outline = el('b', 'dan-num-outline');
       const url = `url(/assets/maimai/${font.outline}.png)`;
       outline.style.setProperty('background-color', NUM_OUTLINE_COLOR);
@@ -766,16 +785,23 @@ function numText(text, fontKey, height, color) {
     }
     cell.append(fill);
     wrap.append(cell);
-  }
+  });
   return wrap;
 }
 
-/** 官方评级徽章：UI_CMN_TabTitle_Rank_*（S/SS/SSS/SSS+ 各自一版，A~AAA 与 B 及以下共用一版）。 */
+/**
+ * 官方评级徽章：`UI_GAM_Rank_*` —— 游戏内那套**单级全套**（D/C/B/BB/BBB/A/AA/AAA/S/S+/SS/SS+/SSS/SSS+）。
+ *
+ * 之前用的是 `UI_CMN_TabTitle_Rank_*`，但那是**页签标题**用的区间图：AAA 那张画的是
+ * 「A～AAA」、BBB 那张是「～BBB」，摆在逐题卡片上根本不是那一级的评级（而且没有
+ * D/C/B/BB/A/AA 这些级，低分全挤到同一张牌上）。换成游戏内那套之后 14 级各有一张。
+ */
 const RANK_ART = {
-  'SSS+': 'rank-sssp.png', SSS: 'rank-sss.png', 'SS+': 'rank-ssp.png', SS: 'rank-ss.png',
-  'S+': 'rank-sp.png', S: 'rank-s.png',
-  AAA: 'rank-aaa.png', AA: 'rank-aaa.png', A: 'rank-aaa.png',
-  BBB: 'rank-bbb.png', BB: 'rank-bbb.png', B: 'rank-bbb.png', C: 'rank-bbb.png', D: 'rank-bbb.png',
+  'SSS+': 'gam-rank-sssp.png', SSS: 'gam-rank-sss.png', 'SS+': 'gam-rank-ssp.png', SS: 'gam-rank-ss.png',
+  'S+': 'gam-rank-sp.png', S: 'gam-rank-s.png',
+  AAA: 'gam-rank-aaa.png', AA: 'gam-rank-aa.png', A: 'gam-rank-a.png',
+  BBB: 'gam-rank-bbb.png', BB: 'gam-rank-bb.png', B: 'gam-rank-b.png',
+  C: 'gam-rank-c.png', D: 'gam-rank-d.png',
 };
 
 function openRunResult(run) {
@@ -792,10 +818,15 @@ function openRunResult(run) {
   field(dialog, '.dan-result-art').dataset.art =
     run.tier === 'small_random' || run.tier === 'big_random' ? 'random' : 'dani';
   const clearedRun = run.status === 'cleared';
-  const verdictImg = field(dialog, '.dan-verdict-img');
-  verdictImg.src = clearedRun ? '/assets/maimai/verdict-clear.png' : '/assets/maimai/verdict-fail.png';
-  verdictImg.alt = VERDICT_TEXT[run.status] ?? '中断';
-  field(dialog, '.dan-verdict-count').textContent = `${cleared.length} / ${run.stageCount} 道通关`;
+  // 左下那格是原版的段位名牌：照原版写**名字**（我们发档位不发段位名），不盖合格印。
+  // 通关几道另起一行小字放在名字下面，别把名字挤掉。
+  const plateName = field(dialog, '.dan-plate-name');
+  plateName.textContent = run.tierName;
+  plateName.dataset.len = String([...run.tierName].length);
+  // 结论（合格/不合格/中断）从原来那枚印改成名字下面的小字：印让位给段位名，
+  // 但「到底过没过」这句话还是得留着。
+  field(dialog, '.dan-verdict-count').textContent =
+    `${VERDICT_TEXT[run.status] ?? '中断'} · ${cleared.length} / ${run.stageCount} 道通关`;
 
   const limitText = run.perStageLimit ? '每道限时按当题难度' : `每道限时 ${fmtLimit(run.limitSeconds)}`;
   field(dialog, '.dan-result-sub').textContent =
@@ -832,24 +863,24 @@ function openRunResult(run) {
     frame.append(el('span', 'dan-track-titlebar'));
     const achBox = el('div', 'dan-track-achbox');
     // 官方白框左上角那行小字（原作烘在边框贴图里，我们画边框所以自己写）。
-    achBox.append(el('small', 'dan-track-achlabel', 'ACHIEVEMENT'));
+    // 用原版那三个字：`達成率` —— 别自己写英文，官方结算这一行就是日文。
+    achBox.append(el('small', 'dan-track-achlabel', '達成率'));
     // 官方分数图集（按分数分色）+ 官方彩色「%」字形 —— 这是这一行最大的一块数字。
     // 没有成绩时用白字族的「—」，**染深蓝**：白字族是纯白剪影，落在达成率那个白框上会看不见
     // （numText 里没这个字形，会退回普通文字，不会静默丢字符）。
     const achValue = stage.achievement === null
-      ? numText('—', 'n90', 41, DX_NUM_COLOR)
-      : achievementNumber(stage.achievement, 41);
+      ? numText('—', 'n90', 44, DX_NUM_COLOR)
+      : achievementNumber(stage.achievement, 44);
     achValue.classList.add('dan-track-achvalue');
     achBox.append(achValue);
     frame.append(achBox);
     // 官方的 でらっくスコア 那一格改成**跟着题目放左边**（右边那一列只剩评级与限时）。
     const dxBox = el('div', 'dan-track-dxbox');
     dxBox.append(el('small', 'dan-track-dxlabel', 'DX分数'));
-    // 我们的数字是单题 rating、不是 DX 分数比率，所以**不上分数色**（那三色专门留给达成率），
-    // 用白字族剪影染成帧上的深蓝。
+    // 这一格是**小字**：不叠描边层 —— 官方那处也是干净的深蓝数字，叠上去只会糊。
     const dx = stage.rating === null
-      ? numText('—', 'n26', 15, DX_NUM_COLOR)
-      : numText(String(stage.rating.toFixed(1)), 'n26', 15, DX_NUM_COLOR);
+      ? numText('—', 'n26', 16, DX_NUM_COLOR, { outline: false })
+      : numText(String(stage.rating.toFixed(1)), 'n26', 16, DX_NUM_COLOR, { outline: false });
     dx.classList.add('dan-track-dxnum');
     dxBox.append(dx);
     item.append(frame);
@@ -865,13 +896,16 @@ function openRunResult(run) {
     // **排在曲绘槽之后 append**：官方那张小牌就在 MusicJacket_Base 里、压在曲绘槽左上角上。
     item.append(el('span', 'dan-track-no', `STAGE ${String(stage.index).padStart(2, '0')}`));
 
-    // 官方的难度名牌那一格（官方烘的是难度名 BASIC/ADVANCED/…）：写我们自己的档位 rating + CF 区间。
+    // 官方的难度名牌那一格烘的是难度名（MASTER 大師…）。我们这边对应的是**档位名**：
+    // 这一格原来写「CF 分 + 分数分组」两行，可这题的成绩旁边已经写了达成率与单题分，
+    // 再把 1700 / 1600–1899 摆上来只是重复，所以只留名字一行。
     const diffTab = el('span', 'dan-track-diff');
-    diffTab.append(el('b', '', String(stage.difficulty)), el('small', '', color.range));
+    diffTab.append(el('b', '', run.tierName));
     item.append(diffTab);
 
-    // 题目名写在标题条上（两者坐标相同，都是边框内坐标）。
-    frame.append(el('span', 'dan-track-name', stage.title ?? '—'));
+    // 题目名写在标题条上（两者坐标相同，都是边框内坐标）。抽到的题在本人提交里还没有
+    // 记录时，退回题号 —— 空着比写「—」更难看，题号至少能对上。
+    frame.append(el('span', 'dan-track-name', stage.title ?? stage.problemId ?? '—'));
 
     // 评级用官方徽章；超时／中断／未开始没有评级，退回文字。
     if (stage.outcome === 'cleared' && RANK_ART[stage.rank]) {
@@ -891,23 +925,24 @@ function openRunResult(run) {
     tracks.append(item);
   }
 
-  // 原作这一格是显示剩余生命的心；我们没有生命值，用「通关几道」占这一格。
-  // 底盘用原作 UI_DNM_Base_Life_01（绿）/ _03（红），数字用官方数字贴图。
+  // 原作这一格是显示剩余生命的心；我们没有生命值，用心里的那个数字表示「四道里过了几道」。
+  // 不写 4/4：数字图集里没有「/」这个字形，退回普通文字会被两边数字的描边吃掉看不见；
+  // 过没过、过几道，白框名字下面那行小字写得更清楚。
   const life = field(dialog, '.dan-life');
   life.dataset.state = run.status === 'cleared' ? 'ok' : 'bad';
   field(dialog, '.dan-life-base').src = clearedRun
     ? '/assets/maimai/life-base-green.png' : '/assets/maimai/life-base-red.png';
   field(dialog, '.dan-life-base').alt = clearedRun ? '通关' : '未通关';
-  field(dialog, '.dan-life-count').replaceChildren(numText(`${cleared.length}/${run.stageCount}`, 'n26', 22));
+  field(dialog, '.dan-life-count').replaceChildren(numText(String(cleared.length), 'n26', 46));
 
-  // 原作的「总达成率」是四首歌达成率之和、「DX分数」是四首 DX 分数之和；
-  // 这里对应各道达成率之和与各道单题 rating 之和。
+  // 原作的「总达成率」是四首歌达成率之和、「でらっくスコア」是四首单曲 DX 分数之和。
+  // 我们这边对应：各道达成率之和，以及**各道单题 rating 之和**（同一道题进 B50 用的就是
+  // 这个单题 rating；之和只是展示，不等于 B50 总分真的涨这么多）。
   const totalAchievement = scored.reduce((sum, stage) => sum + stage.achievement, 0);
   field(dialog, '.dan-total-num').replaceChildren(
     scored.length ? achievementNumber(totalAchievement, 60) : numText('—', 'n90', 60, DX_NUM_COLOR));
-  // 数字写在官方标签框里那块白（25px 高）上，所以字高只能到 20 上下。
   field(dialog, '.dan-dxscore-num').replaceChildren(
-    numText(run.totalRating === null ? '—' : String(run.totalRating.toFixed(1)), 'n90', 20, DX_NUM_COLOR));
+    numText(run.totalRating === null ? '—' : String(run.totalRating.toFixed(1)), 'n90', 30, DX_NUM_COLOR, { outline: false }));
 
   const deltas = run.stages.map((stage) => stage.comparison?.ratingDelta).filter((value) => typeof value === 'number');
   let note = run.status === 'cleared'

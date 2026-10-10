@@ -12,8 +12,10 @@
     E:/Downloads/156Sinmai_Data/156Sinmai_Data/156Sinmai_Data
 
 为什么要这么提：段位認定结算那整屏是**成品图**（页头文字、格纹页眉、两侧水引、
-下半部色带与合格印白框全部烘焙在底图里），运行时只是把逐题行、达成率数字盖上去。
-所以页面直接用这张底图 + 几件小素材，比自己用 CSS 画近似得多。
+下半部色带与左下角段位名牌白框全部烘焙在底图里），运行时只是把逐题行、达成率数字、
+段位名与总达成率盖上去。所以页面直接用这张底图 + 几件小素材，比自己用 CSS 画近似得多。
+注意：底图下半部那两三块**挖白的空面板**是原作留给运行时文字的位置，不要再拿别的脚本
+把它们续画填掉（第 12 轮干过一次，第 13 轮撤了）。
 """
 from __future__ import annotations
 
@@ -35,8 +37,6 @@ WANTED: dict[str, str] = {
     "UI_DNM_Result_musicBase_01": "track-plate.png",  # 逐题行底板 576×124
     "UI_DNM_Icon_Result_01": "stamp-clear.png",       # 逐题「可」印 108×108
     "UI_DNM_Icon_Result_02": "stamp-fail.png",        # 逐题「不可」印
-    "UI_DNM_Icon_Clear": "verdict-clear.png",         # 「合格」252×104
-    "UI_DNM_Icon_NoClear": "verdict-fail.png",        # 「不合格…」220×64
     # 数字图集：规整 4×4 网格，逐格由同名 Sprite 定 rect（见 dan.js 的 NUM_FONTS）。
     # 图集里全是**纯白剪影**（游戏运行时才染色），所以描边要另外提一层 _Outline。
     "UI_CMN_Num_26p": "num-26p.png",                  # 小号数字 136×160，格 34×40
@@ -54,19 +54,28 @@ WANTED: dict[str, str] = {
     "UI_RSL_Score_Per_Gold": "score-per-gold.png",     # 80×80
     "UI_RSL_Score_Per_Blue": "score-per-blue.png",
     "UI_RSL_Score_Per_Red": "score-per-red.png",
-    # 逐题评级徽章：SSS+ / SSS / SS+ / SS / S+ / S 各一版，A~AAA 与 B 及以下各共用一版
-    "UI_CMN_TabTitle_Rank_SSSp": "rank-sssp.png",
-    "UI_CMN_TabTitle_Rank_SSS": "rank-sss.png",
-    "UI_CMN_TabTitle_Rank_SSp": "rank-ssp.png",
-    "UI_CMN_TabTitle_Rank_SS": "rank-ss.png",
-    "UI_CMN_TabTitle_Rank_Sp": "rank-sp.png",
-    "UI_CMN_TabTitle_Rank_S": "rank-s.png",
-    "UI_CMN_TabTitle_Rank_AAA": "rank-aaa.png",
-    "UI_CMN_TabTitle_Rank_BBB": "rank-bbb.png",
-    # 右下角那两个组件：剩余生命底盘（绿 / 红）与「でらっくスコア」标签
+    # 逐题评级徽章：`UI_GAM_Rank_*` 是**游戏内**那套，单级各一张（源图紧裁，36–110 × 42–44）。
+    # 故意不用 `UI_CMN_TabTitle_Rank_*`：那是**页签标题**上的区间图 —— AAA 那张画的是
+    # 「A～AAA」、BBB 是「～BBB」，而且它没有 D/C/B/BB/A/AA，低分全挤在同一张牌上。
+    "UI_GAM_Rank_D": "gam-rank-d.png",
+    "UI_GAM_Rank_C": "gam-rank-c.png",
+    "UI_GAM_Rank_B": "gam-rank-b.png",
+    "UI_GAM_Rank_BB": "gam-rank-bb.png",
+    "UI_GAM_Rank_BBB": "gam-rank-bbb.png",
+    "UI_GAM_Rank_A": "gam-rank-a.png",
+    "UI_GAM_Rank_AA": "gam-rank-aa.png",
+    "UI_GAM_Rank_AAA": "gam-rank-aaa.png",
+    "UI_GAM_Rank_S": "gam-rank-s.png",
+    "UI_GAM_Rank_Sp": "gam-rank-sp.png",
+    "UI_GAM_Rank_SS": "gam-rank-ss.png",
+    "UI_GAM_Rank_SSp": "gam-rank-ssp.png",
+    "UI_GAM_Rank_SSS": "gam-rank-sss.png",
+    "UI_GAM_Rank_SSSp": "gam-rank-sssp.png",
+    # 右下角那个组件：剩余生命底盘（绿 = 通关 / 红 = 未通关）。
+    # `UI_RSL_DXScore_Base`（「でらっくスコア」标签）**故意不搬**：官方那格是单曲按打击
+    # 精度算的 DX 分数，我们显示的是四道单题 rating 之和，口径不同，套那个框等于撒谎。
     "UI_DNM_Base_Life_01": "life-base-green.png",
     "UI_DNM_Base_Life_03": "life-base-red.png",
-    "UI_RSL_DXScore_Base": "dxscore-label.png",
 }
 
 
