@@ -196,11 +196,6 @@
  * 最后一格不收回，免得数字尾巴多出一段空白。 */
 .dan-num-char { position: relative; display: block; flex: none; margin-right: calc(-1 * var(--dan-num-trim, 0px)); }
 .dan-num-char.dan-num-last { margin-right: 0; }
-/* 白字族的小数点：自画的贴底方块（图集那张居中方块在小字号下像断字符）。
- * 注意方块得用 `<span>`：`.dan-num-char > b` 那两个填充/描边层是 `position: absolute;
- * inset: 0`，方块若也是 `<b>` 会被那条规则顶到格子上边 —— 看起来就是「小数点起飞」。 */
-.dan-num-dot { display: flex; align-items: flex-end; justify-content: center; }
-.dan-num-dotink { display: block; border-radius: 1px; }
 .dan-num-char > b { position: absolute; inset: 0; display: block; background-repeat: no-repeat; }
 .dan-num-plain { display: grid; place-items: center; color: #4a3a2a; font-family: var(--mono); font-weight: 900; line-height: 1; }
 
