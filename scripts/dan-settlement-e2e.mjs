@@ -292,7 +292,11 @@ try {
         return {
           rect: rel(track),
           no: text(track, '.dan-track-no'), name: text(track, '.dan-track-name'),
+          // 档位名牌已经删掉；这两项留着是为了断言它**不在**（并且标题条左移顶上那一格）。
           diff: text(track, '.dan-track-diff'), diffLines: track.querySelectorAll('.dan-track-diff > *').length,
+          titlebar: relTo(rowBox, track.querySelector('.dan-track-titlebar')),
+          jacket: text(track, '.dan-track-jacket'), jacketBig: text(track, '.dan-track-jacket b'),
+          jacketSmall: text(track, '.dan-track-jacket small'),
           ach: shown(track, '.dan-track-achvalue'), achFont: font(track, '.dan-track-achvalue'),
           dx: shown(track, '.dan-track-dxnum'), dxFont: font(track, '.dan-track-dxnum'),
           limit: text(track, '.dan-track-limit'), judge: text(track, '.dan-track-judge'),
@@ -324,8 +328,14 @@ try {
     }
   }
   check('行内组件都待在底板里', outOfRow.length === 0, outOfRow.join(','));
-  check('难度名牌只写名字一行（不再摆 CF 分与分数分组）',
-    rows.every((row) => row.diff === '上级' && row.diffLines === 1), rows.map((row) => `${row.diff}/${row.diffLines}`).join(' '));
+  check('档位名牌已删掉，标题条左移顶上去（边框内左端 122、右端仍贴边框 554）',
+    rows.every((row) => !row.diff && row.diffLines === 0
+      // 边框自己在行内 (11,11)，所以行内坐标是 11+122=133 与 11+554=565。
+      && row.titlebar && Math.abs(row.titlebar.left - 133) <= 2 && Math.abs(row.titlebar.left + row.titlebar.w - 565) <= 2),
+    rows.map((row) => `diff=${row.diff || '无'} 条 ${row.titlebar?.left}+${row.titlebar?.w}`).join(' '));
+  check('曲绘槽里写完整题号（1554C 这种）+ 这一题的 CF rating',
+    rows.every((row) => /^\d+[A-Z]+\d*$/.test(row.jacketBig) && /^\d+$/.test(row.jacketSmall)),
+    rows.map((row) => `${row.jacketBig}/${row.jacketSmall}`).join(' '));
   // 达成率数字必须待在白框里，而且白框不能碰到右边的评级徽章（原来白框 328 宽、徽章在 436，
   // 框尾压在徽章下面，看着像徽章占了分数格）。
   const boxOf = (row, key) => (row.boxes.find(([name]) => name === key) ?? [])[1];

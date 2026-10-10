@@ -665,20 +665,35 @@ const SCORE_INDEX = {
   '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
   '+': 10, '/': 11, '%': 12, '.': 13,
 };
+/** 白字族借用的小数点（分数族 `[13]`，见 NUM_FONTS 的说明）。 */
+const DECIMAL_GLYPH = { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], index: 13 };
 /**
  * 图集每格留了空白边（90p 那格 89px 宽、字形只有 63px），照格宽排字会读起来「一个字一个字
  * 分开」。官方是等距密排（字与字几乎贴上），所以每格按 `advance` 收回去一点，见 numText。
+ *
+ * `baseline`：数字墨迹底线在格高里的比例（量出来的）—— 旁边有小字标签时用它把两边按同一条
+ * 基线排（见 numText 的 `baseline` 选项）。
+ *
+ * `decimal`：**借来的小数点**。白字族里没有句点这一格 —— `[13]` 是中黑点（画在字高中线上）、
+ * `[12]` 是逗号，都不是小数点该有的样子（小字号下读出来像断字符）。分数族 `[13]` 才是这套
+ * 数字里真正的句点（方形、压在基线附近），官方达成率图里的「101.0000%」用的就是它。
  */
 const NUM_FONTS = {
-  n26: { fill: 'num-26p', outline: 'num-26p-outline', atlas: [136, 160], cell: [34, 40], advance: 24, chars: NUM_INDEX },
-  n90: { fill: 'num-90p', outline: 'num-90p-outline', atlas: [356, 420], cell: [89, 105], advance: 67, chars: NUM_INDEX },
+  n26: {
+    fill: 'num-26p', outline: 'num-26p-outline', atlas: [136, 160], cell: [34, 40], advance: 24,
+    baseline: 0.825, chars: NUM_INDEX, decimal: DECIMAL_GLYPH,
+  },
+  n90: {
+    fill: 'num-90p', outline: 'num-90p-outline', atlas: [356, 420], cell: [89, 105], advance: 67,
+    baseline: 0.886, chars: NUM_INDEX, decimal: DECIMAL_GLYPH,
+  },
   // 分数数字是**三套**同布局不同颜色的图集（自带颜色，不再叠描边层）：
 // blue / gold / red，按达成率高低换。官方还有一张 `UI_NUM_Score_0001111_Base`，
 // 但那是一张**空图集**（整张几乎全透明，量下来 16 格一个字形都没有），不能用；
 // 「%」字形也正好只有蓝/金/红三张 —— 所以官方的档位就是三档，不是四档。
-'score-blue': { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, chars: SCORE_INDEX },
-  'score-gold': { fill: 'num-score-gold', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, chars: SCORE_INDEX },
-  'score-red': { fill: 'num-score-red', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, chars: SCORE_INDEX },
+'score-blue': { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, chars: SCORE_INDEX },
+  'score-gold': { fill: 'num-score-gold', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, chars: SCORE_INDEX },
+  'score-red': { fill: 'num-score-red', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, chars: SCORE_INDEX },
 };
 const NUM_COLS = 4;
 /** 达成率末尾那个大「%」字形：官方按分数分色，蓝/金/红三张。 */
@@ -734,6 +749,10 @@ const DX_NUM_COLOR = '#0d2a63';
  *
  * 排版就一件事：**一个字形一格**，格子之间按 `advance` 等距。小数点（含逗号、加号这些）
  * 跟数字走同一条路 —— 它本来就是图集里的一格，官方也是这么排的，别为它开小灶。
+ *
+ * `opts.baseline`：把整块数字往下补 `(1 − baseline) × 字高`。旁边有小字标签、两边用
+ * `align-items: baseline` 排的时候要用它 —— flex 认的基线是这一格的**底边**，而图集里数字的
+ * 墨迹底线在格高的 `baseline` 处，不补这一下，数字就会浮在标签上面。
  */
 const NUM_OUTLINE_COLOR = '#2b3350';
 function numText(text, fontKey, height, color, opts = {}) {
@@ -743,6 +762,10 @@ function numText(text, fontKey, height, color, opts = {}) {
   wrap.setAttribute('role', 'img');
   wrap.setAttribute('aria-label', text);
   wrap.style.height = `${height}px`;
+  if (opts.baseline) {
+    wrap.style.position = 'relative';
+    wrap.style.top = `${((1 - font.baseline) * height).toFixed(2)}px`;
+  }
   const chars = [...text];
   if (opts.trim !== false) {
     // 图集每格右边都留了空（分数族格宽 74、字形只有 60 左右），照格宽排会把一串数字
@@ -753,7 +776,10 @@ function numText(text, fontKey, height, color, opts = {}) {
     const cell = el('i', 'dan-num-char');
     cell.style.height = `${height}px`;
     if (index === chars.length - 1) cell.classList.add('dan-num-last');
-    const idx = font.chars[ch];
+    // 本族没有这一格时借一个（目前只有小数点：白字族那格是中黑点，借分数族的句点）。
+    const borrowed = font.chars[ch] === undefined && ch === '.' && font.decimal;
+    const glyph = borrowed ? font.decimal : font;
+    const idx = borrowed ? glyph.index : font.chars[ch];
     if (idx === undefined) {
       cell.textContent = ch;
       cell.classList.add('dan-num-plain');
@@ -761,14 +787,16 @@ function numText(text, fontKey, height, color, opts = {}) {
       wrap.append(cell);
       return;
     }
-    const sx = (idx % NUM_COLS) * font.cell[0];
-    const sy = Math.floor(idx / NUM_COLS) * font.cell[1];
-    const size = `${font.atlas[0] * scale}px ${font.atlas[1] * scale}px`;
-    const pos = `${-sx * scale}px ${-sy * scale}px`;
+    // 借来的字形按**自己**的格子高定比例（保持形状比例），再在本族格子里横向居中。
+    const gs = height / glyph.cell[1];
+    const sx = (idx % NUM_COLS) * glyph.cell[0];
+    const sy = Math.floor(idx / NUM_COLS) * glyph.cell[1];
+    const size = `${glyph.atlas[0] * gs}px ${glyph.atlas[1] * gs}px`;
+    const pos = `${-sx * gs + (font.cell[0] * scale - glyph.cell[0] * gs) / 2}px ${-sy * gs}px`;
     cell.style.width = `${font.cell[0] * scale}px`;
-    if (font.outline && opts.outline !== false) {
+    if (glyph.outline && opts.outline !== false) {
       const outline = el('b', 'dan-num-outline');
-      const url = `url(/assets/maimai/${font.outline}.png)`;
+      const url = `url(/assets/maimai/${glyph.outline}.png)`;
       outline.style.setProperty('background-color', NUM_OUTLINE_COLOR);
       for (const prop of ['mask-image', '-webkit-mask-image']) outline.style.setProperty(prop, url);
       for (const prop of ['mask-size', '-webkit-mask-size']) outline.style.setProperty(prop, size);
@@ -777,7 +805,7 @@ function numText(text, fontKey, height, color, opts = {}) {
       cell.append(outline);
     }
     const fill = el('b', 'dan-num-fill');
-    const fillUrl = `url(/assets/maimai/${font.fill}.png)`;
+    const fillUrl = `url(/assets/maimai/${glyph.fill}.png)`;
     if (color) {
       // 白字族是纯白剪影：当遮罩 + 纯色背景 = 想染什么色就什么色（游戏里也是运行时染色）。
       fill.style.setProperty('background-color', color);
@@ -886,32 +914,33 @@ function openRunResult(run) {
     dxBox.append(el('small', 'dan-track-dxlabel', 'DX分数'));
     // 这一格是**小字**：不叠描边层 —— 官方那处也是干净的深蓝数字，叠上去只会糊。
     const dx = stage.rating === null
-      ? numText('—', 'n26', 16, DX_NUM_COLOR, { outline: false })
-      : numText(String(stage.rating.toFixed(1)), 'n26', 16, DX_NUM_COLOR, { outline: false });
+      ? numText('—', 'n26', 16, DX_NUM_COLOR, { outline: false, baseline: true })
+      : numText(String(stage.rating.toFixed(1)), 'n26', 16, DX_NUM_COLOR, { outline: false, baseline: true });
     dx.classList.add('dan-track-dxnum');
     dxBox.append(dx);
     item.append(frame);
     item.append(dxBox);
 
-    // 官方的 JacketImage_S 那一格：我们抽的是 CF 题、没有曲绘，槽里放按档位色上色的题号。
+    // 官方的 JacketImage_S 那一格：我们抽的是 CF 题、没有曲绘，槽里放**题号**（`1554C`：
+    // 场次 + 小问）与这题在 CF 上的 rating。原来那版把场次和小问拆成两行、题号只留个小问
+    // 字母，一屏四张卡看不出是哪道题 —— 现在一行题号、一行 rating。
     const [contest, index] = (stage.problemId ?? '').split(':');
     const jacket = el('div', 'dan-track-jacket');
-    jacket.append(el('b', '', index || '?'), el('small', '', contest || '未开始'));
+    jacket.append(
+      el('b', '', stage.problemId ? `${contest}${index}` : '未开始'),
+      // 题号没下发（还没开始做）时 rating 也不写：那边 `problemId` 是 null，这一格照同一口径。
+      el('small', '', stage.problemId && stage.difficulty != null ? String(stage.difficulty) : '—'),
+    );
     item.append(jacket);
 
     // 官方的 JaketTrack 那一格（行首那块小牌）：放第几道。
     // **排在曲绘槽之后 append**：官方那张小牌就在 MusicJacket_Base 里、压在曲绘槽左上角上。
     item.append(el('span', 'dan-track-no', `STAGE ${String(stage.index).padStart(2, '0')}`));
 
-    // 官方的难度名牌那一格烘的是难度名（MASTER 大師…）。我们这边对应的是**档位名**：
-    // 这一格原来写「CF 分 + 分数分组」两行，可这题的成绩旁边已经写了达成率与单题分，
-    // 再把 1700 / 1600–1899 摆上来只是重复，所以只留名字一行。
-    const diffTab = el('span', 'dan-track-diff');
-    diffTab.append(el('b', '', run.tierName));
-    item.append(diffTab);
-
     // 题目名写在标题条上（两者坐标相同，都是边框内坐标）。抽到的题在本人提交里还没有
     // 记录时，退回题号 —— 空着比写「—」更难看，题号至少能对上。
+    // 原来标题条左边还有一格**档位名牌**（写「上级」「初级」），删掉了：同一张卡上达成率、
+    // 单题分、题号已经把信息说全，档位名重复而且占了半个标题条 —— 标题条因此一路铺到右边。
     frame.append(el('span', 'dan-track-name', stage.title ?? stage.problemId ?? '—'));
 
     // 评级用官方徽章；超时／中断／未开始没有评级，退回文字。
@@ -949,7 +978,7 @@ function openRunResult(run) {
   field(dialog, '.dan-total-num').replaceChildren(
     scored.length ? achievementNumber(totalAchievement, 60) : numText('—', 'n90', 60, DX_NUM_COLOR));
   field(dialog, '.dan-dxscore-num').replaceChildren(
-    numText(run.totalRating === null ? '—' : String(run.totalRating.toFixed(1)), 'n90', 30, DX_NUM_COLOR, { outline: false }));
+    numText(run.totalRating === null ? '—' : String(run.totalRating.toFixed(1)), 'n90', 30, DX_NUM_COLOR, { outline: false, baseline: true }));
 
   const deltas = run.stages.map((stage) => stage.comparison?.ratingDelta).filter((value) => typeof value === 'number');
   let note = run.status === 'cleared'

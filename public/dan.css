@@ -238,9 +238,10 @@
     linear-gradient(180deg, var(--tc1, #8b6cf0) 0 66%, var(--tc2, #4a2fb0) 66% 100%);
 }
 /* 边框里的组件用**边框内坐标**（= 行内坐标 − 11，因为边框自己在行内 (11,11)）。 */
-/* 深蓝标题条（官方烘在边框里的那一条）+ 官方那圈浅色描边，题目名写在里面。 */
+/* 深蓝标题条（官方烘在边框里的那一条）+ 官方那圈浅色描边，题目名写在里面。
+ * 原来左边 122..226 是**档位名牌**那一格，删掉之后标题条一路铺到边框右端（122+432=554）。 */
 .dan-track-titlebar {
-  position: absolute; left: 220px; top: 0; width: 334px; height: 18px;
+  position: absolute; left: 122px; top: 0; width: 432px; height: 18px;
   border-radius: 9px; background: #0d2a63; box-shadow: 0 0 0 2px #ffffff8c;
 }
 .dan-track-no {
@@ -248,41 +249,33 @@
   font-family: var(--mono); font-size: .58rem; font-weight: 700; letter-spacing: .04em;
   color: #fff; background: #0d2a63; border-radius: 4px; box-shadow: 0 1px 3px #00000047;
 }
-/* 官方的曲绘槽（JacketImage_S）。我们抽的是 CF 题、没有曲绘 —— 纯白那一版在满屏深色里
- * 就是一块洞，所以槽里换成**按这一行档位色上色**的题号牌：色块本身也把档位说出来。
+/* 官方的曲绘槽（JacketImage_S）：我们抽的是 CF 题、没有曲绘 —— 槽里放题号本身
+ * （`1554C` 这种「题号 + 小问」的写法）与这题在 CF 上的 rating。原来那一版往里塞了
+ * 档位色渐变 + 斜条纹，一屏四张卡就是四块看不懂的色块，现在就是一块白牌。
  * 左上角跟着边框的圆角（方角会戳到边框圆角外面去）。 */
 .dan-track-jacket {
   position: absolute; left: 11px; top: 11px; width: 104px; height: 72px;
   border-radius: 16px 4px 4px 4px; display: flex; flex-direction: column;
-  justify-content: flex-end; align-items: center; gap: 1px; padding-bottom: 7px;
-  background:
-    repeating-linear-gradient(135deg, #ffffff1c 0 7px, #ffffff00 7px 14px),
-    linear-gradient(160deg, var(--tc1, #8b6cf0), var(--tc2, #4a2fb0));
-  box-shadow: inset 0 0 0 2px #ffffff3d, 0 2px 6px #0000002e;
+  justify-content: center; align-items: center; gap: 4px; padding-bottom: 2px;
+  background: #fff; box-shadow: inset 0 0 0 2px #ffffff3d, 0 2px 6px #0000002e;
 }
-.dan-track-jacket b { font-family: var(--mono); font-size: 1.3rem; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 1px 3px #00000059; }
-.dan-track-jacket small { font-family: var(--mono); font-size: .56rem; color: #ffffffc9; }
+.dan-track-jacket b {
+  font-family: var(--mono); font-size: 1rem; font-weight: 900; line-height: 1; color: #0d2a63;
+}
+.dan-track-jacket small { font-family: var(--mono); font-size: .68rem; font-weight: 700; color: #5a6a8c; }
 /* 单题 DX 分数（= 该题算出的 rating）。跟着题目放左边，与右边的限时白牌左右配平；
- * 圆角方向照官方那块牌（平的一头贴边框，圆的一头朝里）。 */
+ * 圆角方向照官方那块牌（平的一头贴边框，圆的一头朝里）。
+ * `align-items: baseline`：小字标签与数字按**同一条基线**排（数字那一侧由 numText 的
+ * `baseline` 选项按图集基线补一个相对偏移，见 dan.js）。 */
 .dan-track-dxbox {
   position: absolute; left: 11px; top: 89px; width: 104px; height: 26px;
-  border-radius: 4px 11px 11px 4px; background: #fff; display: flex; align-items: center; padding: 0 6px;
+  border-radius: 4px 11px 11px 4px; background: #fff; display: flex; align-items: baseline; padding: 0 6px;
   box-shadow: 0 1px 4px #00000033;
 }
 .dan-track-dxlabel { flex: none; font-size: .54rem; font-weight: 900; color: #0d2a63; }
 .dan-track-dxnum { margin-left: auto; }
-/* 难度名牌那一格：官方烘的是难度名 + Lv。这一格原来写「CF 分 + 分数分组」两行，
- * 但同一张卡上达成率与单题分已经给了具体分数，再把分数摆一遍只是重复 —— 只留名字一行。 */
-.dan-track-diff {
-  position: absolute; left: 122px; top: 11px; width: 104px; height: 27px;
-  display: flex; align-items: center; justify-content: center; overflow: hidden;
-}
-.dan-track-diff b {
-  font-size: .82rem; font-weight: 900; line-height: 1; color: #fff; white-space: nowrap;
-  -webkit-text-stroke: 3px #ffffffa0; paint-order: stroke fill; text-shadow: 0 1px 3px #2a1155a6;
-}
 .dan-track-name {
-  position: absolute; left: 220px; top: 0; width: 334px; height: 18px; padding: 0 10px;
+  position: absolute; left: 132px; top: 0; width: 412px; height: 18px; padding: 0 10px;
   font-size: .68rem; line-height: 18px; color: #fff;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -355,12 +348,12 @@
 /* 总达成率：标签写进底图预留的白格，大数字落在下面的色带上，右端对齐 x 945
  * （与下面那条 DX 分数白牌的右端同一条边）。 */
 .dan-total-row { position: absolute; inset: 0; }
-/* 「总达成率」四个字写在白格**偏左**的位置（官方那四个字不在白格正中），字号也压到 26。
+/* 「总达成率」四个字写在白格**偏左**的位置（官方那四个字不在白格正中），字号压到 23。
  * 底图这块白实测是 x 503..708（右边那截 753..856 被折页斜边切开），所以按 503..708 居中。 */
 .dan-total-label {
   position: absolute; left: 503px; top: 663px; width: 354px; height: 52px;
   display: grid; place-items: center; padding-right: 140px; padding-bottom: 12px;
-  font-size: 26px; font-weight: 800; letter-spacing: .1em; color: #16306b;
+  font-size: 23px; font-weight: 800; letter-spacing: .1em; color: #16306b;
 }
 .dan-total-num {
   position: absolute; left: 490px; top: 727px; width: 460px; height: 66px;
@@ -371,14 +364,9 @@
  * 所以文字靠上排（顶到 y 816），不跟着整块矩形居中。 */
 .dan-dxscore-row {
   position: absolute; left: 608px; top: 810px; width: 360px; height: 80px;
-  display: flex; align-items: flex-start; justify-content: space-between; padding: 6px 46px 0;
+  display: flex; align-items: baseline; justify-content: space-between; padding: 6px 46px 0;
 }
-.dan-dxscore-label {
-  font-size: 30px; font-weight: 800; letter-spacing: .06em; color: #16306b;
-  /* 和右边的分数数字对齐：数字墨迹底（含烘焙投影）在 y 842，CJK 字这一侧基线落在 853，
-   * 差 11px —— 把标签往上顶 11px，两边底线就压在同一条线上。 */
-  margin-top: -11px;
-}
+.dan-dxscore-label { font-size: 30px; font-weight: 800; letter-spacing: .06em; color: #16306b; }
 .dan-dxscore-num { display: flex; align-items: center; }
 
 /* 说明与按钮在成品屏之外（深色底上），不往那张纸上塞东西。 */
