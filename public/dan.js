@@ -590,7 +590,8 @@ function drainSheet() {
 
 /* ---------------- 段位認定结算页（对齐原作 UI_DNM_Result_* 的构成） ---------------- */
 
-/** 难度色号 → 逐曲卡的渐变（与 CF 分色同一套边界；violet 是原作 MASTER 的紫）。 */
+/** 难度色号 → 逐曲卡的 [主色场, 外圈主色环]（与 CF 分色同一套边界；violet 是原作 MASTER 的紫）。
+ * 两个色都只当**平色**用，不做上下渐变 —— 原版那块乐曲底板就是一块平色。 */
 const TRACK_TONE = {
   red: ['#e8564f', '#a3211c'], orange: ['#f08c3a', '#a85a12'],
   violet: ['#8b6cf0', '#4a2fb0'], blue: ['#4a7fe0', '#1e3f96'],
@@ -882,7 +883,8 @@ function openRunResult(run) {
     item.dataset.outcome = stage.outcome ?? 'pending';
     // 逐题行的纵向节距是官方的 122px（见 dan.css）。
     item.style.top = `${152 + 122 * (stage.index - 1)}px`;
-    // 底色变量挂在这一行上：乐曲边框和 LV 块都读它（边框官方是难度色烘死的，我们按自己的分档上色）。
+    // 底色变量挂在这一行上：乐曲边框读它（--tc1 主色场 / --tc2 外圈主色环）。
+    // 官方那五张边框的颜色与难度名是烘死的，我们按自己的 CF 分档上色。
     item.style.setProperty('--tc1', tone[0]);
     item.style.setProperty('--tc2', tone[1]);
 
@@ -892,16 +894,24 @@ function openRunResult(run) {
     stamp.alt = stage.outcome === 'cleared' ? '通过' : '未通过';
     item.append(stamp);
 
-    // 行底板还是原作那张（UI_DNM_Result_musicBase_01）；边框比它小一圈，四角会露出底板。
+    // 行底板还是原作那张（UI_DNM_Result_musicBase_01）；边框本体比行内区小 3.6px，
+    // 四条边会露出一点底板（原版贴图本来就留了这圈透明边）。
     item.append(el('div', 'dan-track-plate'));
 
-    // 乐曲边框：照原作 UI_CMN_RSL_KopMBase_* 的版式画一层 ——
-    // 外圈浅色环 + 主色场 + 底部浅色带 + 左侧白曲绘槽 + 深蓝标题条 + 白色达成率框。
+    // 乐曲边框：照原作 UI_CMN_RSL_KopMBase_* 的版式画一层（尺寸全是从那张贴图量出来的比例，
+    // 见 dan.css 的「逐题行」一节）—— 外圈主色环 + 平色主色场 + 底部浅色带 + 左侧曲绘槽
+    // + 深蓝歌名条（占顶部一整行）+ 白色达成率盒 + 右下角 DX 分数白牌。
     // 官方那五张（BSC/ADV/EXP/MST/MST_Re）颜色与难度名都烘死在图里，套不上我们的 CF 分档。
     const frame = el('div', 'dan-track-frame');
+    // 底带先 append：它在白盒与右下白牌**下面**（原版就是这样一层浅色）。
+    frame.append(el('div', 'dan-track-band'));
+    // 歌名条：原版左上那格是难度名牌（MASTER 那块），删掉之后歌名条顶满上面一整行。
     frame.append(el('span', 'dan-track-titlebar'));
+    // 题目名压在歌名条上（两者框内坐标相同）。抽到的题在本人提交里还没有记录时，退回题号 ——
+    // 空着比写「—」更难看，题号至少能对上。
+    frame.append(el('span', 'dan-track-name', stage.title ?? stage.problemId ?? '—'));
     const achBox = el('div', 'dan-track-achbox');
-    // 官方白框左上角那行小字（原作烘在边框贴图里，我们画边框所以自己写）。
+    // 官方白盒左上角那行小字（原作烘在边框贴图里，我们画边框所以自己写）。
     // 用原版那三个字：`達成率` —— 别自己写英文，官方结算这一行就是日文。
     achBox.append(el('small', 'dan-track-achlabel', '達成率'));
     // 官方分数图集（按分数分色）+ 官方彩色「%」字形 —— 这是这一行最大的一块数字。
@@ -913,7 +923,10 @@ function openRunResult(run) {
     achValue.classList.add('dan-track-achvalue');
     achBox.append(achValue);
     frame.append(achBox);
-    // 官方的 でらっくスコア 那一格改成**跟着题目放左边**（右边那一列只剩评级与限时）。
+    item.append(frame);
+
+    // 单题 DX 分数（= 该题算出的 rating）挪到**卡片右下角**：原版那块白牌就压在底带右端，
+    // 上面烘的是日文 `でらっくスコア`（我们写「DX分数」）。底带的左半边留给限时。
     const dxBox = el('div', 'dan-track-dxbox');
     dxBox.append(el('small', 'dan-track-dxlabel', 'DX分数'));
     // 这一格是**小字**：不叠描边层 —— 官方那处也是干净的深蓝数字，叠上去只会糊。
@@ -922,7 +935,6 @@ function openRunResult(run) {
       : numText(String(stage.rating.toFixed(1)), 'n26', 16, DX_NUM_COLOR, { outline: false, baseline: true });
     dx.classList.add('dan-track-dxnum');
     dxBox.append(dx);
-    item.append(frame);
     item.append(dxBox);
 
     // 官方的 JacketImage_S 那一格：我们抽的是 CF 题、没有曲绘，槽里放**题号**（`1554C`：
@@ -937,13 +949,12 @@ function openRunResult(run) {
     );
     item.append(jacket);
 
-    // 题目名写在标题条上（两者坐标相同，都是边框内坐标）。抽到的题在本人提交里还没有
-    // 记录时，退回题号 —— 空着比写「—」更难看，题号至少能对上。
-    // 原来标题条左边还有一格**档位名牌**（写「上级」「初级」），删掉了：同一张卡上达成率、
-    // 单题分、题号已经把信息说全，档位名重复而且占了半个标题条 —— 标题条因此一路铺到右边。
-    frame.append(el('span', 'dan-track-name', stage.title ?? stage.problemId ?? '—'));
+    // 题目名已经在上面跟歌名条一起 append 了（两者框内坐标相同）。原来标题条左边还有一格
+    // **档位名牌**（写「上级」「初级」），删掉了：同一张卡上达成率、单题分、题号已经把信息
+    // 说全，档位名重复而且占了半个标题条 —— 歌名条因此顶满上面一整行。
 
-    // 评级用官方徽章；超时／中断／未开始没有评级，退回文字。
+    // 评级用官方徽章；超时／中断／未开始没有评级，退回文字。徽章放在**右上那块紫场**里
+    // （白盒右端…边框内右沿 / 歌名条下沿…右下白牌上沿）：原版那一块本来就是空的。
     if (stage.outcome === 'cleared' && RANK_ART[stage.rank]) {
       const badge = el('img', 'dan-track-badge');
       badge.src = `/assets/maimai/${RANK_ART[stage.rank]}`;
@@ -954,8 +965,7 @@ function openRunResult(run) {
         stage.outcome === 'timeout' ? '超时' : stage.outcome === 'interrupted' ? '中断' : '未开始'));
     }
 
-    // 右边一列只留两件：评级（上面）与限时（下面，用官方 DerakkuScore_NUM 那格的白牌）。
-    // CF 难度分挪进了难度名牌，所以这里不再单独占一格。
+    // 限时写在**底带的左侧**（原版这条底带是空的一块浅色，右端才是 DX 分数那块白牌）。
     item.append(el('small', 'dan-track-limit', `限时 ${fmtLimit(stage.limitSeconds)}`));
 
     tracks.append(item);

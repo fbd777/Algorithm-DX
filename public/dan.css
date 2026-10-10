@@ -201,21 +201,31 @@
 
 /* ---------- 逐题行 ----------
  * 一行 = 原作的行底板（UI_DNM_Result_musicBase_01，576×124）+ 一层**乐曲边框**。
- * 边框照原作 `UI_CMN_RSL_KopMBase_*`（640×140，五种难度各一张）画 —— 官方那张的颜色和
- * 难度名（BASIC/ADVANCED/…）都烘死在图里，套不上我们自己的 CF 分档，所以按它的版式重画，
- * 颜色由 --tc1/--tc2 给。下面每个数字都是从那张 640×140 贴图里逐像素量出来再 ×0.9：
- *   边框本体   (12,12) 616×122（四边留 12px 透明边，圆角 ~14）→ 行内 (11,11) 554×110
- *   曲绘槽     (12,12) 116×116 白底（官方 JacketImage_S (14,14) 113×113 落在槽里）
- *   标题条     (257,12) 371×20 深蓝圆角条（官方 MusicPlate_Mask (262,13) 359×18）
- *   难度名牌   (138,14) 90×22  白字深色描边（官方烘的是难度名 + Lv）
- *   达成率白框 (136,42) 364×65 白底圆角（官方小字 ACHIEVEMENT 在框内左上 (147,48)）
- *   行首小牌   (6,6) 68×28（官方 JaketTrack 贴图就是 68×28）
- *   评级位     (555,34) 84×28（官方 UI_GameType 那一格）
- *   DX分数牌   (495,108) 135×26 白底圆角（官方 DerakkuScore_NUM (488,112) 140×20 落在牌上）
+ * 边框照原作 `UI_CMN_RSL_KopMBase_*` 逐像素量出来重画 —— 官方那五张的颜色与难度名
+ * （BASiC/ADVANCED/EXPERT/MASTER/Re:MASTER）都烘死在图里，套不上我们自己的 CF 分档，
+ * 所以只抄版式：主色场交给 --tc1、外圈主色环交给 --tc2（**一块平色**，不做上下渐变）。
  *
- * 官方的排法右边一列挤了四件（评级 / 难度分 / 限时 / DX分数），字一多就糊成一块；
- * 所以这里改了信息分配：**跟题目走的分数（单题 rating）放左边**，难度分并进难度名牌，
- * 右边只留评级与限时，最左下与最右下各一块白牌，整行左右配平。
+ * **换算**（下面每个数字的唯一来源）：素材包里的 Sprite 精裁版是 636×136，官方设计尺寸
+ * 640×140（左右上下各被紧裁掉 2px 透明边，`docs/images/original-card/UI_CMN_RSL_KopMBase_MST.png`
+ * 就是精裁版）；而我们的行内区是 576×126 = 官方 640×140 × 0.9。于是
+ *     行内坐标 = (原版文件坐标 + 2) × 0.9
+ * 「边框内坐标」= 行内坐标 − 3.6（边框本体左上角落在行内 (3.6, 3.6)）。
+ * 量法是逐行/逐列扫那张贴图，取每块的首像素…末像素，再把「末像素 + 1」当开区间边界代入：
+ *   边框本体   原版 2…634 × 2…134 → 行内 (3.6, 3.6) 568.8×118.8；外圈主色环 2px、圆角 ~8
+ *   曲绘槽     原版 x 10…127 / y 10…127 → 行内 (10.8, 10.8) 105.3×105.3（白槽、圆角 ~3）
+ *   歌名条     原版 y 10…30 / 右端 626 → 行内 (122.4, 10.8) 442.8×18 深蓝 #012268 胶囊
+ *               （左端本来接着难度名牌那一格，名牌删掉后由歌名条顶满上面一整行）
+ *   白盒       原版 x 134…499 / y 38…106 → 行内 (122.4, 36) 328.5×61.2
+ *               （原版圆角：左上 9 / 右上 17 / 右下 17 / 左下 0 —— 右下那道大弧就是原版
+ *                那块「右侧带缺口的面板」，它一路弯到底带里）
+ *   底带       原版 x 134…518 / y 106…132 → 行内 (122.4, 97.2) 345.6×23.4 浅色带
+ *   右下白牌   原版 x 499…632 / y 106…132 → 行内 (450.9, 97.2) 119.7×23.4 胶囊（两端圆头）
+ *               （原版烘的是日文 `でらっくスコア`；我们寄不出那套字，写「DX分数」）
+ *   右上紫场   白盒右端…边框内右沿 / 歌名条下沿…白牌上沿 = 119.5×68.4，原版空着，
+ *               我们拿它放逐题评级徽章（原版白盒那个大 R 弧就是为它让位的）。
+ *
+ * 信息分配（照用户口径）：**最上面歌名占一整行**（难度名牌删掉）、曲绘槽在左、
+ * 达成率大数字排在白盒里、**DX 分数挪到卡片右下角那块白牌**、**限时写进底带左侧**。
  */
 .dan-result-tracks { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
 .dan-track { position: absolute; left: 267px; width: 576px; height: 126px; }
@@ -228,32 +238,38 @@
 .dan-track[data-outcome="pending"] .dan-track-stamp { opacity: .22; filter: grayscale(1); }
 .dan-track-plate { position: absolute; inset: 0; background: url('/assets/maimai/track-plate.png') 0 0 / 100% 100% no-repeat; }
 
-/* 乐曲边框：**单色**主色场（原版那张底板就是一块平色）+ 外圈浅色环 + 底部浅色带。
- * 环与带都画在背景层里，所以边框**不是**真 border —— 真 border 会把子元素坐标系推进 8px。
- * 原来主色场是 `--tc1 → --tc2` 的上下渐变，一屏四张卡就是四块深浅不一的色块，改成平色。 */
+/* 乐曲边框：**单色**主色场（原版那块底板就是一块平色）+ 外圈 2px 主色环 + 底部浅色带。
+ * 环用 inset box-shadow 画、带用子元素画，都不占盒模型 —— 边框**不是**真 border，
+ * 真 border 会把子元素坐标系推进边框宽度。 */
 .dan-track-frame {
-  position: absolute; left: 11px; top: 11px; width: 554px; height: 110px; border-radius: 16px;
-  box-shadow: inset 0 0 0 8px #ffffff7a;
-  background:
-    linear-gradient(#ffffff5e, #ffffff5e) left bottom / 100% 24px no-repeat,
-    var(--tc1, #8b6cf0);
+  position: absolute; left: 3.6px; top: 3.6px; width: 568.8px; height: 118.8px; border-radius: 7px;
+  overflow: hidden;
+  background: var(--tc1, #8b6cf0);
+  box-shadow: inset 0 0 0 2px var(--tc2, #4a2fb0);
 }
-/* 边框里的组件用**边框内坐标**（= 行内坐标 − 11，因为边框自己在行内 (11,11)）。 */
-/* 深蓝标题条（官方烘在边框里的那一条）+ 官方那圈浅色描边，题目名写在里面。
- * 原来左边 122..226 是**档位名牌**那一格，删掉之后标题条一路铺到边框右端（122+432=554）。 */
+/* 底部浅色带（原版那一块：从曲绘槽右边一直铺到右下白牌底下）。它是**主色的浅色版本**，
+ * 不是白色 —— 白色留给白盒与右下白牌。`overflow: hidden` 让它的左下角跟着边框圆弧收掉。 */
+.dan-track-band {
+  position: absolute; left: 118.8px; top: 93.6px; width: 345.6px; height: 23.4px;
+  background: color-mix(in srgb, var(--tc1, #8b6cf0) 55%, #ffffff);
+}
+/* 边框里的组件用**边框内坐标**（= 行内坐标 − 3.6）。 */
+/* 深蓝歌名条：删掉难度名牌之后它**占满上面一整行** —— 左端与白盒左端对齐（边框内 118.8），
+ * 右端贴到边框内右沿（118.8+442.8=561.6，离主色环还有 ~7px，与原版一致）。 */
 .dan-track-titlebar {
-  position: absolute; left: 122px; top: 0; width: 432px; height: 18px;
-  border-radius: 9px; background: #0d2a63; box-shadow: 0 0 0 2px #ffffff8c;
+  position: absolute; left: 118.8px; top: 7.2px; width: 442.8px; height: 18px;
+  border-radius: 9px; background: #012268;
 }
 /* 行首那块「STAGE 01」小牌删掉了：官方那张牌压在曲绘上，我们没有曲绘，它就只是在左上角
  * 多挂一块深蓝方块。样式留成 display:none（不再渲染这个节点，这条只是兜底）。 */
 .dan-track-no { display: none; }
-/* 官方的曲绘槽（JacketImage_S）：我们抽的是 CF 题、没有曲绘 —— 槽里放题号本身
+/* 官方的曲绘槽（JacketImage_S）：原版是一块 105×105 的**方槽**（圆角只有 ~3px），
+ * 从边框左上角一直占到接近底部。我们抽的是 CF 题、没有曲绘 —— 槽里放题号本身
  * （`1554C` 这种「题号 + 小问」的写法）与这题在 CF 上的 rating。
  * 底色是**卡片主色的浅色版本**（原版那格是曲绘，换成白牌会像挖了个洞）。 */
 .dan-track-jacket {
-  position: absolute; left: 11px; top: 11px; width: 104px; height: 72px;
-  border-radius: 16px 4px 4px 4px; display: flex; flex-direction: column;
+  position: absolute; left: 10.8px; top: 10.8px; width: 105.3px; height: 105.3px;
+  border-radius: 3px; display: flex; flex-direction: column;
   justify-content: center; align-items: center; gap: 2px;
   background: color-mix(in srgb, var(--tc1, #8b6cf0) 42%, #ffffff);
   box-shadow: inset 0 0 0 2px #ffffff4d, 0 2px 6px #00000024;
@@ -262,54 +278,58 @@
   font-family: var(--mono); font-size: 1.3rem; font-weight: 900; line-height: 1; color: #17265c;
 }
 .dan-track-jacket small { font-family: var(--mono); font-size: .85rem; font-weight: 700; color: #3d4a75; }
-/* 单题 DX 分数（= 该题算出的 rating）。跟着题目放左边，与右边的限时白牌左右配平；
- * 圆角方向照官方那块牌（平的一头贴边框，圆的一头朝里）。
+/* 单题 DX 分数（= 该题算出的 rating）：原版那块牌烘着日文 `でらっくスコア`，压在**右下角**、
+ * 底带的右端上（它就是原版「右下角是 dx 分数」那一格）。两端是圆头 ⇒ 胶囊。
  * `align-items: baseline`：小字标签与数字按**同一条基线**排（数字那一侧由 numText 的
  * `baseline` 选项按图集基线补一个相对偏移，见 dan.js）。 */
 .dan-track-dxbox {
-  position: absolute; left: 11px; top: 89px; width: 104px; height: 26px;
-  border-radius: 4px 11px 11px 4px; background: #fff; display: flex; align-items: baseline; padding: 0 6px;
+  position: absolute; left: 450.9px; top: 97.2px; width: 119.7px; height: 23.4px;
+  border-radius: 11.7px; background: #fff; display: flex; align-items: baseline; padding: 0 13px;
   box-shadow: 0 1px 4px #00000033;
 }
 .dan-track-dxlabel { flex: none; font-size: .54rem; font-weight: 900; color: #0d2a63; }
 .dan-track-dxnum { margin-left: auto; }
 .dan-track-name {
-  position: absolute; left: 132px; top: 0; width: 412px; height: 18px; padding: 0 10px;
+  position: absolute; left: 128.8px; top: 7.2px; width: 422.8px; height: 18px;
   font-size: .68rem; line-height: 18px; color: #fff;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 达成率白框：官方那一格是 `UI_AchivementCounter`，白底圆角，小字在框内左上。
- * 宽度收窄到 300：右边那一列是评级徽章，框再宽就会被 SSS+ 压住一角。 */
+/* 达成率白盒：原版那一格是 `UI_AchivementCounter`，白底、**右下角一道大 R 弧**（连续到
+ * 底带上，为右上那块紫场让位）。左上角烘着原版的 `ACHIEVEMENT` 小字，我们照位置写
+ * 「達成率」。四角圆角在原版文件里量得 9 / 17 / 17 / 0，按同一条换算 ×0.9 ⇒ 8.1 / 15.3 /
+ * 15.3 / 0（左下是直角：它和底带连成一整块）。 */
 .dan-track-achbox {
-  position: absolute; left: 111px; top: 27px; width: 300px; height: 59px;
-  border-radius: 9px 9px 9px 4px; background: #fff;
+  position: absolute; left: 118.8px; top: 32.4px; width: 328.5px; height: 61.2px;
+  border-radius: 8.1px 15.3px 15.3px 0; background: #fff;
 }
 .dan-track-achlabel {
-  position: absolute; left: 8px; top: 3px; font-size: .56rem; font-weight: 900; letter-spacing: .08em; color: #0d2a63;
+  position: absolute; left: 10px; top: 4px; font-size: .6rem; font-weight: 900; letter-spacing: .08em; color: #0d2a63;
 }
-/* 官方那一格数字是**贴着白框左边**排的（不是右对齐），而且几乎顶满框高。 */
 /* 达成率数字**右对齐**：满 100 的那串（`100.8000%`）右端永远贴在同一个位置，不到 100 的
- * 少一位数就少在**左边**（`96.0000%` 的右端仍与 100 的齐平）。左对齐时短的那串右端会缩回来。 */
-.dan-track-achvalue { position: absolute; left: 10px; top: 14px; width: 290px; height: 45px; display: flex; align-items: center; justify-content: flex-end; }
+ * 少一位数就少在**左边**（`96.0000%` 的右端仍与 100 的齐平）。左对齐时短的那串右端会缩回来。
+ * 垂直上排在「達成率」那行小字**下面**：盒内 y 13…61（盒高 61.2），字高 44 居中，
+ * 整串右端离盒右沿 8px。 */
+.dan-track-achvalue { position: absolute; left: 9px; top: 13px; width: 311.5px; height: 48px; display: flex; align-items: center; justify-content: flex-end; }
 .dan-per { display: block; }
-/* 右边一列两件：评级徽章（官方 `UI_GAM_Rank_*`，游戏内那套单级全套）与限时白牌。
- * 徽章源图是紧裁的（SSS+ 110×44、D 38×42），给 132×52 的框按高度贴齐 —— 比原来
- * 106×51 那张「页签标题区间图」的字面大一圈，且不再把 A～AAA 当成 AAA。 */
-.dan-track-badge { position: absolute; left: 436px; top: 40px; width: 132px; height: 52px; object-fit: contain; filter: drop-shadow(0 2px 5px #0000003d); }
+/* 右上那块紫场：白盒右端…边框内右沿 / 歌名条下沿…右下白牌上沿 = 行内 450.9…570.4 /
+ * 28.8…97.2，原版空着（白盒那道大 R 弧就是给它让位的）。逐题评级徽章放这里 ——
+ * 99×40 是官方 SSS+ 那张紧裁图（110×44）×0.9，摆进去离白盒 13px、离边框内右沿 7.4px。
+ * 徽章源图是紧裁的（SSS+ 110×44、D 38×42），给 99×40 的框按高度贴齐。 */
+.dan-track-badge { position: absolute; left: 464px; top: 43px; width: 99px; height: 40px; object-fit: contain; filter: drop-shadow(0 2px 5px #0000003d); }
 .dan-track-judge {
-  position: absolute; left: 436px; top: 40px; width: 132px; height: 52px;
-  display: grid; place-items: center; font-size: .78rem; font-weight: 900; color: #0d2a63;
-  background: #ffd76a; border-radius: 12px; box-shadow: inset 0 0 0 2px #ffffffa6, 0 2px 5px #0000003d;
+  position: absolute; left: 464px; top: 43px; width: 99px; height: 40px;
+  display: grid; place-items: center; font-size: .72rem; font-weight: 900; color: #0d2a63;
+  background: #ffd76a; border-radius: 10px; box-shadow: inset 0 0 0 2px #ffffffa6, 0 2px 5px #0000003d;
 }
 .dan-track[data-outcome="timeout"] .dan-track-judge,
 .dan-track[data-outcome="interrupted"] .dan-track-judge,
 .dan-track[data-outcome="pending"] .dan-track-judge { background: #e8e2d6; }
-/* 限时白牌（官方 DerakkuScore_NUM 那一格）：字居中，不留半张空牌面。 */
+/* 限时写进**底带的左侧空白**（原版这条底带是空的一块浅色，右下角才是 DX 分数）：所以
+ * 它自己没有白牌面，只把字压在浅色带上，左端与底带左端对齐。 */
 .dan-track-limit {
-  position: absolute; left: 444px; top: 97px; width: 121px; height: 23px;
-  border-radius: 11px 4px 4px 11px; background: #fff; color: #0d2a63;
-  display: flex; align-items: center; justify-content: center;
-  font-size: .56rem; font-weight: 700; box-shadow: 0 1px 4px #00000033;
+  position: absolute; left: 122.4px; top: 97.2px; width: 328.5px; height: 23.4px;
+  display: flex; align-items: center; padding-left: 12px;
+  font-size: .58rem; font-weight: 700; color: #0d2a63;
 }
 
 /* ---------- 底部：段位名牌 · 心 · 总达成率 / DX分数 ----------

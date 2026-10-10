@@ -36,7 +36,28 @@ const LIFE = { left: 334, top: 690, w: 200, h: 200 };
 const TOTAL_LABEL = { left: 503, top: 663, w: 354, h: 52 };   // 底图预留的白格
 const DX_ROW = { left: 608, top: 810, w: 360, h: 80 };        // 底图预留的白牌
 const RIGHT_EDGE = 950;                                      // 大数字的右端（与 DX 白牌右端同一条边）
-const BADGE = { w: 132, h: 52 };
+/**
+ * 逐题行内部的版式（**行内坐标**）。每个数字都是从原版 `UI_CMN_RSL_KopMBase_MST.png`
+ * （636×136 的精裁版，官方设计尺寸 640×140）逐行扫像素量出来的，换算见 public/dan.css：
+ * `行内坐标 = (原版文件坐标 + 2) × 0.9`（我们的行内区 576×126 = 官方 640×140 × 0.9）。
+ */
+const CARD = {
+  frame: { left: 3.6, top: 3.6, w: 568.8, h: 118.8 },        // 边框本体（外圈 2px 主色环）
+  slot: { left: 10.8, top: 10.8, w: 105.3, h: 105.3 },       // 左上的曲绘槽（原版是方槽）
+  titlebar: { left: 122.4, top: 10.8, w: 442.8, h: 18 },     // 深蓝歌名条（占顶部一整行）
+  achbox: { left: 122.4, top: 36, w: 328.5, h: 61.2 },       // 白色达成率盒（右下角一道大 R 弧）
+  band: { left: 122.4, top: 97.2, w: 345.6, h: 23.4 },       // 底部浅色带
+  dxbox: { left: 450.9, top: 97.2, w: 119.7, h: 23.4 },      // 右下角 DX 分数白牌（胶囊）
+  badge: { left: 464, top: 43, w: 99, h: 40 },               // 右上紫场里的评级徽章
+};
+const near = (value, want, tol = 2) => Math.abs(value - want) <= tol;
+const rectNear = (rect, want, tol = 2, keys = ['left', 'top', 'w', 'h']) => Boolean(rect)
+  && keys.every((key) => near(rect[key], want[key], tol));
+const rectIn = (inner, outer, slack = 2) => Boolean(inner && outer)
+  && inner.left >= outer.left - slack && inner.top >= outer.top - slack
+  && inner.left + inner.w <= outer.left + outer.w + slack
+  && inner.top + inner.h <= outer.top + outer.h + slack;
+const fmtRect = (rect) => (rect ? `${rect.left},${rect.top} ${rect.w}×${rect.h}` : '缺失');
 /** 等级 → 素材：官方 `UI_GAM_Rank_*`（游戏内那套单级全套）。 */
 const RANK_FILE = {
   'SSS+': 'gam-rank-sssp.png', SSS: 'gam-rank-sss.png', 'SS+': 'gam-rank-ssp.png', SS: 'gam-rank-ss.png',
@@ -298,11 +319,17 @@ try {
           jacket: text(track, '.dan-track-jacket'), jacketBig: text(track, '.dan-track-jacket b'),
           jacketSmall: text(track, '.dan-track-jacket small'),
           ach: shown(track, '.dan-track-achvalue'), achFont: font(track, '.dan-track-achvalue'),
+          // 达成率那串数字自己的框（取里面那层 .dan-num，不是外面那个定宽容器）。
+          achNumRect: relTo(rowBox, numNode(track, '.dan-track-achvalue')),
           dx: shown(track, '.dan-track-dxnum'), dxFont: font(track, '.dan-track-dxnum'),
           limit: text(track, '.dan-track-limit'), judge: text(track, '.dan-track-judge'),
           badge: track.querySelector('.dan-track-badge')?.getAttribute('src')?.split('/').pop() ?? '',
-          badgeRect: rel(track.querySelector('.dan-track-badge')), stamp: rel(track.querySelector('.dan-track-stamp')),
-          boxes: ['no', 'jacket', 'dxbox', 'dxnum', 'titlebar', 'name', 'diff', 'achbox', 'achvalue', 'badge', 'limit']
+          // badgeRect / stamp 是**底图坐标**（抠图用），badgeRow 才是行内坐标。
+          badgeRect: rel(track.querySelector('.dan-track-badge')),
+          badgeRow: relTo(rowBox, track.querySelector('.dan-track-badge')),
+          stamp: rel(track.querySelector('.dan-track-stamp')),
+          boxes: ['no', 'jacket', 'dxbox', 'dxnum', 'titlebar', 'name', 'diff', 'achbox', 'achvalue',
+            'badge', 'limit', 'frame', 'band']
             .map((key) => [key, relTo(rowBox, track.querySelector('.dan-track-' + key))]).filter(([, r]) => r),
         };
       }),
@@ -328,39 +355,82 @@ try {
     }
   }
   check('行内组件都待在底板里', outOfRow.length === 0, outOfRow.join(','));
-  check('档位名牌已删掉，标题条左移顶上去（边框内左端 122、右端仍贴边框 554）',
-    rows.every((row) => !row.diff && row.diffLines === 0
-      // 边框自己在行内 (11,11)，所以行内坐标是 11+122=133 与 11+554=565。
-      && row.titlebar && Math.abs(row.titlebar.left - 133) <= 2 && Math.abs(row.titlebar.left + row.titlebar.w - 565) <= 2),
-    rows.map((row) => `diff=${row.diff || '无'} 条 ${row.titlebar?.left}+${row.titlebar?.w}`).join(' '));
-  check('曲绘槽里写完整题号（1554C 这种）+ 这一题的 CF rating',
-    rows.every((row) => /^\d+[A-Z]+\d*$/.test(row.jacketBig) && /^\d+$/.test(row.jacketSmall)),
-    rows.map((row) => `${row.jacketBig}/${row.jacketSmall}`).join(' '));
-  // 达成率数字必须待在白框里，而且白框不能碰到右边的评级徽章（原来白框 328 宽、徽章在 436，
-  // 框尾压在徽章下面，看着像徽章占了分数格）。
+  /** 行内子组件的 rect（`boxes` 里量的，全部是**行内坐标**）。 */
   const boxOf = (row, key) => (row.boxes.find(([name]) => name === key) ?? [])[1];
+  check('边框本体照原版量出来的比例摆（行内 3.6,3.6 / 568.8×118.8）',
+    rows.every((row) => rectNear(boxOf(row, 'frame'), CARD.frame)),
+    fmtRect(boxOf(rows[0], 'frame')));
+  check('曲绘槽是原版那块方槽（行内 10.8,10.8 / 105.3×105.3），里面写完整题号 + 这一题的 CF rating',
+    rows.every((row) => rectNear(boxOf(row, 'jacket'), CARD.slot)
+      && /^\d+[A-Z]+\d*$/.test(row.jacketBig) && /^\d+$/.test(row.jacketSmall)),
+    `${fmtRect(boxOf(rows[0], 'jacket'))} · ${rows[0].jacketBig}/${rows[0].jacketSmall}`);
+  check('难度名牌已删掉，歌名条占顶部一整行（左端与白盒左端对齐、右端贴到边框内右沿）',
+    rows.every((row) => !row.diff && row.diffLines === 0
+      && rectNear(row.titlebar, CARD.titlebar)
+      // 「占一整行」= 左端跟白盒左端对齐（原版那格难度名牌的位置被歌名条顶掉），
+      // 右端离边框外沿只剩 7.2px（原版 8px × 0.9）。
+      && near(row.titlebar.left, boxOf(row, 'achbox').left)
+      && near(row.titlebar.left + row.titlebar.w, CARD.frame.left + CARD.frame.w - 7.2)
+      && near(row.titlebar.top, CARD.frame.top + 7.2)),
+    rows.map((row) => `diff=${row.diff || '无'} 条 ${row.titlebar?.left}…${row.titlebar?.left + row.titlebar?.w}`).join(' '));
+  // 达成率那串数字必须待在白盒里，而且白盒不能碰到右边那块紫场里的评级徽章
+  // （原版白盒右下角那道大 R 弧就是给徽章让位的）。
   const spill = rows.map((row) => {
     const box = boxOf(row, 'achbox');
-    if (!box) return 'no-box';
-    // 行内格子是行坐标，徽章是底图坐标 —— 比之前先换算到同一边。
-    // 数字宽度取里面那串 `.dan-num` 的实际宽度，而不是外面那个定宽容器。
-    const boxRight = row.rect.left + box.left + box.w;
-    const textRight = row.rect.left + box.left + (row.achFont?.width ?? 0);
-    if (textRight > boxRight + 1) return `数字出框 ${Math.round(textRight - boxRight)}px`;
-    if (boxRight + 10 > row.badgeRect.left) return `白框碰徽章 ${Math.round(boxRight + 10 - row.badgeRect.left)}px`;
+    const num = row.achNumRect;
+    if (!box || !num) return 'no-box';
+    const right = num.left + num.w;
+    if (num.left < box.left) return `数字出盒左 ${num.left} < ${box.left}`;
+    if (right > box.left + box.w - 6) return `数字出盒右 ${right} > ${box.left + box.w - 6}`;
+    // 右对齐：整串的右端固定在离白盒右沿 6…20px 的地方（短一位数的串不许往左缩）。
+    if (right < box.left + box.w - 20) return `数字没右对齐 ${right} < ${box.left + box.w - 20}`;
+    if (num.top < box.top || num.top + num.h > box.top + box.h + 1) {
+      return `数字出盒高 ${num.top}..${num.top + num.h} vs ${box.top}..${box.top + box.h}`;
+    }
+    if (row.badgeRow && box.left + box.w + 10 > row.badgeRow.left) {
+      return `白盒碰徽章 ${Math.round(box.left + box.w + 10 - row.badgeRow.left)}px`;
+    }
     return '';
   }).filter(Boolean);
-  check('达成率数字不溢出白框、白框与评级徽章留 10px 以上空隙',
+  check('达成率数字不溢出白盒、白盒与右侧徽章留 10px 以上空隙',
     spill.length === 0,
-    spill.join(',') || `数字宽 ${rows[0].achFont.width} 框宽 ${boxOf(rows[0], 'achbox').w}`
-      + ` 框尾 ${Math.round(rows[0].rect.left + boxOf(rows[0], 'achbox').left + boxOf(rows[0], 'achbox').w)}`
-      + ` / 徽章左 ${rows[0]?.badgeRect?.left}`);
+    spill.join(',') || `数字 ${fmtRect(rows[0].achNumRect)} 盒 ${fmtRect(boxOf(rows[0], 'achbox'))}`
+      + ` 徽章左 ${rows[0].badgeRow?.left}`);
+  check('DX 分数在卡片右下角、右端贴到边框内右沿（与底带同高的那块白牌）',
+    rows.every((row) => {
+      const dx = boxOf(row, 'dxbox');
+      const box = boxOf(row, 'achbox');
+      return rectNear(dx, CARD.dxbox)
+        && near(dx.left + dx.w, CARD.frame.left + CARD.frame.w - 1.8)
+        && dx.top >= box.top + box.h - 2 && dx.left >= box.left + box.w;
+    }),
+    fmtRect(boxOf(rows[0], 'dxbox')));
+  check('限时写进底带左侧（原版那条浅色带，右端才是 DX 分数白牌）',
+    rows.every((row) => {
+      const band = boxOf(row, 'band');
+      const limit = boxOf(row, 'limit');
+      const dx = boxOf(row, 'dxbox');
+      return rectNear(band, CARD.band) && rectIn(limit, band, 0) && near(limit.left, band.left)
+        && limit.left + limit.w <= dx.left + 1;
+    }),
+    `带 ${fmtRect(boxOf(rows[0], 'band'))} · 限时 ${fmtRect(boxOf(rows[0], 'limit'))}`);
+  check('评级徽章放进右上那块紫场（白盒右边 · 歌名条下边 · 白牌上边）',
+    rows.every((row) => {
+      if (!row.badgeRow) return true;   // 超时／未开始那一屏用文字判定，没有徽章
+      const box = boxOf(row, 'achbox');
+      const dx = boxOf(row, 'dxbox');
+      return rectNear(row.badgeRow, CARD.badge)
+        && row.badgeRow.left >= box.left + box.w
+        && row.badgeRow.top >= row.titlebar.top + row.titlebar.h
+        && row.badgeRow.top + row.badgeRow.h <= dx.top;
+    }),
+    fmtRect(rows[0].badgeRow));
   check('标题条写题目名，不是「段位認定第 N 道」',
     rows.every((row, i) => row.name && row.name === seeded[i]?.title && !/段位認定第/.test(row.name)),
     rows.map((row) => row.name).join(' | '));
-  check('评级徽章是游戏内那套单级素材且放到 132×52（不再拿「A～AAA」区间图充数）',
-    rows.every((row) => row.badge === 'gam-rank-sssp.png' && Math.abs(row.badgeRect.w - BADGE.w) <= 2
-      && Math.abs(row.badgeRect.h - BADGE.h) <= 2),
+  check('评级徽章是游戏内那套单级素材且按原版比例放到 99×40（不再拿「A～AAA」区间图充数）',
+    rows.every((row) => row.badge === 'gam-rank-sssp.png' && Math.abs(row.badgeRect.w - CARD.badge.w) <= 2
+      && Math.abs(row.badgeRect.h - CARD.badge.h) <= 2),
     `${rows[0]?.badge} ${rows[0]?.badgeRect?.w}×${rows[0]?.badgeRect?.h}`);
   check('四道达成率都上了官方金色图集',
     rows.every((row) => /num-score-gold/.test(row.achFont?.atlas ?? '')), rows.map((row) => row.achFont?.atlas).join(' | '));
