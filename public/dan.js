@@ -703,13 +703,13 @@ const PERCENT_ART = { gold: 'score-per-gold.png', blue: 'score-per-blue.png', re
 
 /**
  * 达成率取哪一档颜色 —— 原作就是按分数换 `UI_NUM_Score_0001111_*` 那一套。
- * 官方那套只有三色（Base 是空图集，「%」字形也只有三张），所以档位就是三档，
- * 边界取原作评级：100% 以上（SSS/SSS+）金、97% 以上（S～SS+）蓝、再低红。
+ * 三档的界限（2026-10-10 用户给的官方口径）：**97% 以上金、80% 以上红、再低蓝**。
+ * 注意低分段是**蓝**、不是红 —— 别按「高金/中蓝/低红」的直觉写。
  */
 function scoreTone(achievement) {
-  if (achievement >= 100) return 'gold';
-  if (achievement >= 97) return 'blue';
-  return 'red';
+  if (achievement >= 97) return 'gold';
+  if (achievement >= 80) return 'red';
+  return 'blue';
 }
 
 /** 达成率数字 + 官方「%」字形。 */
@@ -794,6 +794,9 @@ function numText(text, fontKey, height, color, opts = {}) {
     // （那一格墨迹底线在格高里的比例）把它压下去 —— 字体自己的字形，只是摆到该在的位置。
     const dy = ch === '.' && font.dotBaseline ? (font.baseline - font.dotBaseline) * height : 0;
     const pos = `${-sx * scale}px ${-sy * scale + dy}px`;
+    // 背景图整块往下挪，会把**上一格**的下半截带进这一格里（用户看到的就是这个）。
+    // 只给被压过的小数点那一格加裁剪 —— 其余格子不动，免得把描边层裁掉。
+    if (dy) cell.style.overflow = 'hidden';
     cell.style.width = `${font.cell[0] * scale}px`;
     if (font.outline && opts.outline !== false) {
       const outline = el('b', 'dan-num-outline');

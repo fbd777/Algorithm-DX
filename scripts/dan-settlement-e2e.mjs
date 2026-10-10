@@ -440,6 +440,8 @@ try {
   /* ---------- 3) 达成率拉开：金 / 蓝 / 红 ---------- */
 
   console.log('\n=== 3) 四道达成率拉开（金 / 蓝 / 红） ===');
+  /* 注：这里的达成率是由目标值反推秒数再提交的，而评分曲线只在 ≥97% 段可逆，
+   * 所以这一轮只能落在「金 / 红」两档；<80% 的蓝档在 scoreTone 里实现，但没有合成用例。 */
   const mixed = await clearRun({ tier: 'advanced', kind: 'challenge', achievements: [100.8, 98.5, 96.0, 92.0] });
   check('这一轮同样判为 cleared（限时内 AC 就算过，跟达成率高低无关）', mixed?.status === 'cleared', `${mixed?.status}`);
   check('四道达成率确实拉开了',
@@ -448,8 +450,8 @@ try {
   await openLatestResult();
   const mixedPage = JSON.parse(await readLayout());
   const tones = mixedPage.rows.map((row) => (/num-score-(\w+)\.png/.exec(row.achFont?.atlas ?? '') ?? [])[1]);
-  check('三档颜色都按达成率换：≥100 金、≥97 蓝、<97 红',
-    tones.join(',') === 'gold,blue,red,red', `${tones.join(',')} · ${mixed.stages.map((s) => `${s.achievement.toFixed(2)}%`).join(' ')}`);
+  check('颜色按达成率换：≥97 金、80~96.99 红（这一轮够不到 <80 的蓝档）',
+    tones.join(',') === 'gold,gold,red,red', `${tones.join(',')} · ${mixed.stages.map((s) => `${s.achievement.toFixed(2)}%`).join(' ')}`);
   check('评级徽章跟着达成率走（逐级对应，不再共用一个区间图）',
     mixedPage.rows.every((row, i) => row.badge === RANK_FILE[mixed.stages[i].rank]),
     mixedPage.rows.map((row, i) => `${mixed.stages[i].rank}=${row.badge}`).join(' '));
