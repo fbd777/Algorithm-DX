@@ -228,14 +228,15 @@
 .dan-track[data-outcome="pending"] .dan-track-stamp { opacity: .22; filter: grayscale(1); }
 .dan-track-plate { position: absolute; inset: 0; background: url('/assets/maimai/track-plate.png') 0 0 / 100% 100% no-repeat; }
 
-/* 乐曲边框：主色场（背景渐变）+ 外圈浅色环（inset 阴影）+ 底部浅色带（背景最上面那一层）。
- * 环与带都画在背景层里，所以边框**不是**真 border —— 真 border 会把子元素坐标系推进 8px。 */
+/* 乐曲边框：**单色**主色场（原版那张底板就是一块平色）+ 外圈浅色环 + 底部浅色带。
+ * 环与带都画在背景层里，所以边框**不是**真 border —— 真 border 会把子元素坐标系推进 8px。
+ * 原来主色场是 `--tc1 → --tc2` 的上下渐变，一屏四张卡就是四块深浅不一的色块，改成平色。 */
 .dan-track-frame {
   position: absolute; left: 11px; top: 11px; width: 554px; height: 110px; border-radius: 16px;
   box-shadow: inset 0 0 0 8px #ffffff7a;
   background:
     linear-gradient(#ffffff5e, #ffffff5e) left bottom / 100% 24px no-repeat,
-    linear-gradient(180deg, var(--tc1, #8b6cf0) 0 66%, var(--tc2, #4a2fb0) 66% 100%);
+    var(--tc1, #8b6cf0);
 }
 /* 边框里的组件用**边框内坐标**（= 行内坐标 − 11，因为边框自己在行内 (11,11)）。 */
 /* 深蓝标题条（官方烘在边框里的那一条）+ 官方那圈浅色描边，题目名写在里面。
@@ -250,19 +251,19 @@
   color: #fff; background: #0d2a63; border-radius: 4px; box-shadow: 0 1px 3px #00000047;
 }
 /* 官方的曲绘槽（JacketImage_S）：我们抽的是 CF 题、没有曲绘 —— 槽里放题号本身
- * （`1554C` 这种「题号 + 小问」的写法）与这题在 CF 上的 rating。原来那一版往里塞了
- * 档位色渐变 + 斜条纹，一屏四张卡就是四块看不懂的色块，现在就是一块白牌。
- * 左上角跟着边框的圆角（方角会戳到边框圆角外面去）。 */
+ * （`1554C` 这种「题号 + 小问」的写法）与这题在 CF 上的 rating。
+ * 底色是**卡片主色的浅色版本**（原版那格是曲绘，换成白牌会像挖了个洞）。 */
 .dan-track-jacket {
   position: absolute; left: 11px; top: 11px; width: 104px; height: 72px;
   border-radius: 16px 4px 4px 4px; display: flex; flex-direction: column;
-  justify-content: center; align-items: center; gap: 4px; padding-bottom: 2px;
-  background: #fff; box-shadow: inset 0 0 0 2px #ffffff3d, 0 2px 6px #0000002e;
+  justify-content: center; align-items: center; gap: 2px;
+  background: color-mix(in srgb, var(--tc1, #8b6cf0) 42%, #ffffff);
+  box-shadow: inset 0 0 0 2px #ffffff4d, 0 2px 6px #00000024;
 }
 .dan-track-jacket b {
-  font-family: var(--mono); font-size: 1rem; font-weight: 900; line-height: 1; color: #0d2a63;
+  font-family: var(--mono); font-size: 1.3rem; font-weight: 900; line-height: 1; color: #17265c;
 }
-.dan-track-jacket small { font-family: var(--mono); font-size: .68rem; font-weight: 700; color: #5a6a8c; }
+.dan-track-jacket small { font-family: var(--mono); font-size: .85rem; font-weight: 700; color: #3d4a75; }
 /* 单题 DX 分数（= 该题算出的 rating）。跟着题目放左边，与右边的限时白牌左右配平；
  * 圆角方向照官方那块牌（平的一头贴边框，圆的一头朝里）。
  * `align-items: baseline`：小字标签与数字按**同一条基线**排（数字那一侧由 numText 的
@@ -364,7 +365,7 @@
  * 所以文字靠上排（顶到 y 816），不跟着整块矩形居中。 */
 .dan-dxscore-row {
   position: absolute; left: 608px; top: 810px; width: 360px; height: 80px;
-  display: flex; align-items: baseline; justify-content: space-between; padding: 6px 46px 0;
+  display: flex; align-items: baseline; justify-content: space-between; padding: 0 46px 0;
 }
 .dan-dxscore-label { font-size: 30px; font-weight: 800; letter-spacing: .06em; color: #16306b; }
 .dan-dxscore-num { display: flex; align-items: center; }

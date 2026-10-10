@@ -665,8 +665,9 @@ const SCORE_INDEX = {
   '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
   '+': 10, '/': 11, '%': 12, '.': 13,
 };
-/** 白字族借用的小数点（分数族 `[13]`，见 NUM_FONTS 的说明）。 */
-const DECIMAL_GLYPH = { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], index: 13 };
+/** 白字族借用的小数点（分数族 `[13]`，见 NUM_FONTS 的说明）。
+ *  `baseline` 是这一格的墨迹底线（`y 41..81` / 98），借来的字形按它对齐到本族的基线上。 */
+const DECIMAL_GLYPH = { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], index: 13, baseline: 0.827 };
 /**
  * 图集每格留了空白边（90p 那格 89px 宽、字形只有 63px），照格宽排字会读起来「一个字一个字
  * 分开」。官方是等距密排（字与字几乎贴上），所以每格按 `advance` 收回去一点，见 numText。
@@ -776,8 +777,9 @@ function numText(text, fontKey, height, color, opts = {}) {
     const cell = el('i', 'dan-num-char');
     cell.style.height = `${height}px`;
     if (index === chars.length - 1) cell.classList.add('dan-num-last');
-    // 本族没有这一格时借一个（目前只有小数点：白字族那格是中黑点，借分数族的句点）。
-    const borrowed = font.chars[ch] === undefined && ch === '.' && font.decimal;
+    // 白字族那格是中黑点（不是句点），所以小数点一律用借来的字形 —— 不是「本族缺字才借」，
+    // 是「本族这一格画得不对」，所以这里覆盖掉 `chars` 里的映射。
+    const borrowed = ch === '.' && font.decimal;
     const glyph = borrowed ? font.decimal : font;
     const idx = borrowed ? glyph.index : font.chars[ch];
     if (idx === undefined) {
@@ -787,12 +789,14 @@ function numText(text, fontKey, height, color, opts = {}) {
       wrap.append(cell);
       return;
     }
-    // 借来的字形按**自己**的格子高定比例（保持形状比例），再在本族格子里横向居中。
+    // 借来的字形按**自己**的格子高定比例（保持形状比例），再在本族格子里横向居中、
+    // 纵向把它的墨迹底线压到本族的基线上（官方那句点的底边就是压在数字基线上的）。
     const gs = height / glyph.cell[1];
     const sx = (idx % NUM_COLS) * glyph.cell[0];
     const sy = Math.floor(idx / NUM_COLS) * glyph.cell[1];
     const size = `${glyph.atlas[0] * gs}px ${glyph.atlas[1] * gs}px`;
-    const pos = `${-sx * gs + (font.cell[0] * scale - glyph.cell[0] * gs) / 2}px ${-sy * gs}px`;
+    const dy = borrowed ? (font.baseline - glyph.baseline) * height : 0;
+    const pos = `${-sx * gs + (font.cell[0] * scale - glyph.cell[0] * gs) / 2}px ${-sy * gs + dy}px`;
     cell.style.width = `${font.cell[0] * scale}px`;
     if (glyph.outline && opts.outline !== false) {
       const outline = el('b', 'dan-num-outline');
