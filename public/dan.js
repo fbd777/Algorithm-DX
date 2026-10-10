@@ -670,15 +670,18 @@ const SCORE_INDEX = {
  * 分开」。官方是等距密排（字与字几乎贴上），所以每格按 `advance` 收回去一点，见 numText。
  */
 const NUM_FONTS = {
-  n26: { fill: 'num-26p', outline: 'num-26p-outline', atlas: [136, 160], cell: [34, 40], advance: 24, chars: NUM_INDEX },
-  n90: { fill: 'num-90p', outline: 'num-90p-outline', atlas: [356, 420], cell: [89, 105], advance: 67, chars: NUM_INDEX },
+  // `ink` 是那几格**窄字形**的墨迹（左空 + 墨宽 + 步进），单位是图集像素 —— 图集按格宽排字
+  // 会把小数点两侧各空出 20/74 格，看着就是「403 ・ 1998」中间断了一截。
+  // `baseline` 是数字墨迹底线在格高里的比例，画小数点方块时按它贴底。
+  n26: { fill: 'num-26p', outline: 'num-26p-outline', atlas: [136, 160], cell: [34, 40], advance: 24, baseline: 0.825, dot: 'drawn', chars: NUM_INDEX, ink: { '.': [14, 8, 16] } },
+  n90: { fill: 'num-90p', outline: 'num-90p-outline', atlas: [356, 420], cell: [89, 105], advance: 67, baseline: 0.886, dot: 'drawn', chars: NUM_INDEX, ink: { '.': [32, 24, 32] } },
   // 分数数字是**三套**同布局不同颜色的图集（自带颜色，不再叠描边层）：
 // blue / gold / red，按达成率高低换。官方还有一张 `UI_NUM_Score_0001111_Base`，
 // 但那是一张**空图集**（整张几乎全透明，量下来 16 格一个字形都没有），不能用；
 // 「%」字形也正好只有蓝/金/红三张 —— 所以官方的档位就是三档，不是四档。
-'score-blue': { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, chars: SCORE_INDEX },
-  'score-gold': { fill: 'num-score-gold', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, chars: SCORE_INDEX },
-  'score-red': { fill: 'num-score-red', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, chars: SCORE_INDEX },
+'score-blue': { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.836, dot: 'atlas', chars: SCORE_INDEX, ink: { '.': [21, 33, 36] } },
+  'score-gold': { fill: 'num-score-gold', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.836, dot: 'atlas', chars: SCORE_INDEX, ink: { '.': [21, 33, 36] } },
+  'score-red': { fill: 'num-score-red', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.836, dot: 'atlas', chars: SCORE_INDEX, ink: { '.': [21, 33, 36] } },
 };
 const NUM_COLS = 4;
 /** 达成率末尾那个大「%」字形：官方按分数分色，蓝/金/红三张。 */
@@ -706,7 +709,11 @@ function achievementNumber(achievement, height) {
   const percent = el('img', 'dan-per');
   percent.src = `/assets/maimai/${art}`;
   percent.alt = '';
-  percent.style.height = `${Math.round(height * 0.95)}px`;
+  // 官方那个「%」跟数字差不多高，而且**贴着**最后一个数字。`score-per-*` 是 80×80 的方图、
+  // 四周留白（墨迹 x 8..70 / y 10..69），直排会在数字和 % 之间多出一截空隙，所以放大一点
+  // 再把左边那圈留白用负边距抵掉。
+  percent.style.height = `${Math.round(height * 1.1)}px`;
+  percent.style.marginLeft = `${-Math.round(height * 0.16)}px`;
   wrap.append(percent);
   return wrap;
 }
@@ -737,15 +744,27 @@ function numText(text, fontKey, height, color, opts = {}) {
   wrap.setAttribute('aria-label', text);
   wrap.style.height = `${height}px`;
   const chars = [...text];
-  if (opts.trim !== false) {
-    // 每格右边收回 (格宽 − 步进)：官方数字是密排的，留白会把一串数字读散。
-    // 注意是**负**边距 —— 这里给的是「要收回多少」，CSS 里带负号用。
-    wrap.style.setProperty('--dan-num-trim', `${(font.cell[0] - (font.advance ?? font.cell[0])) * scale}px`);
-  }
   chars.forEach((ch, index) => {
     const cell = el('i', 'dan-num-char');
     cell.style.height = `${height}px`;
     if (index === chars.length - 1) cell.classList.add('dan-num-last');
+    // 白字族图集里的小数点是个**居中的方块**（26p 那张只有 8×8、y 18..25，正在字高中间），
+    // 小字号下读起来像断字符。这两个字号自己画一个贴底的方块当小数点。
+    if (ch === '.' && font.dot === 'drawn') {
+      const dot = Math.max(3, Math.round(height * 0.19));
+      const step = Math.round(height * 0.3);
+      cell.classList.add('dan-num-dot');
+      cell.style.width = `${dot}px`;
+      cell.style.setProperty('--dan-num-trim', `${dot - step}px`);
+      const ink = el('b', 'dan-num-dotink');
+      ink.style.width = `${dot}px`;
+      ink.style.height = `${dot}px`;
+      ink.style.background = color ?? NUM_OUTLINE_COLOR;
+      ink.style.marginBottom = `${Math.round(height * (1 - font.baseline))}px`;
+      cell.append(ink);
+      wrap.append(cell);
+      return;
+    }
     const idx = font.chars[ch];
     if (idx === undefined) {
       cell.textContent = ch;
@@ -754,11 +773,22 @@ function numText(text, fontKey, height, color, opts = {}) {
       wrap.append(cell);
       return;
     }
+    // 窄字形（小数点、逗号）按**墨迹**裁格：格宽取墨宽、背景左移掉左空，步进另给一个小的，
+    // 不然格子里那 20px 空白会整个变成字距。其余字形保持格宽，字距只按 advance 收。
+    const box = font.ink?.[ch];
+    const inkLeft = box ? box[0] : 0;
+    const inkWidth = box ? box[1] : font.cell[0];
+    const advance = box ? box[2] : (font.advance ?? font.cell[0]);
     const sx = (idx % NUM_COLS) * font.cell[0];
     const sy = Math.floor(idx / NUM_COLS) * font.cell[1];
     const size = `${font.atlas[0] * scale}px ${font.atlas[1] * scale}px`;
-    const pos = `${-sx * scale}px ${-sy * scale}px`;
-    cell.style.width = `${font.cell[0] * scale}px`;
+    const pos = `${-(sx + inkLeft) * scale}px ${-sy * scale}px`;
+    cell.style.width = `${inkWidth * scale}px`;
+    if (opts.trim !== false) {
+      // 每格右边收回 (格宽 − 步进)：官方数字是密排的，留白会把一串数字读散。
+      // 注意是**负**边距 —— 这里给的是「要收回多少」，CSS 里带负号用。
+      cell.style.setProperty('--dan-num-trim', `${(inkWidth - advance) * scale}px`);
+    }
     if (font.outline && opts.outline !== false) {
       const outline = el('b', 'dan-num-outline');
       const url = `url(/assets/maimai/${font.outline}.png)`;

@@ -196,6 +196,9 @@
  * 最后一格不收回，免得数字尾巴多出一段空白。 */
 .dan-num-char { position: relative; display: block; flex: none; margin-right: calc(-1 * var(--dan-num-trim, 0px)); }
 .dan-num-char.dan-num-last { margin-right: 0; }
+/* 白字族的小数点：自画的贴底方块（图集那张居中方块在小字号下像断字符）。 */
+.dan-num-dot { display: flex; align-items: flex-end; justify-content: center; }
+.dan-num-dotink { display: block; border-radius: 1px; }
 .dan-num-char > b { position: absolute; inset: 0; display: block; background-repeat: no-repeat; }
 .dan-num-plain { display: grid; place-items: center; color: #4a3a2a; font-family: var(--mono); font-weight: 900; line-height: 1; }
 
@@ -286,16 +289,17 @@
   font-size: .68rem; line-height: 18px; color: #fff;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 达成率白框：官方那一格是 `UI_AchivementCounter`，白底圆角，小字在框内左上。 */
+/* 达成率白框：官方那一格是 `UI_AchivementCounter`，白底圆角，小字在框内左上。
+ * 宽度收窄到 300：右边那一列是评级徽章，框再宽就会被 SSS+ 压住一角。 */
 .dan-track-achbox {
-  position: absolute; left: 111px; top: 27px; width: 328px; height: 59px;
+  position: absolute; left: 111px; top: 27px; width: 300px; height: 59px;
   border-radius: 9px 9px 9px 4px; background: #fff;
 }
 .dan-track-achlabel {
   position: absolute; left: 8px; top: 3px; font-size: .56rem; font-weight: 900; letter-spacing: .08em; color: #0d2a63;
 }
 /* 官方那一格数字是**贴着白框左边**排的（不是右对齐），而且几乎顶满框高。 */
-.dan-track-achvalue { position: absolute; left: 10px; top: 14px; width: 318px; height: 45px; display: flex; align-items: center; justify-content: flex-start; gap: 2px; }
+.dan-track-achvalue { position: absolute; left: 10px; top: 14px; width: 290px; height: 45px; display: flex; align-items: center; justify-content: flex-start; }
 .dan-per { display: block; }
 /* 右边一列两件：评级徽章（官方 `UI_GAM_Rank_*`，游戏内那套单级全套）与限时白牌。
  * 徽章源图是紧裁的（SSS+ 110×44、D 38×42），给 132×52 的框按高度贴齐 —— 比原来
@@ -354,20 +358,23 @@
 /* 总达成率：标签写进底图预留的白格，大数字落在下面的色带上，右端对齐 x 945
  * （与下面那条 DX 分数白牌的右端同一条边）。 */
 .dan-total-row { position: absolute; inset: 0; }
+/* 「总达成率」四个字写在白格**偏左**的位置（官方那四个字不在白格正中），字号也压到 26。
+ * 底图这块白实测是 x 503..708（右边那截 753..856 被折页斜边切开），所以按 503..708 居中。 */
 .dan-total-label {
   position: absolute; left: 503px; top: 663px; width: 354px; height: 52px;
-  display: grid; place-items: center;
-  font-size: 30px; font-weight: 800; letter-spacing: .1em; color: #16306b;
+  display: grid; place-items: center; padding-right: 140px;
+  font-size: 26px; font-weight: 800; letter-spacing: .1em; color: #16306b;
 }
 .dan-total-num {
-  position: absolute; left: 490px; top: 719px; width: 455px; height: 60px;
-  display: flex; align-items: center; justify-content: flex-end; gap: 2px;
+  position: absolute; left: 490px; top: 727px; width: 460px; height: 66px;
+  display: flex; align-items: center; justify-content: flex-end;
 }
 /* DX 分数：官方这条白牌就是底图预留的 (608,810) 360×80，标签在左、数字在右，
- * 都是深蓝（和每题那张卡上的 DX 分数同一个色）。 */
+ * 都是深蓝（和每题那张卡上的 DX 分数同一个色）。白牌下半截被折页斜切掉一块，
+ * 所以文字靠上排（顶到 y 816），不跟着整块矩形居中。 */
 .dan-dxscore-row {
   position: absolute; left: 608px; top: 810px; width: 360px; height: 80px;
-  display: flex; align-items: center; justify-content: space-between; padding: 0 46px;
+  display: flex; align-items: flex-start; justify-content: space-between; padding: 6px 46px 0;
 }
 .dan-dxscore-label { font-size: 30px; font-weight: 800; letter-spacing: .06em; color: #16306b; }
 .dan-dxscore-num { display: flex; align-items: center; }

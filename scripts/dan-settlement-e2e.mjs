@@ -35,7 +35,7 @@ const PLATE = { left: 74, top: 672, w: 240, h: 230 };   // 左下段位名牌
 const LIFE = { left: 334, top: 690, w: 200, h: 200 };
 const TOTAL_LABEL = { left: 503, top: 663, w: 354, h: 52 };   // 底图预留的白格
 const DX_ROW = { left: 608, top: 810, w: 360, h: 80 };        // 底图预留的白牌
-const RIGHT_EDGE = 945;                                      // 大数字 / DX 数字的右端
+const RIGHT_EDGE = 950;                                      // 大数字的右端（与 DX 白牌右端同一条边）
 const BADGE = { w: 132, h: 52 };
 /** 等级 → 素材：官方 `UI_GAM_Rank_*`（游戏内那套单级全套）。 */
 const RANK_FILE = {
@@ -326,6 +326,25 @@ try {
   check('行内组件都待在底板里', outOfRow.length === 0, outOfRow.join(','));
   check('难度名牌只写名字一行（不再摆 CF 分与分数分组）',
     rows.every((row) => row.diff === '上级' && row.diffLines === 1), rows.map((row) => `${row.diff}/${row.diffLines}`).join(' '));
+  // 达成率数字必须待在白框里，而且白框不能碰到右边的评级徽章（原来白框 328 宽、徽章在 436，
+  // 框尾压在徽章下面，看着像徽章占了分数格）。
+  const boxOf = (row, key) => (row.boxes.find(([name]) => name === key) ?? [])[1];
+  const spill = rows.map((row) => {
+    const box = boxOf(row, 'achbox');
+    if (!box) return 'no-box';
+    // 行内格子是行坐标，徽章是底图坐标 —— 比之前先换算到同一边。
+    // 数字宽度取里面那串 `.dan-num` 的实际宽度，而不是外面那个定宽容器。
+    const boxRight = row.rect.left + box.left + box.w;
+    const textRight = row.rect.left + box.left + (row.achFont?.width ?? 0);
+    if (textRight > boxRight + 1) return `数字出框 ${Math.round(textRight - boxRight)}px`;
+    if (boxRight + 10 > row.badgeRect.left) return `白框碰徽章 ${Math.round(boxRight + 10 - row.badgeRect.left)}px`;
+    return '';
+  }).filter(Boolean);
+  check('达成率数字不溢出白框、白框与评级徽章留 10px 以上空隙',
+    spill.length === 0,
+    spill.join(',') || `数字宽 ${rows[0].achFont.width} 框宽 ${boxOf(rows[0], 'achbox').w}`
+      + ` 框尾 ${Math.round(rows[0].rect.left + boxOf(rows[0], 'achbox').left + boxOf(rows[0], 'achbox').w)}`
+      + ` / 徽章左 ${rows[0]?.badgeRect?.left}`);
   check('标题条写题目名，不是「段位認定第 N 道」',
     rows.every((row, i) => row.name && row.name === seeded[i]?.title && !/段位認定第/.test(row.name)),
     rows.map((row) => row.name).join(' | '));
@@ -359,7 +378,7 @@ try {
     Math.abs(Number(String(page.total.num).replace('%', '')) - expectAch) < 0.01 && /%$/.test(page.total.num ?? ''),
     `${page.total.num} vs ${expectAch.toFixed(4)}%`);
   const totalRight = page.total.rect.left + page.total.rect.w;
-  check('大数字落在色带上、右端对齐 x 945',
+  check('大数字落在色带上、右端对齐 x 950',
     Math.abs(totalRight - RIGHT_EDGE) <= 6 && page.total.rect.top >= 700 && page.total.rect.top + page.total.rect.h <= DX_ROW.top,
     `右 ${totalRight} · y ${page.total.rect.top}..${page.total.rect.top + page.total.rect.h}`);
   const glyphs = String(page.total.num).length + 1;
@@ -389,11 +408,13 @@ try {
     return JSON.stringify({ x: b.left + window.scrollX, y: b.top + window.scrollY });
   })()`));
   const row0 = rows[0];
-  // 行内那些小图是**行内相对坐标**，抠图要加上第 1 行在底图上的原点，否则会拍错地方。
+  // 行内那些小图是**行内相对坐标**，抠图要加上第 1 行在底图上的原点，否则会拍错地方；
+  // 印与徽章本来就是底图坐标（readLayout 里用 rel(art) 量的），不能再加一次。
   const inRow = (rel) => (rel ? { left: rel.left + row0.rect.left, top: rel.top + row0.rect.top, w: rel.w, h: rel.h } : null);
   const rectOf = (key) => inRow((row0.boxes.find(([name]) => name === key) ?? [])[1]);
   const clipTargets = {
-    ach: rectOf('achvalue'), score: rectOf('dxnum'), stamp: inRow(row0.stamp), badge: inRow(row0.badgeRect),
+    ach: rectOf('achvalue'), achbox: rectOf('achbox'), score: rectOf('dxnum'),
+    stamp: row0.stamp, badge: row0.badgeRect,
     total: page.total.rect, dxtotal: page.dx.rect, life: page.life.rect,
   };
   const rectsOut = {};
