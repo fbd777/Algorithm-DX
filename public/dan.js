@@ -1,4 +1,4 @@
-import { startAutoSync } from './auto-sync.js';
+﻿import { startAutoSync } from './auto-sync.js';
 import { cfRatingColor } from './cf-rating-colors.js';
 
 /*
@@ -694,9 +694,9 @@ const NUM_FONTS = {
 // blue / gold / red，按达成率高低换。官方还有一张 `UI_NUM_Score_0001111_Base`，
 // 但那是一张**空图集**（整张几乎全透明，量下来 16 格一个字形都没有），不能用；
 // 「%」字形也正好只有蓝/金/红三张 —— 所以官方的档位就是三档，不是四档。
-'score-blue': { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, chars: SCORE_INDEX },
-  'score-gold': { fill: 'num-score-gold', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, chars: SCORE_INDEX },
-  'score-red': { fill: 'num-score-red', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, chars: SCORE_INDEX },
+'score-blue': { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, dotBaseline: 0.827, chars: SCORE_INDEX },
+  'score-gold': { fill: 'num-score-gold', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, dotBaseline: 0.827, chars: SCORE_INDEX },
+  'score-red': { fill: 'num-score-red', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, dotBaseline: 0.827, chars: SCORE_INDEX },
 };
 const NUM_COLS = 4;
 /** 达成率末尾那个大「%」字形：官方按分数分色，蓝/金/红三张。 */
@@ -793,11 +793,14 @@ function numText(text, fontKey, height, color, opts = {}) {
     // 小数点那一格画在字高中线上（26p 只有 8×8、90p 24×24），照原样排出来就是浮在数字中间
     // 的一粒，像断字符。官方那只方块是**底边压在数字基线上**的，所以按 `dotBaseline`
     // （那一格墨迹底线在格高里的比例）把它压下去 —— 字体自己的字形，只是摆到该在的位置。
+    //
+    // 注意：**不能**用挪 `background-position` 的办法下压 —— 图集是整张背景，往下挪 dy 就会把
+    // 上一格（同一列、上一行）的下半截露在这一格里（用户提过两次的那个 bug）。裁剪也救不了，
+    // 因为承载背景的那个 `b` 就是格子本身、并没有溢出。改成把**整格**往下挪：图集位置不动，
+    // 字形还是它自己那一格，只是这一格整体下沉 dy。
     const dy = ch === '.' && font.dotBaseline ? (font.baseline - font.dotBaseline) * height : 0;
-    const pos = `${-sx * scale}px ${-sy * scale + dy}px`;
-    // 背景图整块往下挪，会把**上一格**的下半截带进这一格里（用户看到的就是这个）。
-    // 只给被压过的小数点那一格加裁剪 —— 其余格子不动，免得把描边层裁掉。
-    if (dy) cell.style.overflow = 'hidden';
+    if (dy) cell.style.top = `${dy}px`;
+    const pos = `${-sx * scale}px ${-sy * scale}px`;
     cell.style.width = `${font.cell[0] * scale}px`;
     if (font.outline && opts.outline !== false) {
       const outline = el('b', 'dan-num-outline');
