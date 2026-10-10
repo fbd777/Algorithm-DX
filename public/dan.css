@@ -196,7 +196,9 @@
  * 最后一格不收回，免得数字尾巴多出一段空白。 */
 .dan-num-char { position: relative; display: block; flex: none; margin-right: calc(-1 * var(--dan-num-trim, 0px)); }
 .dan-num-char.dan-num-last { margin-right: 0; }
-/* 白字族的小数点：自画的贴底方块（图集那张居中方块在小字号下像断字符）。 */
+/* 白字族的小数点：自画的贴底方块（图集那张居中方块在小字号下像断字符）。
+ * 注意方块得用 `<span>`：`.dan-num-char > b` 那两个填充/描边层是 `position: absolute;
+ * inset: 0`，方块若也是 `<b>` 会被那条规则顶到格子上边 —— 看起来就是「小数点起飞」。 */
 .dan-num-dot { display: flex; align-items: flex-end; justify-content: center; }
 .dan-num-dotink { display: block; border-radius: 1px; }
 .dan-num-char > b { position: absolute; inset: 0; display: block; background-repeat: no-repeat; }
@@ -362,7 +364,7 @@
  * 底图这块白实测是 x 503..708（右边那截 753..856 被折页斜边切开），所以按 503..708 居中。 */
 .dan-total-label {
   position: absolute; left: 503px; top: 663px; width: 354px; height: 52px;
-  display: grid; place-items: center; padding-right: 140px;
+  display: grid; place-items: center; padding-right: 140px; padding-bottom: 12px;
   font-size: 26px; font-weight: 800; letter-spacing: .1em; color: #16306b;
 }
 .dan-total-num {
@@ -376,7 +378,12 @@
   position: absolute; left: 608px; top: 810px; width: 360px; height: 80px;
   display: flex; align-items: flex-start; justify-content: space-between; padding: 6px 46px 0;
 }
-.dan-dxscore-label { font-size: 30px; font-weight: 800; letter-spacing: .06em; color: #16306b; }
+.dan-dxscore-label {
+  font-size: 30px; font-weight: 800; letter-spacing: .06em; color: #16306b;
+  /* 和右边的分数数字对齐：数字墨迹底（含烘焙投影）在 y 842，CJK 字这一侧基线落在 853，
+   * 差 11px —— 把标签往上顶 11px，两边底线就压在同一条线上。 */
+  margin-top: -11px;
+}
 .dan-dxscore-num { display: flex; align-items: center; }
 
 /* 说明与按钮在成品屏之外（深色底上），不往那张纸上塞东西。 */

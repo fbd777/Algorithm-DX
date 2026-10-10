@@ -756,7 +756,7 @@ function numText(text, fontKey, height, color, opts = {}) {
       cell.classList.add('dan-num-dot');
       cell.style.width = `${dot}px`;
       cell.style.setProperty('--dan-num-trim', `${dot - step}px`);
-      const ink = el('b', 'dan-num-dotink');
+      const ink = el('span', 'dan-num-dotink');
       ink.style.width = `${dot}px`;
       ink.style.height = `${dot}px`;
       ink.style.background = color ?? NUM_OUTLINE_COLOR;
