@@ -296,11 +296,11 @@
 }
 /* 达成率白盒：原版那一格是 `UI_AchivementCounter`，白底、**右下角一道大 R 弧**（连续到
  * 底带上，为右上那块紫场让位）。左上角烘着原版的 `ACHIEVEMENT` 小字，我们照位置写
- * 「達成率」。四角圆角在原版文件里量得 9 / 17 / 17 / 0，按同一条换算 ×0.9 ⇒ 8.1 / 15.3 /
- * 15.3 / 0（左下是直角：它和底带连成一整块）。 */
+ * 「達成率」。圆角按原版量到再 ×0.9：左上 8.1、右上 15.3，**下面两角都是直角** —— 白盒的
+ * 底边和下面那条底带连成一整块，中间不该出现圆角缺口（左下、右下都为 0）。 */
 .dan-track-achbox {
   position: absolute; left: 118.8px; top: 32.4px; width: 328.5px; height: 61.2px;
-  border-radius: 8.1px 15.3px 15.3px 0; background: #fff;
+  border-radius: 8.1px 15.3px 0 0; background: #fff;
 }
 .dan-track-achlabel {
   position: absolute; left: 10px; top: 4px; font-size: .6rem; font-weight: 900; letter-spacing: .08em; color: #0d2a63;

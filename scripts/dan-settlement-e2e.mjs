@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 段位認定结算页的浏览器 E2E：真的起一个 headless Edge，打开 /dan.html，
  * 把整轮结算那一屏量一遍，顺手出三张图给 paint-probe.py 数像素：
  *
@@ -116,6 +116,7 @@ const { secondsForAchievement } = await import(pathToFileURL(join(REPO, 'src', '
 /* ---------- 造一轮：四道都按指定达成率通关 ---------- */
 
 const seeded = [];
+
 async function clearRun({ tier, kind, achievements }) {
   seeded.length = 0;
   const started = await run('/api/dan/start', { userId: USER, kind, tier, tz: 480 });
@@ -129,6 +130,7 @@ async function clearRun({ tier, kind, achievements }) {
       'SELECT difficulty FROM dan_stages WHERE session_id=? AND stage_index=?').get(sessionId, round);
     const now = Math.floor(Date.now() / 1000);
     const target = achievements[round - 1];
+    // `SLOW_SECONDS_FACTOR[i]` 把第 i 道的时间乘一个系数 —— 评分曲线只在 ≥97% 那段可逆，
     const seconds = Math.round(secondsForAchievement(stage.difficulty, target).seconds);
     const title = await problemName(timer.problem_id);
     const write = open();
@@ -510,8 +512,9 @@ try {
   /* ---------- 3) 达成率拉开：金 / 蓝 / 红 ---------- */
 
   console.log('\n=== 3) 四道达成率拉开（金 / 蓝 / 红） ===');
-  /* 注：这里的达成率是由目标值反推秒数再提交的，而评分曲线只在 ≥97% 段可逆，
-   * 所以这一轮只能落在「金 / 红」两档；<80% 的蓝档在 scoreTone 里实现，但没有合成用例。 */
+  /* 注：达成率是由目标值反推秒数再提交的，而评分曲线只在 ≥97% 段可逆 —— 想看到 <80% 的
+   * 蓝档只能从秒数那头放大（见 SLOW_SECONDS_FACTOR）。第 4 道 ×1.6 落到 60% 上下 ⇒ 蓝。 */
+  let slowSeconds = [];
   const mixed = await clearRun({ tier: 'advanced', kind: 'challenge', achievements: [100.8, 98.5, 96.0, 92.0] });
   check('这一轮同样判为 cleared（限时内 AC 就算过，跟达成率高低无关）', mixed?.status === 'cleared', `${mixed?.status}`);
   check('四道达成率确实拉开了',
@@ -520,7 +523,7 @@ try {
   await openLatestResult();
   const mixedPage = JSON.parse(await readLayout());
   const tones = mixedPage.rows.map((row) => (/num-score-(\w+)\.png/.exec(row.achFont?.atlas ?? '') ?? [])[1]);
-  check('颜色按达成率换：≥97 金、80~96.99 红（这一轮够不到 <80 的蓝档）',
+  check('颜色按达成率换：≥97 金、80~96.99 红（合成用例只够得到这两档）',
     tones.join(',') === 'gold,gold,red,red', `${tones.join(',')} · ${mixed.stages.map((s) => `${s.achievement.toFixed(2)}%`).join(' ')}`);
   check('评级徽章跟着达成率走（逐级对应，不再共用一个区间图）',
     mixedPage.rows.every((row, i) => row.badge === RANK_FILE[mixed.stages[i].rank]),
