@@ -1,14 +1,15 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>随机抽题 · Algorithm DX</title><meta name="color-scheme" content="dark"><link rel="icon" href="/algorithm-dx-icon.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/dan.css"><link rel="stylesheet" href="/ui.css"><link rel="stylesheet" href="/dx-result.css">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>随机抽题 · Algorithm DX</title><meta name="color-scheme" content="light"><link rel="icon" href="/algorithm-dx-icon.svg"><link rel="stylesheet" href="/vendor/maimai/fonts.css"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/dan.css"><link rel="stylesheet" href="/ui.css"><link rel="stylesheet" href="/dx-result.css"><link rel="stylesheet" href="/theme.css">
 </head>
-<body>
+<body class="mm-theme">
+<iframe class="mm-bg-frame" src="/vendor/maimai/bg.html" title="" aria-hidden="true" tabindex="-1" scrolling="no"></iframe>
 <header class="topbar site-header">
   <a class="brand" href="/">
-    <img class="mark" src="/algorithm-dx-icon.svg" width="66" height="40" alt="" aria-hidden="true">
+    <img class="mark" src="/algorithm-dx-icon-light.svg" width="66" height="40" alt="" aria-hidden="true">
     <div class="brand-text"><h1>Algorithm DX</h1><p>记录练习，查看进步</p></div>
   </a>
-  <nav class="nav" aria-label="主导航">
+  <nav class="nav" id="mmNav" aria-label="主导航">
     <a class="btn btn-ghost" href="/">AC 记录</a>
     <a class="btn btn-ghost" href="/circle.html">题友圈</a>
     <a class="btn btn-ghost" href="/dx.html">DX Rating</a>
@@ -17,6 +18,9 @@
     <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
     <a class="btn btn-ghost" href="/help.html">使用指南</a>
   </nav>
+  <button class="mm-menu-btn" id="mmMenuBtn" type="button" aria-expanded="false" aria-controls="mmNav" aria-label="打开菜单">
+    <span></span><span></span>
+  </button>
 </header><main class="app dan-app">
 
 <section class="dan-hero">
@@ -75,4 +79,6 @@
 <p class="dan-disclaimer">口径：这是<strong>自测</strong>，不是防作弊。开始做题之后你照样可以查题解、问 AI —— 这一点拦不住，和「辅助解题」自报标签是同一条现实。它唯一能保证的是<strong>你没法挑题</strong>。<br>另外，抽到的题如果正好是你在 Codeforces 上已经提交过的（含只有 WA 的）、或者在你<strong>已归档账号</strong>上做过的、或者是你<strong>正在计时</strong>的那道，都会被自动排除。排除依据是本机已同步的记录，同步不完整时（比如刚 AC 还没同步）可能仍有漏网。</p>
 
 </main>
-<script type="module" src="/dan.js"></script></body></html>
+<script type="module" src="/dan.js"></script><a class="mm-top off" href="#" aria-label="回到顶部"><img src="/vendor/maimai/img/common/top.png" alt="TOP"></a>
+<script src="/theme.js" type="module"></script>
+</body></html>

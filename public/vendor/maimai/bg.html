@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>maimai DX · PRiSM PLUS 动态背景</title>
+<!--
+  这一页只做一件事：把官网（PRiSM PLUS 时期）的动态背景原样搬过来。
+
+  标记与样式都是归档快照里的原文：
+    · 结构 = https://web.archive.org/web/20250804084236/https://maimai.sega.com/ 里的 <div class="bg prism">
+    · 样式 = ./style.css（就是那份 CSS，没改过一个选择器/数值）
+  所以这里的渐变、图案叠加、曙光、云、月亮、七颗流星、彩虹、闪点，参数与官网完全一致。
+
+  用法：本站页面里 <iframe src="/vendor/maimai/bg.html">，铺满视口、pointer-events:none，
+  这样官方 CSS 里那些全局选择器（html/body/.wrapper…）不会碰到正文。
+-->
+<link rel="stylesheet" href="/vendor/maimai/style.css">
+<style>
+  /* lib.css（官网的重置表）只做了 margin/padding 归零，这里补上等价的三行 */
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+</style>
+</head>
+<body>
+<div class="bg prism">
+  <div class="bg--wrap">
+    <div class="bg--shine">
+      <div class="bg--shine__wrap">
+        <div class="bg--shine__item diamond-pink"></div>
+        <div class="bg--shine__item diamond-yellow"></div>
+        <div class="bg--shine__item diamond-white"></div>
+        <div class="bg--shine__item star-white"></div>
+        <div class="bg--shine__item star-yellow i1"></div>
+        <div class="bg--shine__item star-yellow i2"></div>
+      </div>
+    </div>
+    <div class="bg--gradient">
+      <div class="bg--aurora"></div>
+      <div class="bg--cloud">
+        <div class="bg--cloud__item i1"></div>
+        <div class="bg--cloud__item i2"></div>
+        <div class="bg--cloud__item i3"></div>
+        <div class="bg--cloud__item i4"></div>
+        <div class="bg--cloud__item i5"></div>
+        <div class="bg--cloud__item i6"></div>
+      </div>
+      <div class="bg--moon"></div>
+      <div class="bg--star">
+        <div class="bg--star__item i1 green"></div>
+        <div class="bg--star__item i2"></div>
+        <div class="bg--star__item i3 pink"></div>
+        <div class="bg--star__item i4 green"></div>
+        <div class="bg--star__item i5 pink"></div>
+        <div class="bg--star__item i6"></div>
+        <div class="bg--star__item i7"></div>
+      </div>
+      <div class="bg--rainbow">
+        <div class="bg--rainbow__cloud"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
