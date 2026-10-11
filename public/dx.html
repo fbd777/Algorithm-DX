@@ -4,19 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Algorithm DX · Rating 总览</title>
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light">
 <link rel="icon" type="image/svg+xml" href="/algorithm-dx-icon.svg">
-<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/vendor/maimai/fonts.css"><link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/ui.css">
-<link rel="stylesheet" href="/dx-result.css">
+<link rel="stylesheet" href="/dx-result.css"><link rel="stylesheet" href="/theme.css">
 </head>
-<body class="dx-page">
+<body class="dx-page mm-theme"><iframe class="mm-bg-frame" src="/vendor/maimai/bg.html" title="" aria-hidden="true" tabindex="-1" scrolling="no"></iframe>
+
 <header class="topbar site-header">
   <a class="brand" href="/">
-    <img class="mark" src="/algorithm-dx-icon.svg" width="66" height="40" alt="" aria-hidden="true">
+    <img class="mark" src="/algorithm-dx-icon-light.svg" width="66" height="40" alt="" aria-hidden="true">
     <div class="brand-text"><h1>Algorithm DX</h1><p>记录练习，查看进步</p></div>
   </a>
-  <nav class="nav" aria-label="主导航">
+  <nav class="nav" id="mmNav" aria-label="主导航">
     <a class="btn btn-ghost" href="/">AC 记录</a>
     <a class="btn btn-ghost" href="/circle.html">题友圈</a>
     <a class="btn btn-primary" href="/dx.html" aria-current="page">DX Rating</a>
@@ -292,5 +293,7 @@
   <p class="support-dialog-note">微信扫一扫，或点击图片查看原图。</p>
 </dialog>
 <script src="/support.js" type="module"></script>
+<a class="mm-top off" href="#" aria-label="回到顶部"><img src="/vendor/maimai/img/common/top.png" alt="TOP"></a>
+<script src="/theme.js" type="module"></script>
 </body>
 </html>

@@ -4,18 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Algorithm DX · AC 记录</title>
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light">
 <link rel="icon" type="image/svg+xml" href="/algorithm-dx-icon.svg">
+<link rel="stylesheet" href="/vendor/maimai/fonts.css">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/ui.css">
+<link rel="stylesheet" href="/theme.css">
 </head>
-<body class="ac-page">
+<body class="ac-page mm-theme">
+<iframe class="mm-bg-frame" src="/vendor/maimai/bg.html" title="" aria-hidden="true" tabindex="-1" scrolling="no"></iframe>
 <header class="topbar site-header">
   <a class="brand" href="/">
     <img class="mark" src="/algorithm-dx-icon.svg" width="66" height="40" alt="" aria-hidden="true">
     <div class="brand-text"><h1>Algorithm DX</h1><p>记录练习，查看进步</p></div>
   </a>
-  <nav class="nav" aria-label="主导航">
+  <nav class="nav" id="mmNav" aria-label="主导航">
     <a class="btn btn-primary" href="/" aria-current="page">AC 记录</a>
     <a class="btn btn-ghost" href="/circle.html">题友圈</a>
     <a class="btn btn-ghost" href="/dx.html">DX Rating</a>
@@ -24,13 +27,18 @@
     <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
     <a class="btn btn-ghost" href="/help.html">使用指南</a>
   </nav>
+  <button class="mm-menu-btn" id="mmMenuBtn" type="button" aria-expanded="false" aria-controls="mmNav" aria-label="打开菜单">
+    <span></span><span></span>
+  </button>
 </header>
 <div class="app">
 
-  <div class="ac-page-heading"><div><span class="stats-eyebrow">PRACTICE JOURNAL</span><h2>每一次通过，都值得记录</h2><p>汇集各平台的解题足迹，回看尝试，也发现下一步。</p></div><div class="form-actions"><a class="btn btn-primary" href="/dx.html?view=history&amp;add=1">手动添加做题记录</a><a class="btn btn-ghost" href="/dx.html?view=history">练习历史 ↗</a><a class="btn btn-ghost" href="/dx.html">查看我的 DX Rating ↗</a></div></div>
+  <div class="ac-page-heading"><div><span class="stats-eyebrow">PRACTICE JOURNAL</span><h2>每一次通过，都值得记录</h2><p>汇集各平台的解题足迹，回看尝试，也发现下一步。</p></div><div class="form-actions"><a class="btn btn-primary" href="/dx.html?view=history&amp;add=1">手动添加做题记录</a></div></div>
 
   <div class="page-toolbar" role="group" aria-label="页面操作">
 <div class="db-chip" id="dbChip" title="当前读取的数据库">—</div>
+      <a class="btn btn-ghost" href="/dx.html?view=history">练习历史 ↗</a>
+      <a class="btn btn-ghost" href="/dx.html">查看我的 DX Rating ↗</a>
       <button id="adminBtn" class="btn btn-ghost" type="button" aria-expanded="false" aria-controls="adminPanel">账号管理</button>
       <button id="syncBtn" class="btn btn-ghost" type="button" title="从各平台拉取最新数据，再重新读取本机库">同步最新数据</button>
   </div>
@@ -210,6 +218,8 @@
   </footer>
 
 </div>
+<a class="mm-top off" href="#" aria-label="回到顶部"><img src="/vendor/maimai/img/common/top.png" alt="TOP"></a>
 <script src="/app.js" type="module"></script>
+<script src="/theme.js" type="module"></script>
 </body>
 </html>
