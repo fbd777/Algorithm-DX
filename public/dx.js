@@ -1165,6 +1165,31 @@ async function focusResultOnBoard({ userId, problemId }) {
 const timerController=initDxTimer({getUser:()=>state.userId,onComplete:()=>load(true),onResultClose:focusResultOnBoard});
 await loadMeta();
 await timerController.refresh().catch(error=>{$('timerStatus').textContent=error.message;});
+// ?resultPreview=1 用样例把结算弹窗直接弹出来：调这块 UI 时不用真做完一道题。
+// 再配 ?achievement=98.7654 能试不同达成率下的排版（段位/数字配色都跟着它走）；
+// ?difficulty=3000 / ?difficulty= 能试题目卡换难度配色、以及「还没难度」那一档（?difficulty= 给空值）；
+// ?rating=2500 能试 DX RATING 那块底板的六档配色（绿/青/蓝/紫/橙/红，见 cf-rating-colors.js）。
+if (pageParams.get('resultPreview') === '1') {
+  const previewDifficulty = pageParams.get('difficulty');
+  const previewRating = pageParams.get('rating');
+  const rating = previewRating === null || previewRating.trim() === ''
+    ? 1523.4 : Number(previewRating);
+  timerController.previewResult({
+    problemId: pageParams.get('problem') ?? '1999A',
+    result: {
+      dailyTrack: 3,
+      difficulty: previewDifficulty === null ? '1700' : (previewDifficulty.trim() === '' ? null : previewDifficulty),
+      title: pageParams.get('title') ?? 'Two Permutations',
+      practiceKind: 'first',
+      seconds: 1837,
+      // 段位不用给：弹窗按达成率自己查表（评级只跟达成率有关），
+      // 这样显示的数字和段位不会打架
+      score: { achievementShown: 98.7654, rating },
+      comparison: { previousScore: { achievementShown: 97.2, rating: rating - 23.3 }, ratingAfter: rating, ratingDelta: 23.3 },
+      verdicts: { AC: 12, WA: 0, TLE: 0, RE: 0, CE: 0 },
+    },
+  });
+}
 renderYearOptions([currentYear()]);
 await refresh();
 if (pageParams.get('add') === '1' && state.userId !== null) {

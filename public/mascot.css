@@ -1,0 +1,99 @@
+/**
+ * 看板娘设置弹窗的样式。
+ *
+ * 和 dx-result.css 分开：这一套是全站设置，任何页面都能挂；结算弹窗里那块看板娘的
+ * 样式跟着结算走，写在 dx-result.css。配色沿用站点既有的深浅主题变量。
+ */
+
+.mm-mascot-dialog {
+  width: min(460px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--line, #d5d9e6);
+  border-radius: 14px;
+  background: var(--panel, #fff);
+  color: var(--ink, #1b1f2a);
+  box-shadow: 0 24px 70px #0308244d;
+}
+
+.mm-mascot-dialog::backdrop { background: #071126a8; backdrop-filter: blur(4px); }
+
+.mm-mascot-form { position: relative; padding: 18px 20px 16px; }
+
+.mm-mascot-form h2 { margin: 0 0 8px; font-size: 17px; }
+
+.mm-mascot-close {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line, #d5d9e6);
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mm-mascot-hint { margin: 0 0 12px; font-size: 12.5px; line-height: 1.6; opacity: .82; }
+.mm-mascot-hint a { color: var(--accent, #2f6fed); }
+.mm-mascot-hint code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--code-bg, #00000010);
+  font-size: 12px;
+}
+
+.mm-mascot-label { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 700; }
+
+.mm-mascot-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line, #d5d9e6);
+  border-radius: 8px;
+  background: var(--input-bg, #f7f8fc);
+  color: inherit;
+  font: 12.5px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+  word-break: break-all;
+}
+
+.mm-mascot-input:focus { outline: 2px solid var(--accent, #2f6fed); outline-offset: 1px; }
+
+/* 预览固定在一条高度里：看板娘是竖长图，高度不定会把弹窗顶来顶去 */
+.mm-mascot-preview {
+  display: grid;
+  place-items: center;
+  height: 190px;
+  margin: 12px 0;
+  border: 1px dashed var(--line, #d5d9e6);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--input-bg, #f7f8fc);
+}
+
+.mm-mascot-preview-img { max-width: 100%; max-height: 190px; object-fit: contain; }
+
+.mm-mascot-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* 顶栏入口：和深色模式开关并排，沿用同一个圆钮语言 */
+body.mm-theme .mm-mascot-btn {
+  flex: 0 0 auto;
+  height: 44px;
+  margin-left: 6px;
+  padding: 0 16px;
+  border: 3px solid var(--mm-purple, #8b6fd6);
+  border-radius: 100px;
+  background: #fff;
+  color: var(--mm-purple, #6b4bbd);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+body.mm-theme .mm-mascot-btn:hover { background: #f3efff; }
+body.mm-theme[data-mm-theme="dark"] .mm-mascot-btn { background: #221c33; color: #d8ccff; }
+body.mm-theme[data-mm-theme="dark"] .mm-mascot-btn:hover { background: #2c2542; }
+
+/* 结算弹窗里的看板娘没加载出来时别留破图 */
+.mm-mascot-failed { display: none; }

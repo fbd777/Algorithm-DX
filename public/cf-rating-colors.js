@@ -13,3 +13,20 @@ export function cfRatingColor(rating) {
   const [, tone, label, range] = bands.find(([minimum])=>rating>=minimum);
   return { tone, label, range };
 }
+
+/**
+ * 每一档 tone 对应的【主色 + 深色】，段位结算页逐题卡片（.dan-track-frame 的
+ * --tc1 / --tc2）用的就是这一对。题目卡也走同一张表，避免两处各写一套色。
+ * 顺序和上面 bands 一致：红 > 橙 > 紫 > 蓝 > 青 > 绿 > 灰；未评级与灰色同色。
+ */
+export const CF_TONE_COLORS = {
+  red: ['#e8564f', '#a3211c'], orange: ['#f08c3a', '#a85a12'],
+  violet: ['#8b6cf0', '#4a2fb0'], blue: ['#4a7fe0', '#1e3f96'],
+  cyan: ['#3fa8c4', '#166b83'], green: ['#4aa85c', '#1d6b30'],
+  gray: ['#7b8391', '#3f4652'], unrated: ['#7b8391', '#3f4652'],
+};
+
+/** tone → [主色, 深色]，认不出来的一律按未评级 */
+export function cfToneColors(tone) {
+  return CF_TONE_COLORS[tone] ?? CF_TONE_COLORS.unrated;
+}

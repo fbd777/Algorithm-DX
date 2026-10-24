@@ -1,0 +1,41 @@
+/**
+ * 官方字形精灵的排版。
+ *
+ * 这些精灵是**方格切片**（每格带透明边距），所以直接并排会显得字距很松；
+ * 这里用负外边距把字收紧。每个族的收紧量不同，是按实际观感定的。
+ */
+
+.mm-glyph { display: block; width: auto; }
+
+.mm-clear-word,
+.mm-track-label,
+.mm-rank-word,
+.mm-number { display: inline-flex; align-items: flex-end; justify-content: center; }
+
+/* CLEAR! 六格，格子 80x80，字母只占中间一块，收 -0.2em 左右才连成词。
+   高度按官方的比例给：官方抓图里 CLEAR! 约占画面高的 7.5%。 */
+.mm-clear-word { margin: 0 -0.2em; }
+.mm-clear-word .mm-glyph { height: 0.95em; }
+
+.mm-track-label .mm-glyph { height: 1em; }
+
+/* 段位：S/A/B/C 的格子同样是方图，+ 另有一张 */
+.mm-rank-word { margin: 0 -0.12em; }
+.mm-rank-word .mm-glyph { height: 1em; }
+/* 加号的位置/大小是对着官方 SSS+ 抓图做模板匹配量出来的（素材确认就是 UI_RSL_Rank_Plus）：
+   · 墨水高 ≈ 字母格的 0.38（素材字形只占格子 83%，所以图取 0.445）
+   · 顶边在字母顶边下方约 0.08 个格子高 —— 也就是**右上角**，不是和字母底边对齐
+   · 左边紧贴最后一个字母的右缘
+   之前底对齐 + 偏大，看着就像"挂"在字下面。 */
+.mm-rank-word .mm-rank-plus { height: 0.445em; align-self: flex-start; margin-top: 0.05em; margin-left: -0.02em; }
+
+/* 大数字：官方是两套图集混排 + 单独的 '%'，三者的格子底边对齐、共用一条基线。
+   缩放比 98 : 82 : 54 是对着官方抓图量的（整数格 98、小数格 82、'%' 54）。
+   高度由调用方给 --n（整数部分的格子高），其余按比例推。 */
+.mm-number { display: inline-flex; align-items: flex-end; margin: 0; }
+.mm-number .mm-number-int { height: var(--n, 1em); }
+.mm-number .mm-number-frac { height: calc(var(--n, 1em) * 0.837); }
+/* 相邻字形重叠 8%：格子带透明边距，不收会散开，收太多（-24%）又会挤成一团 */
+.mm-number .mm-number-int + .mm-number-int { margin-left: calc(var(--n, 1em) * -0.08); }
+.mm-number .mm-number-frac + .mm-number-frac { margin-left: calc(var(--n, 1em) * -0.067); }
+.mm-number .mm-number-percent { height: calc(var(--n, 1em) * 0.551); margin-left: calc(var(--n, 1em) * -0.04); }

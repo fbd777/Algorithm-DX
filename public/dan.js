@@ -1,5 +1,6 @@
-﻿import { startAutoSync } from './auto-sync.js';
-import { cfRatingColor } from './cf-rating-colors.js';
+import { startAutoSync } from './auto-sync.js';
+import { cfRatingColor, CF_TONE_COLORS as TRACK_TONE } from './cf-rating-colors.js';
+import { trackLabel, trackNumber } from './maimai-glyphs.js';
 
 /*
  * 随机抽题 / 每日一题 / 段位認定 的页面逻辑。
@@ -430,7 +431,7 @@ function buildStageDialog() {
   dialog.setAttribute('aria-labelledby', 'danResultTitle');
   dialog.innerHTML = `<div class="dx-result-sheet">
     <button class="dx-result-close" type="button" aria-label="关闭结算">×</button>
-    <div class="dx-result-kicker">STAGE <b></b><span></span></div>
+    <div class="dx-result-kicker"><span class="dx-result-track-word"></span><b></b><span></span></div>
     <h2 id="danResultTitle" class="dx-result-clear"></h2>
     <div class="dx-result-track"><div class="dx-result-track-icon" aria-hidden="true">DX<span>✦</span></div>
       <div class="dx-result-track-content"><div class="dx-result-track-heading"><span class="dx-result-kind"></span><span class="dx-result-problem"></span><i>DX</i></div>
@@ -465,7 +466,9 @@ function showStageSheet(pending) {
   const score = stage.comparison?.currentScore ?? null;
   const comparison = stage.comparison ?? null;
 
-  field(dialog, '.dx-result-kicker b').textContent = String(stage.index).padStart(2, '0');
+  // 用官方素材：TRACK 是唯一一张图，号码是数字精灵（数字层，不带那块实心白）
+  field(dialog, '.dx-result-track-word').replaceChildren(trackLabel());
+  field(dialog, '.dx-result-kicker b').replaceChildren(trackNumber(String(stage.index).padStart(2, '0')));
   field(dialog, '.dx-result-kicker span').textContent = `${session.tierName} · ${session.stageCount} 道中的第 ${stage.index} 道`;
   field(dialog, '#danResultTitle').textContent = stage.outcome === 'cleared' ? 'CLEAR!' : stage.outcome === 'timeout' ? 'TIME UP' : 'INTERRUPTED';
   field(dialog, '.dx-result-kind').textContent = KIND_LABEL[session.kind] ?? session.kind;
@@ -590,14 +593,8 @@ function drainSheet() {
 
 /* ---------------- 段位認定结算页（对齐原作 UI_DNM_Result_* 的构成） ---------------- */
 
-/** 难度色号 → 逐曲卡的 [主色场, 外圈主色环]（与 CF 分色同一套边界；violet 是原作 MASTER 的紫）。
- * 两个色都只当**平色**用，不做上下渐变 —— 原版那块乐曲底板就是一块平色。 */
-const TRACK_TONE = {
-  red: ['#e8564f', '#a3211c'], orange: ['#f08c3a', '#a85a12'],
-  violet: ['#8b6cf0', '#4a2fb0'], blue: ['#4a7fe0', '#1e3f96'],
-  cyan: ['#3fa8c4', '#166b83'], green: ['#4aa85c', '#1d6b30'],
-  gray: ['#7b8391', '#3f4652'], unrated: ['#7b8391', '#3f4652'],
-};
+/* 难度色号 → 逐曲卡的 [主色场, 外圈主色环] 见 cf-rating-colors.js 的 CF_TONE_COLORS
+ * （题目卡也用同一张表）。两个色都只当**平色**用，不做上下渐变 —— 原版那块乐曲底板就是一块平色。 */
 
 let resultDialog = null;
 function buildResultDialog() {
