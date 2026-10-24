@@ -28,3 +28,6 @@ __pycache__/
 Thumbs.db
 results/local-*.json
 prompt0.md
+
+# Agent instructions belong in the user-level DSH home, not in this repo.
+AGENTS.md
