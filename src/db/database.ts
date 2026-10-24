@@ -4,7 +4,7 @@ import { dirname } from 'node:path';
 import type { Cache, ProblemRelease, Submission } from '../domain.ts';
 
 /** 已支持的 Schema 版本与对应的迁移步骤，按顺序执行；每一步都幂等（用 IF NOT EXISTS / 版本判断）。 */
-const MIGRATIONS: readonly { appliesWhenAtMost: number; file: string }[] = [
+const MIGRATIONS: readonly { appliesWhenAtMost: number; file: string; rebuildsReferencedTable?: boolean }[] = [
   { appliesWhenAtMost: 0, file: './schema.sql' },
   { appliesWhenAtMost: 1, file: './migrations/002-sync.sql' },
   { appliesWhenAtMost: 2, file: './migrations/003-account-profile.sql' },
@@ -25,22 +25,57 @@ const MIGRATIONS: readonly { appliesWhenAtMost: number; file: string }[] = [
   { appliesWhenAtMost: 17, file: './migrations/018-dan.sql' },
   { appliesWhenAtMost: 18, file: './migrations/019-dan-random.sql' },
   { appliesWhenAtMost: 19, file: './migrations/020-dan-custom.sql' },
+  { appliesWhenAtMost: 20, file: './migrations/021-dan-life.sql' },
+  { appliesWhenAtMost: 21, file: './migrations/022-long-practice.sql', rebuildsReferencedTable: true },
 ];
 export const SCHEMA_VERSION = MIGRATIONS.length;
 
-export function openDatabase(path = 'data/algorithm-dx.sqlite'): DatabaseSync {
+export function openDatabase(path = 'data/algorithm-dx.sqlite', options: {
+  /** Runs under the migration write lock, before any schema/data changes. */
+  beforeMigration?: (fromVersion: number) => void;
+} = {}): DatabaseSync {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   try {
-    db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
-    const version = db.prepare('PRAGMA user_version').get()!.user_version;
+    db.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+    let version = Number(db.prepare('PRAGMA user_version').get()!.user_version);
     if (version > SCHEMA_VERSION) throw new Error(`Unsupported schema version: ${version}`);
-    for (const step of MIGRATIONS) {
-      if (version > step.appliesWhenAtMost) continue;
-      db.exec('BEGIN');
-      db.exec(readFileSync(new URL(step.file, import.meta.url), 'utf8'));
-      db.exec('COMMIT');
-    }
+    db.exec('PRAGMA journal_mode = WAL;');
+    if (version === SCHEMA_VERSION) return db;
+    // Rebuilding a referenced table must not trigger ON DELETE actions. Check all
+    // references before committing, and restore enforcement on this connection.
+    const rebuilds = MIGRATIONS.some(step => version <= step.appliesWhenAtMost && step.rebuildsReferencedTable);
+    if (rebuilds) db.exec('PRAGMA foreign_keys = OFF');
+    try {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        // Another launcher may have finished upgrading while we waited for the lock.
+        version = Number(db.prepare('PRAGMA user_version').get()!.user_version);
+        if (version > SCHEMA_VERSION) throw new Error(`Unsupported schema version: ${version}`);
+        if (version < SCHEMA_VERSION) {
+          options.beforeMigration?.(version);
+          for (const step of MIGRATIONS) {
+            if (version > step.appliesWhenAtMost) continue;
+            db.exec(readFileSync(new URL(step.file, import.meta.url), 'utf8'));
+            if (Number(db.prepare('PRAGMA user_version').get()!.user_version) !== step.appliesWhenAtMost + 1) {
+              throw new Error(`Migration did not set the expected schema version: ${step.file}`);
+            }
+          }
+          if (db.prepare('PRAGMA foreign_key_check').all().length) {
+            throw new Error('Database migration would leave invalid references');
+          }
+          const checks = db.prepare('PRAGMA quick_check').all();
+          if (checks.length !== 1 || checks[0].quick_check !== 'ok') {
+            throw new Error('Database integrity check failed after migration');
+          }
+        }
+        db.exec('COMMIT');
+      } catch (error) {
+        // SQLite can already have rolled back after an I/O or disk-full error.
+        try { db.exec('ROLLBACK'); } catch { /* preserve the original failure */ }
+        throw error;
+      }
+    } finally { if (rebuilds) db.exec('PRAGMA foreign_keys = ON'); }
     return db;
   } catch (error) { db.close(); throw error; }
 }

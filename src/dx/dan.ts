@@ -1,3 +1,4 @@
+import { DAN_LIFE_RULES, lifeRules, stageLife, sessionLife, type LifeResult } from './dan-life.ts';
 import { createHash, randomInt as cryptoRandomInt } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type { ProblemRating } from '../domain.ts';
@@ -323,10 +324,12 @@ export interface DanSessionRow {
   total_rating: number | null; settlement_json: string | null;
   /** 自定义抽题的标签条件（JSON 数组）。NULL = 没有标签条件（迁移 020 之前的行也是）。 */
   tags_json: string | null;
+  rules_json: string | null;
 }
 
 export interface DanStageRow {
   id: number; session_id: string; stage_index: number;
+  life_json: string | null;
   problem_id: string; difficulty: number; drawn_at: number;
   claimed_at: number | null; timer_id: string | null;
   outcome: 'cleared' | 'timeout' | 'interrupted' | null;
@@ -474,14 +477,15 @@ export function createDanSession(
       throw new DanError('SESSION_ACTIVE', '已经有一轮认定没结束，先完成或放弃它');
     }
     db.prepare(`INSERT INTO dan_sessions
-      (id,user_id,tier,kind,stage_count,limit_seconds,min_rating,max_rating,status,started_at,tags_json)
-      VALUES(?,?,?,?,?,?,?,?,'active',?,?)`)
+      (id,user_id,tier,kind,stage_count,limit_seconds,min_rating,max_rating,status,started_at,tags_json,rules_json)
+      VALUES(?,?,?,?,?,?,?,?,'active',?,?,?)`)
       .run(input.id, input.userId, tier.key, input.kind, danStageCount(input.kind),
         tier.limitSeconds,
         customRange ? customRange.minRating : input.kind === 'daily' ? (input.minRating ?? tier.minRating) : tier.minRating,
         customRange ? customRange.maxRating : input.kind === 'daily' ? (input.maxRating ?? tier.maxRating) : tier.maxRating,
         input.now,
-        customRange && customRange.tags.length ? JSON.stringify(customRange.tags) : null);
+        customRange && customRange.tags.length ? JSON.stringify(customRange.tags) : null,
+        input.kind === 'challenge' ? JSON.stringify(DAN_LIFE_RULES) : null);
     return sessionRow(db, input.id)!;
   });
 }
@@ -577,9 +581,11 @@ export function advanceDanSessions(db: DatabaseSync, now: number, checkedAccount
 }
 
 function settleDanSession(db: DatabaseSync, session: DanSessionRow, now: number, checkedAccountId?: number): void {
+  const shared = lifeRules(session);
   // 整轮超期（抽了不点）就作废，否则会永久占住 `one_active_dan_per_user`。
   // 已开始的题先按提交时间结算；TTL 只清理未开始或等待下一题的轮次。
   if (now > session.started_at + DAN_SESSION_TTL_SECONDS
+    && (!shared || stageRows(db, session.id).every(stage => stage.claimed_at === null))
     && !stageRows(db, session.id).some(stage => stage.claimed_at !== null && stage.outcome === null)) {
     for (const stage of stageRows(db, session.id)) {
       if (stage.outcome !== null) continue;
@@ -599,6 +605,7 @@ function settleDanSession(db: DatabaseSync, session: DanSessionRow, now: number,
       { status: string; account_id: number; started_at: number; ended_at: number | null } | undefined;
     if (!timer) { db.prepare("UPDATE dan_stages SET outcome='interrupted' WHERE id=?").run(stage.id); continue; }
     if (timer.status === 'running') {
+      if (shared) continue; // Zero life does not cancel practice or stop the round.
       const deadline = stage.claimed_at + danStageLimitOf(stage, session);
       if (now <= deadline) continue;
       // A local poll cannot prove there was no timely AC. Only the account's
@@ -615,7 +622,7 @@ function settleDanSession(db: DatabaseSync, session: DanSessionRow, now: number,
     }
     if (timer.status === 'completed' && timer.ended_at !== null) {
       const seconds = timer.ended_at - timer.started_at;
-      if (timer.ended_at > stage.claimed_at + danStageLimitOf(stage, session)) {
+      if (!shared && timer.ended_at > stage.claimed_at + danStageLimitOf(stage, session)) {
         db.prepare("UPDATE dan_stages SET outcome='timeout' WHERE id=?").run(stage.id);
         continue;
       }
@@ -623,8 +630,10 @@ function settleDanSession(db: DatabaseSync, session: DanSessionRow, now: number,
         platform: 'codeforces', problemId: stage.problem_id, problemTitle: stage.problem_id, problemUrl: null,
         problemRating: stage.difficulty, solvedAt: timer.ended_at, releasedAt: null, recordedSeconds: seconds,
       });
-      db.prepare("UPDATE dan_stages SET outcome='cleared',seconds=?,score_json=? WHERE id=?")
-        .run(seconds, JSON.stringify(score), stage.id);
+      const life = stageLife(db, session, stage, timer.ended_at);
+      if (life?.pending) continue;
+      db.prepare('UPDATE dan_stages SET outcome=?,seconds=?,score_json=?,life_json=? WHERE id=?')
+        .run(life?.failed ? 'timeout' : 'cleared', seconds, JSON.stringify(score), life ? JSON.stringify(life) : null, stage.id);
       continue;
     }
     // cancelled / expired：这一轮被打断，判为放弃。
@@ -635,9 +644,9 @@ function settleDanSession(db: DatabaseSync, session: DanSessionRow, now: number,
   const interrupted = stages.find((stage) => stage.outcome === 'interrupted');
   if (interrupted) { finishDanSession(db, session, 'abandoned', now); return; }
   const timedOut = stages.find((stage) => stage.outcome === 'timeout');
-  if (timedOut) { finishDanSession(db, session, 'failed', now); return; }
-  if (stages.length < session.stage_count || stages.some((stage) => stage.outcome !== 'cleared')) return;
-  finishDanSession(db, session, 'cleared', now);
+  if (timedOut && !shared) { finishDanSession(db, session, 'failed', now); return; }
+  if (stages.length < session.stage_count || stages.some((stage) => stage.outcome === null)) return;
+  finishDanSession(db, session, timedOut ? 'failed' : 'cleared', now);
 }
 
 /** 冻结结算：整轮的成绩写入 settlement_json，之后读到的都是当时的规则与数值。 */
@@ -658,7 +667,7 @@ function finishDanSession(db: DatabaseSync, session: DanSessionRow, status: 'cle
       rating: score?.rating ?? null,
     };
   });
-  const cleared = status === 'cleared';
+  const cleared = status === 'cleared' || Boolean(lifeRules(session));
   const total = cleared
     ? Math.round(scores.reduce((sum, row) => sum + (typeof row.rating === 'number' ? row.rating : 0), 0) * 10) / 10
     : null;
@@ -669,6 +678,7 @@ function finishDanSession(db: DatabaseSync, session: DanSessionRow, status: 'cle
     // 自定义抽题的标签条件进快照：历史记录要能按当时的条件解释。
     tags: session.tags_json ? JSON.parse(session.tags_json) as string[] : null,
     startedAt: session.started_at, finishedAt: now, totalRating: total, stages: scores,
+    rules: lifeRules(session), life: sessionLife(db, session, now),
     selfReported: true,
   };
   db.prepare('UPDATE dan_sessions SET status=?,finished_at=?,total_rating=?,settlement_json=? WHERE id=? AND status=\'active\'')
@@ -693,6 +703,8 @@ export function abandonDanSession(db: DatabaseSync, input: { sessionId: string; 
 }
 
 export interface DanStageView {
+  life: LifeResult | null;
+  startedAt: number | null;
   index: number;
   /** 抽到的题目难度。**这是「开始做题」之前唯一允许下发的信息**（口径 A）。 */
   difficulty: number;
@@ -722,6 +734,7 @@ export interface DanStageView {
 }
 
 export interface DanSessionView {
+  life: ReturnType<typeof sessionLife>;
   id: string;
   tier: string;
   tierName: string;
@@ -746,10 +759,11 @@ export interface DanSessionView {
   selfReported: true;
 }
 
-export function danSessionView(db: DatabaseSync, session: DanSessionRow): DanSessionView {
+export function danSessionView(db: DatabaseSync, session: DanSessionRow, now = Math.floor(Date.now()/1000)): DanSessionView {
   const tier = danTier(session.tier);
   return {
     id: session.id,
+    life: sessionLife(db, session, now),
     tier: session.tier,
     tierName: tier?.name ?? session.tier,
     kind: session.kind,
@@ -765,12 +779,12 @@ export function danSessionView(db: DatabaseSync, session: DanSessionRow): DanSes
     draw: tier?.draw ?? 'rating',
     perStageLimit: tier?.perStageLimit === true,
     tags: session.tags_json ? JSON.parse(session.tags_json) as string[] : null,
-    stages: stageRows(db, session.id).map((stage) => danStageView(db, stage, session)),
+    stages: stageRows(db, session.id).map((stage) => danStageView(db, stage, session, now)),
     selfReported: true,
   };
 }
 
-function danStageView(db: DatabaseSync, stage: DanStageRow, session: DanSessionRow): DanStageView {
+function danStageView(db: DatabaseSync, stage: DanStageRow, session: DanSessionRow, now: number): DanStageView {
   const score = stage.score_json ? JSON.parse(stage.score_json) as Record<string, unknown> : null;
   // 口径 A：没 claim 过就不下发题号与链接。
   const revealed = stage.claimed_at !== null;
@@ -797,6 +811,8 @@ function danStageView(db: DatabaseSync, stage: DanStageRow, session: DanSessionR
     : undefined;
   return {
     index: stage.stage_index,
+    life: stageLife(db, session, stage, now),
+    startedAt: stage.claimed_at,
     difficulty: stage.difficulty,
     limitSeconds: danStageLimitOf(stage, session),
     claimed: revealed,
@@ -807,7 +823,7 @@ function danStageView(db: DatabaseSync, stage: DanStageRow, session: DanSessionR
     rating: typeof score?.rating === 'number' ? score.rating : null,
     problemId: revealed ? stage.problem_id : null,
     problemUrl: revealed ? danProblemUrl(stage.problem_id) : null,
-    deadlineAt: stage.claimed_at === null ? null : stage.claimed_at + danStageLimitOf(stage, session),
+    deadlineAt: lifeRules(session) || stage.claimed_at === null ? null : stage.claimed_at + danStageLimitOf(stage, session),
     title: revealed ? (problem?.title ?? null) : null,
     verdicts,
     waCount: verdicts.WA ?? 0,

@@ -44,7 +44,7 @@ export function refreshBestTime(db: DatabaseSync, userId: number, platform: stri
   }
 }
 
-function validatePractice(input: PracticeInput) {
+function validatePractice(input: PracticeInput, allowLongTimer = false) {
   if (!input.platform.trim() || input.platform.length > 64) throw new Error('平台不能为空且不能超过 64 字符');
   if (!input.problemId.trim() || input.problemId.length > 64) throw new Error('题号不能为空且不能超过 64 字符');
   if (input.timingSource === 'contest_estimate' && input.platform !== DX_PLATFORM) throw new Error('比赛估算仅支持 Codeforces');
@@ -53,14 +53,14 @@ function validatePractice(input: PracticeInput) {
   if (input.difficulty != null && (!Number.isSafeInteger(input.difficulty) || input.difficulty < 0 || input.difficulty > 1000000)) throw new Error('难度须为 0～1000000 的整数或留空');
   if (!['ac', 'unfinished'].includes(input.outcome) || !['unknown', 'first', 'repeat', 'assisted'].includes(input.practiceKind)
     || !['manual', 'contest_estimate'].includes(input.timingSource)) throw new Error('练习类型、结果或计时来源不合法');
-  if (!Number.isInteger(input.seconds) || input.seconds < 1 || input.seconds > 86400) throw new Error('用时须为 1～86400 的整数秒');
+  if (!Number.isSafeInteger(input.seconds) || input.seconds < 1 || (!allowLongTimer && input.seconds > 86400)) throw new Error('用时须为 1～86400 的整数秒');
   if (input.attemptedAt !== null && (!Number.isSafeInteger(input.attemptedAt) || input.attemptedAt < 0
     || input.attemptedAt > Math.floor(Date.now() / 1000))) throw new Error('练习日期无效或晚于当前时间');
   if (input.requestId !== undefined && !/^[a-zA-Z0-9-]{8,100}$/.test(input.requestId)) throw new Error('请求标识不合法');
 }
 
-export function recordPractice(db: DatabaseSync, input: PracticeInput, replaceBest = false) {
-  validatePractice(input);
+export function recordPractice(db: DatabaseSync, input: PracticeInput, replaceBest = false, allowLongTimer = false) {
+  validatePractice(input, allowLongTimer);
   return transaction(db, () => {
     if (!db.prepare('SELECT 1 FROM users WHERE id=?').get(input.userId)) throw new Error('用户不存在');
     const known = db.prepare(`SELECT MAX(s.status='AC') AS solved FROM submissions s JOIN accounts a ON a.id=s.account_id

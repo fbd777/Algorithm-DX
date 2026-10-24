@@ -96,15 +96,19 @@ export function reconcileTimers(db: DatabaseSync, accountId?: number, now = nowS
         db.prepare("UPDATE practice_timers SET status='cancelled',ended_at=? WHERE id=?").run(now,timer.id);
         continue;
       }
-      const dan = db.prepare(`SELECT d.claimed_at + COALESCE(d.limit_seconds,s.limit_seconds) AS deadline
+      const dan = db.prepare(`SELECT d.claimed_at + COALESCE(d.limit_seconds,s.limit_seconds) AS deadline,s.rules_json
         FROM dan_stages d JOIN dan_sessions s ON s.id=d.session_id
         WHERE d.timer_id=? AND s.status='active' AND d.outcome IS NULL`).get(timer.id);
-      const deadline = dan ? Number(dan.deadline) : timer.started_at + 86400;
+      const sharedLife = Boolean(dan?.rules_json);
+      const deadline = sharedLife ? now : dan ? Number(dan.deadline) : timer.started_at + 86400;
       const ac = db.prepare(`SELECT submission_id,submitted_at FROM submissions WHERE account_id=? AND platform='codeforces'
         AND problem_id=? AND status='AC' AND submitted_at>? AND submitted_at<=? AND submitted_at<=?
         ORDER BY submitted_at,submission_id LIMIT 1`).get(timer.account_id,timer.problem_id,timer.started_at,deadline,now);
       if (ac) {
         const endedAt = Number(ac.submitted_at);
+        if (sharedLife && db.prepare(`SELECT 1 FROM submissions WHERE account_id=? AND platform='codeforces'
+          AND problem_id=? AND status='PENDING' AND submitted_at>? AND submitted_at<=?`)
+          .get(timer.account_id,timer.problem_id,timer.started_at,endedAt)) continue;
         // A prior AC discovered by this very sync also identifies a repeat.
         const prior = db.prepare(`SELECT 1 FROM submissions WHERE account_id=? AND problem_id=? AND status='AC' AND submitted_at<=? LIMIT 1`)
           .get(timer.account_id,timer.problem_id,timer.started_at);
@@ -118,7 +122,7 @@ export function reconcileTimers(db: DatabaseSync, accountId?: number, now = nowS
         const currentScore = previousEntry ? scoreProblem({...previousEntry,recordedSeconds:endedAt-timer.started_at}) : null;
         const before = buildBoard(entries,since).rating;
         const attempt = recordPractice(db,{userId:timer.user_id,platform:'codeforces',problemId:timer.problem_id,
-          seconds:endedAt-timer.started_at,outcome:'ac',practiceKind:kind,timingSource:'manual',attemptedAt:endedAt,requestId:`timer-${timer.id}`});
+          seconds:endedAt-timer.started_at,outcome:'ac',practiceKind:kind,timingSource:'manual',attemptedAt:endedAt,requestId:`timer-${timer.id}`}, false, sharedLife);
         const afterEntries = listDxEntries(db,timer.user_id,'codeforces').filter(e=>e.releasedAt===null || e.releasedAt<until);
         const after = buildBoard(afterEntries,since).rating;
         const comparison = { year, previousScore, currentScore, ratingBefore: before, ratingAfter: after,

@@ -12,6 +12,9 @@ const heatmap = initHeatmap(document.getElementById('heatmapHost'), syncUrl);
 let revision = 0;
 let heatRevision = 0;
 let detailReady = false, heatReady = false;
+// 图表是画布画的，换主题得按新配色重画一遍（数据没变，直接用上一次的响应）
+let lastAnalytics = null;
+document.addEventListener('mm-theme-change', () => { if (lastAnalytics) analytics.render(lastAnalytics); });
 const saveButton = document.getElementById('saveStatsImage');
 const updateSave = () => { saveButton.disabled = !detailReady || !heatReady; };
 saveButton.addEventListener('click', async () => {
@@ -51,6 +54,7 @@ async function refresh(includeHeat = true, background = false) {
   if (platform.value) params.platform = platform.value;
   const detail = get('/api/stats', params).then(body => {
     if (current !== revision) return;
+    lastAnalytics = body.analytics;
     analytics.render(body.analytics);
     renderToday(body.today);
     detailReady = true; updateSave();

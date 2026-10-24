@@ -1,3 +1,4 @@
+import { DAN_LIFE_RULES } from '../dx/dan-life.ts';
 import { randomBytes } from 'node:crypto';
 import { cfExtensionBridge } from '../fetchers/cf-extension.ts';
 import {listGroupSources,addGroupSourceCandidate,confirmGroupSource,clearGroupSource,refreshGroupRatings} from '../fetchers/cf-group-sources.ts';
@@ -171,6 +172,7 @@ export const WRITE_ROUTES = new Set([
   '/api/dx/timer/check',
   '/api/dx/attempts/void',
   '/api/dx/attempts/edit',
+  '/api/dx/profile',
   '/api/dan/start',
   '/api/dan/claim',
   '/api/dan/settle',
@@ -789,6 +791,7 @@ function danOverview(ctx: ApiContext, userId: number, tzOffsetMinutes: number): 
         center: band.center, equivalentRating: band.equivalentRating },
       tags: pool ? danTagCatalog(pool) : [],
       stageCount: DAN_STAGES,
+      challengeRules: DAN_LIFE_RULES,
       dateKey,
       serverNow: now,
       poolReady: pool !== null,
@@ -990,6 +993,24 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           if (input.revision !== undefined && (!Number.isSafeInteger(input.revision) || Number(input.revision) < 0)) throw new Error('记录版本无效');
           return { status: 200, body: voidPractice(ctx.openWrite(), positiveInt(input, 'userId'), positiveInt(input, 'id'), input.revision as number | undefined) };
         }
+        case '/api/dx/profile': {
+          const userId = positiveInt(objectBody(body), 'userId'), db = ctx.openWrite();
+          const account = db.prepare("SELECT handle FROM accounts WHERE user_id=? AND platform='codeforces' AND is_archived=0").get(userId);
+          if (!account) return { status: 200, body: { profile: null } };
+          const repo = new Repository(db), key = `cf:profile:v2:${String(account.handle).toLowerCase()}`;
+          const cached = repo.get(key);
+          if (cached) return { status: 200, body: { profile: cached } };
+          const data = await new HttpClient(db).json(`https://codeforces.com/api/user.info?handles=${encodeURIComponent(String(account.handle))}`);
+          if (data?.status !== 'OK' || !data.result?.[0]) throw new BadRequest('暂时无法加载 Codeforces 头像');
+          const raw = data.result[0];
+          let avatar: string | null = null;
+          try { const url = new URL(raw.avatar, 'https://codeforces.com');
+            if (url.protocol === 'https:' && (url.hostname === 'codeforces.org' || url.hostname.endsWith('.codeforces.org') || url.hostname === 'codeforces.com')) avatar = url.href;
+          } catch { /* Keep the handle visible if the avatar is unavailable. */ }
+          const profile = { handle: String(account.handle), avatar };
+          repo.set(key, profile, 21600);
+          return { status: 200, body: { profile } };
+        }
         case '/api/dan/start': {
           const input = objectBody(body), userId = positiveInt(input, 'userId');
           const kind = text(input, 'kind', 20) as DanKind;
@@ -1043,7 +1064,7 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           return { status: 200, body: {
             sessionId, stageIndex: stage.stage_index, difficulty: stage.difficulty,
             problemId: stage.problem_id, url: danProblemUrl(stage.problem_id), timerId: stage.timer_id,
-            deadlineAt: (stage.claimed_at ?? now) + danStageLimitOf(stage, session), serverNow: now,
+            deadlineAt: session.rules_json ? null : (stage.claimed_at ?? now) + danStageLimitOf(stage, session), serverNow: now,
           } };
         }
         case '/api/dan/settle': {

@@ -1,0 +1,27 @@
+.help-page .help-table-scroll { max-height: none; }
+.help-page #curveDetails p { overflow-wrap: anywhere; }
+
+.help-page .help-platforms {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.help-page .help-platforms th,
+.help-page .help-platforms td {
+  padding: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  vertical-align: top;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.help-page .help-platforms th:first-child { width: 22%; }
+.help-page .help-platforms th:nth-child(2) { width: 46%; }
+.help-page .help-platforms th:last-child { width: 32%; }
+
+@media (max-width: 600px) {
+  .help-page .help-platforms th,
+  .help-page .help-platforms td { padding: 8px 5px; font-size: 13px; }
+}

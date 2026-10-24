@@ -1,0 +1,20 @@
+source: public/vendor/maimai/img/prism/bg/  (PRiSM PLUS era, recoloured offline)
+generated: one-off local tool, not in the repo (see README.md)
+aurora-pc.png	197598	18a6832610a9e21f3a3bb1a4c7e185b7
+aurora-sp.png	145513	3cde15f7d5434c57ec879bb231f97d03
+cloud-back-c.png	8409	e531b5609f02a493988a909c86bbefd8
+cloud-back-l.png	9202	6115d9c264af03399bae8424e31b2942
+cloud-back-r.png	24061	e94f971ef5118e59a200ff43f92acd1a
+cloud-front-c.png	12656	3092cc9a619adcff2af05e40d8ca8438
+cloud-front-l.png	14177	cd7ad6c0810d073624ff7bbc4f3b907c
+cloud-front-r.png	14604	80ad1fd499ea7cfccdbdacf9501cc958
+pattern.png	391	b6d4555a3ef84dc7254f0a2fae1ea292
+rainbow-back-sp.png	20168	4f87fa4e84e99c13cb2e5eeb8c5ae34f
+rainbow-bottom-pc.png	45950	d8030f1827eb986ba60d92bc14be7c60
+rainbow-bottom-sp.png	28625	828af06998ae40d221717ddf672d2746
+rainbow-pc.png	30680	ef0394046890f7ada7c6fe734739cbf8
+rainbow-sp.png	27202	96b51196cc94ca6fff993d745cc750e5
+shines-pc.png	13572	632fde21eee7ebdb3e66847f92f2d7a2
+shines-sp.png	12218	8c6c281587dc92f6b232d7996dc804fb
+sky-frame.png	449	9fb8230b6de747cbe4476fe9058b0221
+sky.png	405	863652de17136067c9ac1dbc6032111a

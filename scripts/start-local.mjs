@@ -27,6 +27,9 @@ try {
         console.log('Created local database: ' + dbPath);
         console.log('Use account management in the dashboard to add your platform accounts.');
       } finally { db.close(); }
+    } else if (initOnly) {
+      const { prepareDatabaseForStartup } = await import('../src/db/startup.ts');
+      prepareDatabaseForStartup(dbPath);
     }
     if (!initOnly) {
       // Same process: closing the launcher or Ctrl+C stops the service.

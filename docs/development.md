@@ -49,7 +49,14 @@ public/
   index.html                 面板骨架（含账号管理区）
   app.js                     Feed 渲染、筛选器、折叠、账号管理与同步进度
   dx.html / dx.js            DX Rating 榜（b35 + b15），填写完成用时
-  styles.css                 深色主题，无外部字体或 CDN
+  styles.css / ui.css        重做前那一版的配色与组件样式，现在是皮肤的浅色底子
+  theme.css                  maimai 官网皮肤层，参数取自 vendor/maimai/style.css
+  theme-dark.css             深色模式层，规则一律带 [data-mm-theme="dark"] 前缀
+  theme-night.css            夜版背景，只换 /assets/night/ 那套贴图
+  theme.js                   主题开关、移动端菜单、回到顶部（换主题的唯一写入口）
+  bg.html                    背景 iframe 的宿主页：官网那份动态背景
+  vendor/maimai/**           官网素材原样快照（style.css / img / fonts，见其 README）
+  assets/night/**            夜版贴图，由官方素材离线重上色生成
 tests/
   phase1.test.ts             旧接口回归测试
   phase2.test.ts             迁移、适配器、同步和调度测试
@@ -68,6 +75,21 @@ data/                       首次运行生成，本地数据不提交
 data/backups/               npm run backup 生成的快照目录
 ```
 
+## 前端皮肤与深色模式
+
+皮肤复刻 maimai DX 国际版官网 PRiSM PLUS 时期的样式：`public/vendor/maimai/` 是原样快照（只改过 URL），
+落到本站组件上的那一层全在 `public/theme.css`，与官方的有意偏差集中在它末尾那节，改之前先看那节。
+
+- 主题落在 `<html data-mm-theme="light|dark">`，偏好存在 `localStorage['mm-theme']`，没手动选过就跟系统。
+- 各页 `<head>` 里有一小段脚本在首帧前定好主题（六页重复同一段是有意的：抽成外链会先亮后暗）。
+- 载入顺序 `fonts.css → styles.css → 各页自己的 CSS → ui.css → theme.css → theme-dark.css`，
+  深色层一律带 `[data-mm-theme="dark"]` 前缀，所以浅色那套不用改。
+- 画布里的图是 JS 画的，CSS 管不到：`theme.js` 换主题时发 `mm-theme-change`，`stat-charts.js` 收到就按
+  当前主题重画（配色在它自己的 PALETTE 里）。
+- 页面不引外部字体或 CDN，离线可用：M PLUS 1p 只自托管 latin / latin-ext 子集，中文回退系统字体。
+- `bg.html` 是背景 iframe 的宿主页（结构取自归档快照，另加三行重置与夜版切换脚本），放在 `public/` 根下，
+  好让 `vendor/maimai/` 只留原样素材。
+
 ## 数据模型
 
 - `users`：一个本地人物。`is_self` 标记自己（最多一个，是主视图与 DX 榜的锚点）；`is_followed`（v7）标记**关注** —— 只决定「出不出在主视图」，不限数量，且与 `is_self` 是两层。详见下文「关注 ≠ 存在」。
@@ -84,7 +106,9 @@ data/backups/               npm run backup 生成的快照目录
 
 时间统一存 UTC Unix 秒；执行时间为毫秒，内存为字节；缺失值为 NULL。删除用户或账号会级联删除相关提交，未来 UI 必须明确告知这一行为。
 
-Schema 以 `PRAGMA user_version` 标记，当前版本由 `src/db/database.ts` 的迁移列表决定。初始化可重复运行；升级通过增量迁移保留记录。`openDatabase()` 在版本高于代码支持时拒绝打开、低于时按顺序补齐；只读面板则要求版本完全一致，并提示所需命令。
+Schema 以 `PRAGMA user_version` 标记，当前版本由 `src/db/database.ts` 的迁移列表决定。初始化可重复运行；升级通过增量迁移保留记录。`openDatabase()` 在版本高于代码支持时拒绝打开，低于时取得 `BEGIN IMMEDIATE` 写锁、重新读取版本，并在同一事务里按顺序补齐全部迁移；提交前校验版本、外键和完整性，失败整体回滚。重建被引用表时在事务外暂时关闭外键执行，提交前检查引用，结束后恢复，避免触发历史计时关联的 `ON DELETE SET NULL`。
+
+桌面入口、`npm start` 和 `npm run dashboard` 在启动服务前通过 `src/db/startup.ts` 自动检查版本。旧库迁移的写锁取得后，先用独立只读连接执行 `VACUUM INTO`，将含已提交 WAL 数据的快照保存到数据库旁的 `backups/`，校验成功才执行迁移；备份失败就不迁移，升级失败就不启动服务。升级备份命名含旧/新 Schema 版本和唯一标识，不会被普通备份的 `--prune` 删除。并发启动在锁内重读版本，已升级时跳过。HTTP 查询连接仍要求版本一致，查询请求本身不执行迁移。
 
 ## 练习量与鼓励的统计口径
 
@@ -150,7 +174,7 @@ Schema 以 `PRAGMA user_version` 标记，当前版本由 `src/db/database.ts` �
 - 同一账号改名：`npm run algo -- account rename <id> <new-handle> --same-identity`
 - 换绑：`npm run algo -- account replace <id> <new-handle> --yes`
 
-旧数据库先备份，再运行 `npm run db:init` 升级到当前版本，最后重启 Dashboard。
+旧数据库在下次启动 Dashboard 时自动备份并升级到当前版本。更新程序时保留原 `.env`、`data/` 和自定义数据库路径；也可手动备份后运行 `npm run db:init`。
 
 **同步与页面操作。** 页面打开时可能自动同步，也可手动点击「同步最新数据」。首页同步面向已绑定账号，DX 页面手动同步针对当前用户的 Codeforces 账号；完成后重新读取本地数据并显示结果。历史回补可从账号管理以及题友个人空间中的账号入口发起。筛选、计时、参考表和图片导出等操作各有入口，不等同于同步。
 
@@ -159,3 +183,10 @@ Schema 以 `PRAGMA user_version` 标记，当前版本由 `src/db/database.ts` �
 前端刻意不在服务端拼 HTML，全部用 `textContent` 写入 DOM，题库标题里的尖括号不会被当成标记解析；页面不加载任何外部字体或 CDN 资源，离线可用。
 
 数据为空，或某项账号「一条都没同步过」/「同步了但未回补完」时，面板会分成两种情况在顶部标注，都不会把空库或部分数据说成总练习量；读到夹具库时用红色提示这是假数据。
+
+
+## 0.2.2 界面回归
+
+运行 `npm test` 检查后端；Windows 安装 Edge 后运行 `npm run test:ui`。界面测试自建内存数据库和临时服务，覆盖计时暂停、加时后开题、耗尽后继承失败、第四题不加时、真实成绩与预览隔离、图片成绩读屏，以及各页明暗主题。截图写入 `output/ui-regression/`。
+
+`scripts/dan-settlement-e2e.mjs` 是旧逐题限时规则的美术测量脚本，会修改指定数据库；仅用于专门的可丢弃夹具，不作为当前机制验收入口。

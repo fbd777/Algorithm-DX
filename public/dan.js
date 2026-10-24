@@ -1,8 +1,11 @@
+import { mascotImage } from './mascot.js';
+import { resultBackground } from './result-background.js';
+import { clearWord, trackLabel, trackNumber, rankWord, scoreNumber, achievementColour, achievementLabel, medalPair, problemCard, cardTone } from './maimai-glyphs.js';
 import { startAutoSync } from './auto-sync.js';
-import { cfRatingColor } from './cf-rating-colors.js';
+import { cfRatingColor, cfToneColors, CF_TONE_COLORS as TRACK_TONE } from './cf-rating-colors.js';
 
 /*
- * 随机抽题 / 每日一题 / 段位認定 的页面逻辑。
+ * 随机练习 / 每日一题 / 段位認定 的页面逻辑。
  *
  * 这一页刻意**不缓存、不预取**任何题目信息：服务端在下发时就不给未开始的题号与链接
  * （见 src/dx/dan.ts 的口径 A），所以这里也没有任何「提前藏起来」的东西可以做 ——
@@ -18,9 +21,9 @@ import { cfRatingColor } from './cf-rating-colors.js';
  */
 
 const $ = (id) => document.getElementById(id);
-const KIND_LABEL = { challenge: '段位認定', single: '随机抽题', daily: '每日一题' };
+const KIND_LABEL = { challenge: '四题挑战', single: '随机练习', daily: '每日一题' };
 const STATUS_LABEL = { active: '进行中', cleared: '通过', failed: '未通过', abandoned: '已放弃' };
-const OUTCOME_LABEL = { cleared: '通关', timeout: '超时', interrupted: '中断' };
+const OUTCOME_LABEL = { cleared: '可', timeout: '不可', interrupted: '中断' };
 const STATUS_CLASS = { active: 'idle', cleared: 'ok', failed: 'bad', abandoned: 'bad' };
 /** 结算页的印章文字：对齐原作的「合格 / 不合格」。 */
 const VERDICT_TEXT = { cleared: '合格', failed: '不合格', abandoned: '中断' };
@@ -121,7 +124,7 @@ function render() {
   renderIdle();
   renderActive();
   renderHistory();
-  if (!board.poolReady) setMessage('本地还没有题库缓存。点任意一个档位会自动抓一次全量题目（约 1.5 MB，之后 6 小时内复用）。');
+  if (!board.poolReady) setMessage('首次使用需要加载题库，选择任意档位即可开始。');
   schedule();
   drainSheet();
 }
@@ -147,6 +150,7 @@ function detectFinished() {
 
   if (shownStages === null) {
     shownStages = settled;
+    if (session && session.stages.at(-1)?.outcome) pendingSheet = { session, stage: session.stages.at(-1), finished: false };
     // 页面加载时这一轮其实已经打完了（服务端的同步任务常常比刷新更快把 AC 结算掉）：
     // 把结果补给你，但只补刚结束不久的那一轮，避免每次打开页面都把旧成绩弹一遍。
     if (!session) {
@@ -183,14 +187,14 @@ function detectFinished() {
 function tierButton(tier, kind) {
   const button = el('button', 'dan-tier');
   button.type = 'button';
-  button.append(el('strong', '', tier.name));
+  button.append(el('strong', '', tier.name.replace('段位', '')));
   // 随机段位的限时随抽到的难度走，报不出一个确定的数字，就照实说。
-  const timing = tier.perStageLimit
+  const timing = kind === 'challenge' ? '共享 120 分钟 · AC 恢复时间' : tier.perStageLimit
     ? '限时按当题难度'
     : kind === 'challenge' ? `每道限时 ${fmtLimit(tier.limitSeconds)}` : `限时 ${fmtLimit(tier.limitSeconds)}`;
   button.append(el('small', '', `${tier.minRating}–${tier.maxRating} · ${timing}`));
-  if (tier.draw === 'problem') button.append(el('small', 'dan-tier-warn', '按题目均匀 · 不保证难度分布'));
-  else if (tier.perStageLimit) button.append(el('small', 'dan-tier-warn', '按 rating 均匀 · 每个难度等概率'));
+  if (tier.draw === 'problem') button.append(el('small', 'dan-tier-warn', '每道题的抽中机会相同'));
+  else if (tier.perStageLimit) button.append(el('small', 'dan-tier-warn', '每个难度的抽中机会相同'));
   button.disabled = busy;
   button.addEventListener('click', () => startRun(kind, tier.key));
   return button;
@@ -206,14 +210,14 @@ function renderIdle() {
   const bandNote = $('dailyBandNote');
   const band = board.dailyBand;
   if (band?.center !== null && band?.center !== undefined) {
-    bandNote.textContent = `按你的水平定带：等效 Rating ${Math.round(band.equivalentRating)} → ${band.minRating}–${band.maxRating}。同一天怎么刷新都是同一道。`;
+    bandNote.textContent = `根据当前成绩，推荐难度 ${band.minRating}–${band.maxRating}。`;
   } else {
-    bandNote.textContent = '还没有可以定带的成绩（B50 里没有带用时的 AC），先从 800–2600 全段抽。';
+    bandNote.textContent = '还没有计时成绩，暂从 800–2600 难度中推荐。';
   }
   const dailyHost = $('dailyDifficulty');
   dailyHost.replaceChildren();
   if (board.daily) dailyHost.append(difficultyNode(board.daily.difficulty, '今日难度 · CF 官方 Rating'));
-  else dailyHost.append(el('p', 'dan-note', board.poolReady ? '这个难度带里今天已经没有你没做过的题了。' : '题库缓存未就绪。'));
+  else dailyHost.append(el('p', 'dan-note', board.poolReady ? '推荐范围内暂无可抽题目。' : '题库尚未加载。'));
   $('dailyStart').disabled = busy || !board.daily;
 
   const singles = $('singleTiers');
@@ -230,7 +234,7 @@ const pickedTags = new Set();
 
 /** 计数器要说清两件事：选了几个、多个标签之间是「含任一」而不是「全含」。 */
 function syncTagCount() {
-  $('tagCount').textContent = pickedTags.size ? `已选 ${pickedTags.size} 个 · 含任一` : '不限标签';
+  $('tagCount').textContent = pickedTags.size ? `已选 ${pickedTags.size} 个 · 匹配任一标签` : '不限标签';
 }
 
 function renderTagCloud() {
@@ -241,7 +245,7 @@ function renderTagCloud() {
   // 缓存刷新后个别标签可能消失：留在选择集里只会让服务端拒一次，先清掉。
   for (const name of pickedTags) if (!known.has(name)) pickedTags.delete(name);
   if (!tags.length) {
-    host.append(el('span', 'dan-note', board.poolReady ? '题库没有标签数据（缓存是老版本，点一次抽题后会自动刷新）。' : '题库缓存未就绪。'));
+    host.append(el('span', 'dan-note', board.poolReady ? '标签暂不可用，抽题时会尝试更新。' : '题库尚未加载。'));
   } else {
     for (const tag of tags) {
       const chip = el('button', 'dan-tag');
@@ -273,7 +277,9 @@ function stageCard(session, stage) {
   const card = el('div', 'dan-stage');
   const head = el('div', 'dan-stage-head');
   head.append(el('strong', '', `第 ${stage.index} / ${session.stageCount} 道`));
-  if (stage.claimed && stage.deadlineAt) {
+  if (stage.claimed && stage.startedAt && session.life) {
+    const clock = el('span', 'dan-clock'); clock.dataset.started = String(stage.startedAt); head.append(clock);
+  } else if (stage.claimed && stage.deadlineAt) {
     const clock = el('span', 'dan-clock');
     clock.dataset.deadline = String(stage.deadlineAt);
     head.append(clock);
@@ -285,7 +291,7 @@ function stageCard(session, stage) {
 
   const actions = el('div', 'dan-actions');
   if (!stage.claimed) {
-    card.append(el('p', 'dan-note', '这道题的题号与链接现在不在这个页面的任何地方 —— 点下去才开始揭题并起计时。'));
+    card.append(el('p', 'dan-note', '准备好后点击「开始做题」，揭晓题目并开始计时。'));
     const start = el('button', 'btn btn-primary', '开始做题');
     start.type = 'button';
     start.disabled = busy;
@@ -295,6 +301,7 @@ function stageCard(session, stage) {
     const go = el('a', 'btn btn-primary', '回到 Codeforces');
     go.href = stage.problemUrl ?? '#';
     go.rel = 'noreferrer noopener';
+    go.target = '_blank';
     actions.append(go);
     const done = el('button', 'btn btn-ghost', '立即检查 AC');
     done.type = 'button';
@@ -315,24 +322,27 @@ function renderActive() {
   if (!session) return;
 
   const head = el('div', 'dan-active-head');
-  head.append(el('h2', '', `${session.tierName} · ${KIND_LABEL[session.kind] ?? session.kind}`));
+  head.append(el('h2', '', `${session.tierName.replace('段位', '')} · ${KIND_LABEL[session.kind] ?? session.kind}`));
   head.append(el('span', `dan-badge ${STATUS_CLASS[session.status] ?? 'idle'}`, STATUS_LABEL[session.status] ?? session.status));
   // 逐题限时的模式报不出确定的数，就照实说（与档位按钮同一句话）。
-  head.append(el('span', 'dan-chip', session.perStageLimit ? '限时按当题难度' : `限时 ${fmtLimit(session.limitSeconds)} / 道`));
+  head.append(el('span', 'dan-chip', session.life ? '共享时间槽 · 四题独立计时' : session.perStageLimit ? '限时按当题难度' : `限时 ${fmtLimit(session.limitSeconds)} / 道`));
   head.append(el('span', 'dan-chip', `${session.minRating}–${session.maxRating}`));
   if (session.tags?.length) head.append(el('span', 'dan-chip', `标签：${session.tags.join('、')}`));
   host.append(head);
   host.append(progressBar(session));
+  if (session.life) host.append(lifePanel(session));
 
   const current = session.stages.find((stage) => !stage.outcome);
   if (current) host.append(stageCard(session, current));
   else if (session.stages.some((stage) => stage.outcome)) {
     // 出了成绩就停在这儿，等用户点了「抽选下一题」再抽。
     const last = session.stages.filter((stage) => stage.outcome).at(-1);
-    host.append(el('p', 'dan-note', `第 ${last.index} 道已结算，正在等你看结算 —— 点结算页上的按钮才会抽下一道。`));
+    host.append(el('p', 'dan-note', `第 ${last.index} 道已完成，计时已暂停。`));
+    const next = el('button', 'btn btn-primary', '开始下一题');
+    next.disabled = busy; next.addEventListener('click', () => settleThenDraw()); host.append(next);
   }
   if (session.stages.some((stage) => stage.outcome)) {
-    const review = el('button', 'btn btn-ghost', '再看一次上一道结算');
+    const review = el('button', 'btn btn-ghost', '查看上一题结算');
     review.type = 'button';
     review.addEventListener('click', () => { pendingSheet = { session, stage: session.stages.filter((s) => s.outcome).at(-1), finished: false }; drainSheet(); });
     const actions0 = el('div', 'dan-actions');
@@ -374,7 +384,7 @@ function renderHistory() {
   host.replaceChildren();
   const runs = board.history ?? [];
   if (!runs.length) {
-    host.append(el('p', 'dan-note', '还没有记录。上面抽一道，做完就会留在这里。'));
+    host.append(el('p', 'dan-note', '还没有练习记录，先抽一道试试吧。'));
     return;
   }
   for (const run of runs) host.append(runCard(run));
@@ -383,7 +393,7 @@ function renderHistory() {
 function runCard(run) {
   const card = el('article', 'dan-run');
   const head = el('div', 'dan-run-head');
-  head.append(el('strong', '', `${run.tierName} · ${KIND_LABEL[run.kind] ?? run.kind}`));
+  head.append(el('strong', '', `${run.tierName.replace('段位', '')} · ${KIND_LABEL[run.kind] ?? run.kind}`));
   head.append(el('span', `dan-badge ${STATUS_CLASS[run.status] ?? 'idle'}`, STATUS_LABEL[run.status] ?? run.status));
   head.append(el('span', 'dan-chip', new Date(run.startedAt * 1000).toLocaleString('zh-CN', { hour12: false })));
   if (run.tags?.length) head.append(el('span', 'dan-chip', `标签：${run.tags.join('、')}`));
@@ -430,28 +440,19 @@ function buildStageDialog() {
   dialog.setAttribute('aria-labelledby', 'danResultTitle');
   dialog.innerHTML = `<div class="dx-result-sheet">
     <button class="dx-result-close" type="button" aria-label="关闭结算">×</button>
-    <div class="dx-result-kicker">STAGE <b></b><span></span></div>
+    <div class="dx-result-kicker"><span class="dx-result-track-word"></span><b>01</b><span class="dx-result-context"></span></div>
     <h2 id="danResultTitle" class="dx-result-clear"></h2>
-    <div class="dx-result-track"><div class="dx-result-track-icon" aria-hidden="true">DX<span>✦</span></div>
-      <div class="dx-result-track-content"><div class="dx-result-track-heading"><span class="dx-result-kind"></span><span class="dx-result-problem"></span><i>DX</i></div>
-        <h3 class="dx-result-name"></h3></div>
-      <div class="dx-result-level"><small>LEVEL</small><strong></strong></div></div>
+    <div class="dx-result-track"></div>
     <section class="dx-result-achievement-section" aria-label="达成率结算">
-      <div class="dx-result-achievement-top"><div class="dx-result-achievement-label">达成率 <span>›››✦</span></div>
-        <div class="dx-result-best"><span>此前最佳 <b></b></span><span class="dx-result-achievement-delta"></span></div></div>
+      <div class="dx-result-achievement-top"><div class="dx-result-achievement-label"></div></div>
       <div class="dx-result-achievement"><span class="dx-result-achievement-value"></span></div>
-      <span class="dx-result-record" hidden>NEW RECORD</span></section>
-    <div class="dx-result-main"><div class="dx-result-performance">
-        <div class="dx-result-rank" aria-label="本次评级"></div>
-        <div class="dx-result-badges"><div class="dx-result-award"><span class="dx-result-medal" aria-label="accepted"><b>AC</b><small>Accepted</small></span></div>
-          <div class="dx-result-award dx-result-award-cs"><span class="dx-result-medal dx-result-medal-cs" aria-label="clean solve"><b>CS</b><small>Clean Solve</small></span></div></div></div>
-      <div class="dx-result-detail"><div class="dx-result-time"><small>PLAY TIME</small><strong></strong><small class="dx-result-limit"></small></div>
-        <div class="dx-result-verdicts" aria-label="本次提交判定"></div>
-        <div class="dx-result-rating"><small>Rating</small><strong></strong><span class="dx-result-single-delta"></span></div></div></div>
-    <div class="dx-result-bottom"><div class="dx-result-total"><div class="dx-result-total-label"><b>DX</b><span>RATING</span></div>
-      <div class="dx-result-total-score"></div><span class="dx-result-total-delta"></span></div></div>
-    <div class="dan-sheet-strip"></div>
-    <div class="dx-result-footer"><button class="dx-result-next" type="button"></button></div></div>`;
+    </section>
+    <div class="dx-result-main"><div class="dx-result-performance"><div class="dx-result-rank" aria-label="本次评级"></div><div class="dx-result-badges"></div></div>
+      <div class="dx-result-side"><figure class="dx-result-mascot" aria-hidden="true"></figure><div class="dx-result-detail"><div class="dx-result-time"><small>PLAY TIME</small><strong></strong><small class="dx-result-limit"></small></div><div class="dx-result-verdicts" aria-label="本次提交判定"></div><div class="dx-result-rating"><small>Rating</small><strong></strong><span class="dx-result-single-delta"></span></div></div></div>
+    </div>
+    <div class="dx-result-bottom"><div class="dx-result-total"><div class="dx-result-total-label"><b>DX</b><span>RATING</span></div><div class="dx-result-total-score"><strong></strong></div><span class="dx-result-total-delta"></span></div>
+    <div class="dx-result-footer"><button class="dx-result-next" type="button">下一步 <span aria-hidden="true">›</span></button></div></div>
+    <div class="dan-sheet-strip"></div></div>`;
   document.body.append(dialog);
   field(dialog, '.dx-result-close').addEventListener('click', () => dialog.close());
   return dialog;
@@ -465,44 +466,49 @@ function showStageSheet(pending) {
   const score = stage.comparison?.currentScore ?? null;
   const comparison = stage.comparison ?? null;
 
-  field(dialog, '.dx-result-kicker b').textContent = String(stage.index).padStart(2, '0');
-  field(dialog, '.dx-result-kicker span').textContent = `${session.tierName} · ${session.stageCount} 道中的第 ${stage.index} 道`;
-  field(dialog, '#danResultTitle').textContent = stage.outcome === 'cleared' ? 'CLEAR!' : stage.outcome === 'timeout' ? 'TIME UP' : 'INTERRUPTED';
-  field(dialog, '.dx-result-kind').textContent = KIND_LABEL[session.kind] ?? session.kind;
-  field(dialog, '.dx-result-problem').textContent = stage.problemId ?? '';
-  field(dialog, '.dx-result-name').textContent = stage.title ?? stage.problemId ?? '';
-  field(dialog, '.dx-result-level strong').textContent = String(stage.difficulty);
-
-  const achievement = field(dialog, '.dx-result-achievement-value');
-  achievement.textContent = stage.achievement === null ? (stage.outcome === 'cleared' ? '已通关' : '没有成绩') : `${stage.achievement.toFixed(4)}%`;
+  field(dialog, '.dx-result-track-word').replaceChildren(trackLabel());
+  field(dialog, '.dx-result-kicker b').replaceChildren(trackNumber(String(stage.index).padStart(2, '0')));
+  field(dialog, '.dx-result-context').textContent = `${session.tierName.replace('段位', '')} · 第 ${stage.index} / ${session.stageCount} 题`;
+  const title = field(dialog, '#danResultTitle');
+  if (stage.life) {
+    const stamp = el('img', 'dan-stage-stamp');
+    stamp.src = stage.life.failed ? '/assets/maimai/stamp-fail.png' : '/assets/maimai/stamp-clear.png';
+    stamp.alt = stage.life.failed ? '不可' : '可';
+    title.replaceChildren(stamp);
+  } else if (stage.outcome === 'cleared') title.replaceChildren(clearWord());
+  else title.textContent = stage.outcome === 'timeout' ? 'TIME UP' : 'INTERRUPTED';
+  const color = cfRatingColor(stage.difficulty), tone = cardTone(color.tone);
+  const card = field(dialog, '.dx-result-track');
+  card.dataset.ratingTone = color.tone;
+  card.style.setProperty('--mm-plate', `url('/assets/mm-result/${tone.plate}')`);
+  card.style.setProperty('--mm-field', tone.field);
+  card.style.setProperty('--mm-plate-filter', tone.filter);
+  const [main, deep] = cfToneColors(color.tone);
+  card.style.setProperty('--track-main', main); card.style.setProperty('--track-deep', deep);
+  card.replaceChildren(problemCard({ problemId: stage.problemId, kind: KIND_LABEL[session.kind] ?? session.kind,
+    title: stage.title, difficulty: stage.difficulty, tone: color.tone }));
+  field(dialog, '.dx-result-achievement-label').replaceChildren(achievementLabel());
+  field(dialog, '.dx-result-achievement-value').replaceChildren(stage.achievement == null
+    ? document.createTextNode('没有成绩') : scoreNumber(`${stage.achievement.toFixed(4)}%`, { colour: achievementColour(stage.achievement) }));
+  field(dialog, '.dx-result-rank').replaceChildren(rankWord(stage.rank ?? '—'));
+  resultBackground(field(dialog, '.dx-result-sheet'), stage.rank);
   const previous = comparison?.previousScore ?? null;
-  const delta = field(dialog, '.dx-result-achievement-delta');
-  if (previous && score) {
-    const improvement = score.achievementShown - previous.achievementShown;
-    delta.textContent = `${signed(improvement, 4)}%`;
-    delta.dataset.direction = improvement < 0 ? 'down' : 'up';
-  } else {
-    delta.textContent = previous ? '暂无对比' : '首次通过';
-    delta.dataset.direction = 'up';
-  }
-  field(dialog, '.dx-result-best b').textContent = previous ? `${previous.achievementShown.toFixed(4)}%` : '—';
-  field(dialog, '.dx-result-record').hidden = !(previous && score && score.achievementShown > previous.achievementShown);
-
-  field(dialog, '.dx-result-rank').textContent = stage.rank ?? (stage.outcome === 'timeout' ? '—' : '');
+  const mascot = field(dialog, '.dx-result-mascot');
+  if (!mascot.firstChild) mascot.append(mascotImage({ className: 'dx-result-mascot-img' }));
   field(dialog, '.dx-result-time strong').textContent = stage.seconds === null ? '—' : fmtHMS(stage.seconds);
-  field(dialog, '.dx-result-limit').textContent = `限时 ${Math.round(stage.limitSeconds / 60)}:00`;
-  field(dialog, '.dx-result-rating strong').textContent = String(stage.difficulty);
+  field(dialog, '.dx-result-limit').textContent = session.life ? '本题实际用时 · 不含扣时' : `限时 ${Math.round(stage.limitSeconds / 60)}:00`;
+  field(dialog, '.dx-result-rating strong').textContent = stage.rating === null ? '—' : stage.rating.toFixed(1);
   field(dialog, '.dx-result-rating').lastElementChild.textContent = previous && score ? signed(score.rating - previous.rating, 1) : '';
 
   // AC / CS 勋章
   const verdicts = stage.verdicts ?? {};
   const cleanSolve = (verdicts.AC ?? 0) > 0 && Object.entries(verdicts).every(([verdict, count]) => verdict === 'AC' || count === 0);
-  field(dialog, '.dx-result-award-cs').hidden = !cleanSolve;
+  field(dialog, '.dx-result-badges').replaceChildren(medalPair({ cleanSolve, accepted: (verdicts.AC ?? 0) > 0 }));
   const verdictHost = field(dialog, '.dx-result-verdicts');
   verdictHost.replaceChildren();
   for (const verdict of ['AC', 'WA', 'TLE', 'RE', 'CE', 'MLE', 'OTHER']) {
     const count = verdicts[verdict] ?? 0;
-    if (!count && !['AC', 'WA'].includes(verdict)) continue;
+    if (!count && ['MLE', 'OTHER'].includes(verdict)) continue;
     const tag = el('div', `dx-result-verdict dx-result-verdict-${verdict.toLowerCase()}`);
     tag.append(el('span', '', verdict), el('strong', '', String(count)));
     verdictHost.append(tag);
@@ -534,13 +540,22 @@ function showStageSheet(pending) {
     el('span', '', finished || done.length >= session.stageCount ? '本轮已打完'
       // 随机段位下一道还没抽出来，限时是多少现在还不知道 —— 不编一个数字。
       : session.perStageLimit ? '下一道限时按当题难度'
-        : `下一道仍是${session.tierName}，限时 ${fmtLimit(session.limitSeconds)}`),
+        : `下一道仍是${session.tierName.replace('段位', '')}，限时 ${fmtLimit(session.limitSeconds)}`),
   );
 
+  if (stage.life) {
+    strip.replaceChildren(
+      el('span', 'dan-stage-verdict', stage.life.failed ? '不可 · 本轮已失去合格资格' : '可 · 本题完成'),
+      el('span', '', `剩余 ${fmtClock(stage.life.remainingSeconds)}`),
+      el('span', '', `扣时 ${fmtClock(stage.life.penaltySeconds)}`),
+      el('span', 'dan-recovery-earned', stage.index >= session.stageCount ? '本轮结束' : stage.life.recoverySeconds ? `待恢复 +${fmtClock(stage.life.recoverySeconds)}` : '无时间恢复'),
+    );
+  }
+  dialog.dataset.stageVerdict = stage.life?.failed ? 'failed' : 'cleared';
   const next = field(dialog, '.dx-result-next');
   const isLast = finished || done.length >= session.stageCount;
-  next.textContent = isLast ? '查看本轮结算 ›' : '抽选下一题 ›';
-  next.onclick = () => { dialog.close(); if (isLast) openRunResult(pending.run ?? session); else settleThenDraw(); };
+  next.textContent = isLast ? '查看本轮结算 ›' : '返回挑战 ›';
+  next.onclick = () => { dialog.close(); if (isLast) openRunResult(pending.run ?? session); else { render(); $('active').scrollIntoView({ behavior: 'smooth', block: 'center' }); } };
 
   if (!dialog.open) dialog.showModal();
 }
@@ -562,22 +577,91 @@ async function settleNow() {
 }
 
 /** 「抽选下一题」：这一步才真的抽。 */
+function reserveProblemTab() {
+  const tab = window.open('about:blank', '_blank');
+  if (tab) {
+    tab.opener = null;
+    tab.document.title = '准备下一题 · Algorithm DX';
+    tab.document.body.textContent = '正在准备题目，请稍候。练习页面会保留倒计时。';
+    tab.document.body.style.cssText = 'margin:0;padding:48px;background:#0b0f16;color:#dcecff;font:18px system-ui';
+    window.focus();
+  }
+  return tab;
+}
+async function openClaimedStage(session, tab) {
+  const claimed = await post('/api/dan/claim', { userId, sessionId: session.id });
+  const opened = Boolean(tab && !tab.closed);
+  if (opened) tab.location.replace(claimed.url);
+  await refresh();
+  setMessage(opened ? '题目已在新标签页打开，这里会继续显示计时。' : '题目已开始计时。请点击「回到 Codeforces」打开题目。');
+}
+async function recoveryAnimation(life) {
+  const overlay = el('div', 'dan-transition');
+  overlay.setAttribute('role', 'status');
+  const amount = life?.recoverySeconds ?? 0, from = life?.remainingSeconds ?? 0;
+  const title = el('span', 'dan-transition-label', amount ? '时间恢复' : '准备下一题');
+  const bonus = el('strong', 'dan-transition-bonus', amount ? `+${fmtClock(amount)}` : '继续练习');
+  const balance = el('span', 'dan-transition-balance', fmtClock(from));
+  overlay.append(title, bonus, balance, el('small', '', '动画结束后揭题并开始计时'));
+  document.body.append(overlay);
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  try {
+    await new Promise(resolve => {
+      const duration = reduced ? 150 : 1100;
+      let start;
+      function frame(now) {
+        start ??= now;
+        const ratio = Math.min(1, (now - start) / duration);
+        balance.textContent = fmtClock(from + amount * (1 - Math.pow(1-ratio,3)));
+        if (ratio < 1) requestAnimationFrame(frame); else resolve();
+      }
+      requestAnimationFrame(frame);
+    });
+  } finally { overlay.remove(); }
+}
 async function settleThenDraw() {
   if (busy) return;
+  const previous = board.active?.stages.at(-1)?.life;
+  const tab = reserveProblemTab();
   busy = true;
-  setMessage('正在抽下一道…');
+  render();
   try {
     const data = await post('/api/dan/next', { userId, tz });
-    clockOffset = data.serverNow - Date.now() / 1000;
-    if (data.poolEmpty) setMessage('这个档位已经没有你没做过的题了，换一个档位吧。', true);
-    else setMessage('');
-    await refresh();
+    if (data.poolEmpty || !data.session) throw new Error(data.poolEmpty ? '当前范围没有可抽题目，可以结束本轮。' : '本轮已经结束，请刷新查看结果。');
+    if (data.session.life) await recoveryAnimation(previous);
+    await openClaimedStage(data.session, tab);
   } catch (error) {
+    if (tab && !tab.closed) tab.close();
     setMessage(error.message, true);
-  } finally {
-    busy = false;
-    render();
+  } finally { busy = false; render(); }
+}
+
+function lifePanel(session) {
+  const life = session.life;
+  const panel = el('section', 'dan-life-panel');
+  panel.dataset.failed = String(life.inheritedFailure || (life.failed && !life.running));
+  const header = el('div', 'dan-life-heading');
+  header.append(el('span', '', life.running ? '剩余挑战时间' : '计时已暂停'),
+    el('span', 'dan-life-stage', `${session.stages.filter(s => s.outcome).length} / ${session.stageCount} 完成`));
+  const clock = el('strong', 'dan-life-clock');
+  clock.dataset.life = String(life.remainingSeconds);
+  clock.dataset.at = String(life.serverNow);
+  clock.dataset.running = String(life.running);
+  clock.textContent = fmtClock(life.remainingSeconds);
+  const bar = el('div', 'dan-life-track'), fill = el('span', 'dan-life-fill');
+  fill.style.width = `${Math.max(0,life.remainingSeconds/life.maxSeconds*100)}%`; bar.append(fill);
+  panel.append(header, clock, bar);
+  const hint = life.inheritedFailure || (life.failed && !life.running)
+    ? '本轮不合格 · 可以继续完成剩余题目，成绩仍会保存'
+    : life.running && life.remainingSeconds <= 0 ? '时间已耗尽，等待提交同步确认；可以继续练习'
+    : life.pendingRecovery ? `下一题开始前恢复 +${fmtClock(life.pendingRecovery)}` : 'AC 恢复 10 分钟 · WA / TLE / MLE / RE 每次扣 2 分钟';
+  panel.append(el('p', 'dan-life-hint', hint));
+  if (life.events?.length) {
+    const events = el('div', 'dan-life-events');
+    for (const event of life.events.slice(-5)) events.append(el('span', '', `${event.verdict} −${fmtClock(-event.seconds)}`));
+    panel.append(events);
   }
+  return panel;
 }
 
 function drainSheet() {
@@ -590,38 +674,50 @@ function drainSheet() {
 
 /* ---------------- 段位認定结算页（对齐原作 UI_DNM_Result_* 的构成） ---------------- */
 
-/** 难度色号 → 逐曲卡的渐变（与 CF 分色同一套边界；violet 是原作 MASTER 的紫）。 */
-const TRACK_TONE = {
-  red: ['#e8564f', '#a3211c'], orange: ['#f08c3a', '#a85a12'],
-  violet: ['#8b6cf0', '#4a2fb0'], blue: ['#4a7fe0', '#1e3f96'],
-  cyan: ['#3fa8c4', '#166b83'], green: ['#4aa85c', '#1d6b30'],
-  gray: ['#7b8391', '#3f4652'], unrated: ['#7b8391', '#3f4652'],
-};
-
+// The round layout uses the same CF color scale as single-question results.
 let resultDialog = null;
 function buildResultDialog() {
   const dialog = el('dialog', 'dan-result');
   dialog.setAttribute('aria-labelledby', 'danRunTitle');
+  // 盘面是一张 980×928 的固定设计尺寸舞台，里面所有组件都用**官方预制体量出来的像素坐标**
+  // （见 dan.css 顶部注释）。窄屏横向滚动，不做响应式重排 —— 重排就还原不出来了。
   dialog.innerHTML = `<div class="dan-result-sheet">
     <button class="dan-result-close" type="button" aria-label="关闭结算">×</button>
-    <span class="dan-cord left" aria-hidden="true"><i></i></span>
-    <span class="dan-cord right" aria-hidden="true"><i></i></span>
-    <h2 class="dan-result-title" id="danRunTitle">段位認定</h2>
-    <p class="dan-result-sub"></p>
-    <ol class="dan-result-tracks"></ol>
-    <div class="dan-result-bottomrow">
-      <div class="dan-result-rankbox"><strong></strong><small></small></div>
-      <div class="dan-result-life"><span></span></div>
-      <div class="dan-result-totalblock">
-        <span class="dan-total-label">总达成率</span>
-        <strong class="dan-total-ach dan-gold"></strong>
-        <span class="dan-total-score"><small>DX分数</small><b></b></span>
+    <div class="dan-result-body">
+      <div class="dan-result-art">
+        <div class="dan-result-stage">
+          <h2 class="dan-result-title" id="danRunTitle">段位認定</h2>
+          <ol class="dan-result-tracks"></ol>
+          <div class="dan-bottom">
+            <!-- 左下那格：原版是段位名牌（十段/皆伝…）。我们发的是档位不是段位名，
+                 所以照原版的字重与描边把**档位名**写在里面，而不是盖一枚合格印。 -->
+            <div class="dan-verdict">
+              <span class="dan-plate-name"></span>
+              <small class="dan-verdict-count"></small>
+            </div>
+            <div class="dan-life">
+              <img class="dan-life-base" alt="">
+              <span class="dan-life-count"></span>
+            </div>
+            <!-- 原作这两块的**位置**写在底图的预留白格里（见 dan.css）：标签进白格，
+                 大数字落在色带上，下面是官方那个白底的「DX分数」条。 -->
+            <div class="dan-total-row">
+              <span class="dan-total-label">总达成率</span>
+              <span class="dan-total-num"></span>
+            </div>
+            <div class="dan-dxscore-row">
+              <span class="dan-dxscore-label">DX分数</span>
+              <span class="dan-dxscore-num"></span>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-    <p class="dan-result-note"></p>
-    <div class="dan-result-actions">
-      <button class="dan-result-again" type="button"></button>
-      <button class="dan-result-ok" type="button">好</button>
+      <p class="dan-result-sub"></p>
+      <p class="dan-result-note"></p>
+      <div class="dan-result-actions">
+        <button class="dan-result-again" type="button"></button>
+        <button class="dan-result-ok" type="button">好</button>
+      </div>
     </div></div>`;
   document.body.append(dialog);
   field(dialog, '.dan-result-close').addEventListener('click', () => dialog.close());
@@ -629,22 +725,229 @@ function buildResultDialog() {
   return dialog;
 }
 
-/** `.dan-gold` 要两层（描边 ::before + 渐变填充 ::after），两层都读 `data-text`。 */
-function goldNode(cls, text) {
-  const node = el('strong', cls, text);
-  node.dataset.text = text;
-  return node;
+/* ---------- 官方数字字体（图集逐格切） ----------
+ * 图集是规整的 4×4 网格，每格的位置由素材包里同名的 Sprite 给出
+ * （UI_CMN_Num_90p_0 … _14），不用自己量。
+ * 「下标 → 字符」是拿对照表一张张看出来的：
+ *   白字族（UI_CMN_Num_26p/90p）0-9 · [10]'+' · [11]'-' · [12]',' · [13]'.' · [14]'%'
+ *   分数族（UI_NUM_Score_0001111_*）0-9 · [10]'+' · [11]'/' · [12]'%' · [13]'.'
+ * 白字族各带一层 _Outline（同布局的实心剪影）—— 官方就是这么叠出描边数字的：
+ * 两个背景层同一位置，填充层画在描边层之上。
+ */
+const NUM_INDEX = {
+  '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+  '+': 10, '-': 11, ',': 12, '.': 13, '%': 14,
+};
+const SCORE_INDEX = {
+  '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+  '+': 10, '/': 11, '%': 12, '.': 13,
+};
+/** 白字族借用的小数点已经不需要了：注释见 NUM_FONTS 的 `dotBaseline`。 */
+/**
+ * 图集每格留了空白边（90p 那格 89px 宽、字形只有 63px），照格宽排字会读起来「一个字一个字
+ * 分开」。官方是等距密排（字与字几乎贴上），所以每格按 `advance` 收回去一点，见 numText。
+ *
+ * `baseline`：数字墨迹底线在格高里的比例（量出来的）—— 旁边有小字标签时用它把两边按同一条
+ * 基线排（见 numText 的 `baseline` 选项）。
+ *
+ * `decimal`：**借来的小数点**。白字族里没有句点这一格 —— `[13]` 是中黑点（画在字高中线上）、
+ * `[12]` 是逗号，都不是小数点该有的样子（小字号下读出来像断字符）。分数族 `[13]` 才是这套
+ * 数字里真正的句点（方形、压在基线附近），官方达成率图里的「101.0000%」用的就是它。
+ * `dotBaseline`：小数点那一格（`[13]`）墨迹底线在格高里的比例。这一格在字高中线上
+ * （26p 只有 8×8、90p 24×24），照原样排出来是浮在数字中间的一粒、像断字符 —— 官方那只
+ * 方块的底边压在数字基线上，所以按它压下去（字号小的那两个族才需要，见 numText）。
+ */
+const NUM_FONTS = {
+  n26: {
+    fill: 'num-26p', outline: 'num-26p-outline', atlas: [136, 160], cell: [34, 40], advance: 24,
+    baseline: 0.825, dotBaseline: 0.775, chars: NUM_INDEX,
+  },
+  n90: {
+    fill: 'num-90p', outline: 'num-90p-outline', atlas: [356, 420], cell: [89, 105], advance: 67,
+    baseline: 0.886, dotBaseline: 0.6, chars: NUM_INDEX,
+  },
+  // 分数数字是**三套**同布局不同颜色的图集（自带颜色，不再叠描边层）：
+// blue / gold / red，按达成率高低换。官方还有一张 `UI_NUM_Score_0001111_Base`，
+// 但那是一张**空图集**（整张几乎全透明，量下来 16 格一个字形都没有），不能用；
+// 「%」字形也正好只有蓝/金/红三张 —— 所以官方的档位就是三档，不是四档。
+'score-blue': { fill: 'num-score-blue', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, dotBaseline: 0.827, chars: SCORE_INDEX },
+  'score-gold': { fill: 'num-score-gold', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, dotBaseline: 0.827, chars: SCORE_INDEX },
+  'score-red': { fill: 'num-score-red', outline: '', atlas: [296, 392], cell: [74, 98], advance: 67, baseline: 0.949, dotBaseline: 0.827, chars: SCORE_INDEX },
+};
+const NUM_COLS = 4;
+/** 达成率末尾那个大「%」字形：官方按分数分色，蓝/金/红三张。 */
+const PERCENT_ART = { gold: 'score-per-gold.png', blue: 'score-per-blue.png', red: 'score-per-red.png' };
+
+/**
+ * 达成率取哪一档颜色 —— 原作就是按分数换 `UI_NUM_Score_0001111_*` 那一套。
+ * 三档的界限（2026-10-10 用户给的官方口径）：**97% 以上金、80% 以上红、再低蓝**。
+ * 注意低分段是**蓝**、不是红 —— 别按「高金/中蓝/低红」的直觉写。
+ */
+function scoreTone(achievement) {
+  if (achievement >= 97) return 'gold';
+  if (achievement >= 80) return 'red';
+  return 'blue';
 }
+
+/** 达成率数字 + 官方「%」字形。 */
+function achievementNumber(achievement, height) {
+  const tone = scoreTone(achievement);
+  const art = PERCENT_ART[tone];
+  const text = achievement.toFixed(4);
+  const wrap = numText(text, `score-${tone}`, height);
+  // 「%」是独立字形（img 的 alt 为空），读屏那行 aria-label 要把它补回去。
+  wrap.setAttribute('aria-label', `${text}%`);
+  const percent = el('img', 'dan-per');
+  percent.src = `/assets/maimai/${art}`;
+  percent.alt = '';
+  // 官方那个「%」跟数字差不多高，而且**贴着**最后一个数字。`score-per-*` 是 80×80 的方图、
+  // 四周留白（墨迹 x 8..70 / y 10..69），直排会在数字和 % 之间多出一截空隙，所以放大一点
+  // 再把左边那圈留白用负边距抵掉。
+  percent.style.height = `${Math.round(height * 1.1)}px`;
+  percent.style.marginLeft = `${-Math.round(height * 0.16)}px`;
+  wrap.append(percent);
+  return wrap;
+}
+
+/** DX 分数（其实是单题 rating）用的深蓝：和边框里的标题条、标签同一个色 —— 不走分数色，
+ * 那套三色专门留给达成率。 */
+const DX_NUM_COLOR = '#0d2a63';
+
+/**
+ * 把一串字符渲染成官方数字贴图。`height` 是字高（px，按 980×928 的设计尺寸）。
+ * 每格拆成两个叠起来的层：官方 `_Outline` 剪影上深色（描边）+ 官方填充图集。
+ * 之所以要两个真元素而不是两个 background 层：图集是**纯白剪影**（游戏运行时才上色），
+ * background 层没法单独染色，而伪元素又只能画在宿主背景之上（描边会盖住填充）。
+ * `color` 给定时就用图集当**遮罩**把数字染成这个颜色 —— 这正是游戏里给白字族上色的做法
+ * （分数族自带颜色，不走这条路；注意 `UI_NUM_Score_0001111_Base` 是张空图集，不能用）。
+ * 字体里没有的字符（例如数字族没有 '/'）退回普通文字，不会静默丢字符。
+ *
+ * `opts.outline === false`：**不叠描边层**。小号的 DX 分数在官方那里是干净的深蓝数字，
+ * 叠一层 4px 描边会糊成一团 —— 小字一律不用描边。
+ * `opts.trim === false`：不收紧字距（留给需要等宽对齐的场景）。
+ *
+ * 排版就一件事：**一个字形一格**，格子之间按 `advance` 等距。小数点（含逗号、加号这些）
+ * 跟数字走同一条路 —— 它本来就是图集里的一格，官方也是这么排的，别为它开小灶。
+ *
+ * `opts.baseline`：把整块数字往下补 `(1 − baseline) × 字高`。旁边有小字标签、两边用
+ * `align-items: baseline` 排的时候要用它 —— flex 认的基线是这一格的**底边**，而图集里数字的
+ * 墨迹底线在格高的 `baseline` 处，不补这一下，数字就会浮在标签上面。
+ */
+const NUM_OUTLINE_COLOR = '#2b3350';
+function numText(text, fontKey, height, color, opts = {}) {
+  const font = NUM_FONTS[fontKey];
+  const scale = height / font.cell[1];
+  const wrap = el('span', `dan-num dan-num-${fontKey}`);
+  wrap.setAttribute('role', 'img');
+  wrap.setAttribute('aria-label', text);
+  wrap.style.height = `${height}px`;
+  if (opts.baseline) {
+    wrap.style.position = 'relative';
+    wrap.style.top = `${((1 - font.baseline) * height).toFixed(2)}px`;
+  }
+  const chars = [...text];
+  if (opts.trim !== false) {
+    // 图集每格右边都留了空（分数族格宽 74、字形只有 60 左右），照格宽排会把一串数字
+    // 读成「一个字一个字分开」。收回 (格宽 − 步进)：注意 CSS 里是**负**边距。
+    wrap.style.setProperty('--dan-num-trim', `${(font.cell[0] - (font.advance ?? font.cell[0])) * scale}px`);
+  }
+  chars.forEach((ch, index) => {
+    const cell = el('i', 'dan-num-char');
+    cell.style.height = `${height}px`;
+    if (index === chars.length - 1) cell.classList.add('dan-num-last');
+    const idx = font.chars[ch];
+    if (idx === undefined) {
+      cell.textContent = ch;
+      cell.classList.add('dan-num-plain');
+      if (color) cell.style.color = color;
+      wrap.append(cell);
+      return;
+    }
+    const sx = (idx % NUM_COLS) * font.cell[0];
+    const sy = Math.floor(idx / NUM_COLS) * font.cell[1];
+    const size = `${font.atlas[0] * scale}px ${font.atlas[1] * scale}px`;
+    // 小数点那一格画在字高中线上（26p 只有 8×8、90p 24×24），照原样排出来就是浮在数字中间
+    // 的一粒，像断字符。官方那只方块是**底边压在数字基线上**的，所以按 `dotBaseline`
+    // （那一格墨迹底线在格高里的比例）把它压下去 —— 字体自己的字形，只是摆到该在的位置。
+    //
+    // 注意：**不能**用挪 `background-position` 的办法下压 —— 图集是整张背景，往下挪 dy 就会把
+    // 上一格（同一列、上一行）的下半截露在这一格里（用户提过两次的那个 bug）。裁剪也救不了，
+    // 因为承载背景的那个 `b` 就是格子本身、并没有溢出。改成把**整格**往下挪：图集位置不动，
+    // 字形还是它自己那一格，只是这一格整体下沉 dy。
+    const dy = ch === '.' && font.dotBaseline ? (font.baseline - font.dotBaseline) * height : 0;
+    if (dy) cell.style.top = `${dy}px`;
+    const pos = `${-sx * scale}px ${-sy * scale}px`;
+    cell.style.width = `${font.cell[0] * scale}px`;
+    if (font.outline && opts.outline !== false) {
+      const outline = el('b', 'dan-num-outline');
+      const url = `url(/assets/maimai/${font.outline}.png)`;
+      outline.style.setProperty('background-color', NUM_OUTLINE_COLOR);
+      for (const prop of ['mask-image', '-webkit-mask-image']) outline.style.setProperty(prop, url);
+      for (const prop of ['mask-size', '-webkit-mask-size']) outline.style.setProperty(prop, size);
+      for (const prop of ['mask-position', '-webkit-mask-position']) outline.style.setProperty(prop, pos);
+      for (const prop of ['mask-repeat', '-webkit-mask-repeat']) outline.style.setProperty(prop, 'no-repeat');
+      cell.append(outline);
+    }
+    const fill = el('b', 'dan-num-fill');
+    const fillUrl = `url(/assets/maimai/${font.fill}.png)`;
+    if (color) {
+      // 白字族是纯白剪影：当遮罩 + 纯色背景 = 想染什么色就什么色（游戏里也是运行时染色）。
+      fill.style.setProperty('background-color', color);
+      for (const prop of ['mask-image', '-webkit-mask-image']) fill.style.setProperty(prop, fillUrl);
+      for (const prop of ['mask-size', '-webkit-mask-size']) fill.style.setProperty(prop, size);
+      for (const prop of ['mask-position', '-webkit-mask-position']) fill.style.setProperty(prop, pos);
+      for (const prop of ['mask-repeat', '-webkit-mask-repeat']) fill.style.setProperty(prop, 'no-repeat');
+    } else {
+      fill.style.backgroundImage = fillUrl;
+      fill.style.backgroundSize = size;
+      fill.style.backgroundPosition = pos;
+    }
+    cell.append(fill);
+    wrap.append(cell);
+  });
+  return wrap;
+}
+
+/**
+ * 官方评级徽章：`UI_GAM_Rank_*` —— 游戏内那套**单级全套**（D/C/B/BB/BBB/A/AA/AAA/S/S+/SS/SS+/SSS/SSS+）。
+ *
+ * 之前用的是 `UI_CMN_TabTitle_Rank_*`，但那是**页签标题**用的区间图：AAA 那张画的是
+ * 「A～AAA」、BBB 那张是「～BBB」，摆在逐题卡片上根本不是那一级的评级（而且没有
+ * D/C/B/BB/A/AA 这些级，低分全挤到同一张牌上）。换成游戏内那套之后 14 级各有一张。
+ */
+const RANK_ART = {
+  'SSS+': 'gam-rank-sssp.png', SSS: 'gam-rank-sss.png', 'SS+': 'gam-rank-ssp.png', SS: 'gam-rank-ss.png',
+  'S+': 'gam-rank-sp.png', S: 'gam-rank-s.png',
+  AAA: 'gam-rank-aaa.png', AA: 'gam-rank-aa.png', A: 'gam-rank-a.png',
+  BBB: 'gam-rank-bbb.png', BB: 'gam-rank-bb.png', B: 'gam-rank-b.png',
+  C: 'gam-rank-c.png', D: 'gam-rank-d.png',
+};
 
 function openRunResult(run) {
   resultDialog ??= buildResultDialog();
   const dialog = resultDialog;
   const verdict = run.status === 'cleared' ? 'cleared' : run.status === 'failed' ? 'failed' : 'abandoned';
   const cleared = run.stages.filter((stage) => stage.outcome === 'cleared');
-  const scored = cleared.filter((stage) => stage.achievement !== null);
+  const scored = run.stages.filter((stage) => stage.achievement !== null);
 
   dialog.dataset.verdict = verdict;
-  const limitText = run.perStageLimit ? '每道限时按当题难度' : `每道限时 ${fmtLimit(run.limitSeconds)}`;
+  // 底图用原作素材，按模式选：档位挑战是「段位認定」那一版，
+  // 小/大随机段位是「ランダム段位認定」那一版（原作本来就把这两件事分成两块屏）。
+  // 页头文字与两侧水引都烘焙在底图里，所以标题 h2 只留给读屏。
+  field(dialog, '.dan-result-art').dataset.art =
+    run.tier === 'small_random' || run.tier === 'big_random' ? 'random' : 'dani';
+  const clearedRun = run.status === 'cleared';
+  // 左下那格是原版的段位名牌：照原版写**名字**（我们发档位不发段位名），不盖合格印。
+  // 通关几道另起一行小字放在名字下面，别把名字挤掉。
+  const plateName = field(dialog, '.dan-plate-name');
+  plateName.textContent = run.tierName.replace('段位', '');
+  plateName.dataset.len = String([...plateName.textContent].length);
+  // 结论（合格/不合格/中断）从原来那枚印改成名字下面的小字：印让位给段位名，
+  // 但「到底过没过」这句话还是得留着。
+  field(dialog, '.dan-verdict-count').textContent =
+    `${VERDICT_TEXT[run.status] ?? '中断'} · ${cleared.length} / ${run.stageCount} 道通关`;
+
+  const limitText = run.life ? '共享 120 分钟 · 前三题有效 AC 恢复时间' : run.perStageLimit ? '每道限时按当题难度' : `每道限时 ${fmtLimit(run.limitSeconds)}`;
   field(dialog, '.dan-result-sub').textContent =
     `${run.tierName} · ${run.minRating}–${run.maxRating} · 共 ${run.stageCount} 道 · ${limitText}`
     + ` · ${run.draw === 'problem' ? '按题目均匀' : '按 rating 均匀'}`
@@ -653,79 +956,129 @@ function openRunResult(run) {
   const tracks = field(dialog, '.dan-result-tracks');
   tracks.replaceChildren();
   for (const stage of run.stages) {
-    const tone = TRACK_TONE[cfRatingColor(stage.difficulty).tone] ?? TRACK_TONE.violet;
+    const color = cfRatingColor(stage.difficulty);
+    const tone = TRACK_TONE[color.tone] ?? TRACK_TONE.violet;
     const item = el('li', 'dan-track');
     item.dataset.outcome = stage.outcome ?? 'pending';
-    item.append(el('span', 'dan-track-stamp', stage.outcome === 'cleared' ? '可' : '不可'));
+    // 逐题行的纵向节距是官方的 122px（见 dan.css）。
+    item.style.top = `${152 + 122 * (stage.index - 1)}px`;
+    // 底色变量挂在这一行上：乐曲边框读它（--tc1 主色场 / --tc2 外圈主色环）。
+    // 官方那五张边框的颜色与难度名是烘死的，我们按自己的 CF 分档上色。
+    item.style.setProperty('--tc1', tone[0]);
+    item.style.setProperty('--tc2', tone[1]);
 
-    const card = el('div', 'dan-track-card');
-    card.style.setProperty('--tc1', tone[0]);
-    card.style.setProperty('--tc2', tone[1]);
+    // 可 / 不可 用原作那两枚印（UI_DNM_Icon_Result_01/02）。
+    const stamp = el('img', 'dan-track-stamp');
+    stamp.src = stage.outcome === 'cleared' ? '/assets/maimai/stamp-clear.png' : '/assets/maimai/stamp-fail.png';
+    stamp.alt = stage.outcome === 'cleared' ? '可' : '不可';
+    if (!stage.outcome) { stamp.hidden = true; item.append(el('span', 'dan-track-pending', '未开始')); }
+    item.append(stamp);
 
-    // 「封面」那一格放题号：我们抽的是 CF 题、没有曲绘，放题号比放装饰诚实。
+    // 行底板还是原作那张（UI_DNM_Result_musicBase_01）；边框本体比行内区小 3.6px，
+    // 四条边会露出一点底板（原版贴图本来就留了这圈透明边）。
+    item.append(el('div', 'dan-track-plate'));
+
+    // 乐曲边框：照原作 UI_CMN_RSL_KopMBase_* 的版式画一层（尺寸全是从那张贴图量出来的比例，
+    // 见 dan.css 的「逐题行」一节）—— 外圈主色环 + 平色主色场 + 底部浅色带 + 左侧曲绘槽
+    // + 深蓝歌名条（占顶部一整行）+ 白色达成率盒 + 右下角 DX 分数白牌。
+    // 官方那五张（BSC/ADV/EXP/MST/MST_Re）颜色与难度名都烘死在图里，套不上我们的 CF 分档。
+    const frame = el('div', 'dan-track-frame');
+    // 底带先 append：它在白盒与右下白牌**下面**（原版就是这样一层浅色）。
+    frame.append(el('div', 'dan-track-band'));
+    // 歌名条：原版左上那格是难度名牌（MASTER 那块），删掉之后歌名条顶满上面一整行。
+    frame.append(el('span', 'dan-track-titlebar'));
+    // 题目名压在歌名条上（两者框内坐标相同）。抽到的题在本人提交里还没有记录时，退回题号 ——
+    // 空着比写「—」更难看，题号至少能对上。
+    frame.append(el('span', 'dan-track-name', stage.title ?? stage.problemId ?? '—'));
+    const achBox = el('div', 'dan-track-achbox');
+    // 官方白盒左上角那行小字（原作烘在边框贴图里，我们画边框所以自己写）。
+    // 用原版那三个字：`達成率` —— 别自己写英文，官方结算这一行就是日文。
+    achBox.append(el('small', 'dan-track-achlabel', '達成率'));
+    // 官方分数图集（按分数分色）+ 官方彩色「%」字形 —— 这是这一行最大的一块数字。
+    // 没有成绩时用白字族的「—」，**染深蓝**：白字族是纯白剪影，落在达成率那个白框上会看不见
+    // （numText 里没这个字形，会退回普通文字，不会静默丢字符）。
+    const achValue = stage.achievement === null
+      ? numText('—', 'n90', 44, DX_NUM_COLOR)
+      : achievementNumber(stage.achievement, 44);
+    achValue.classList.add('dan-track-achvalue');
+    achBox.append(achValue);
+    frame.append(achBox);
+    item.append(frame);
+
+    // 单题 DX 分数（= 该题算出的 rating）挪到**卡片右下角**：原版那块白牌就压在底带右端，
+    // 上面烘的是日文 `でらっくスコア`（我们写「DX分数」）。底带的左半边留给限时。
+    const dxBox = el('div', 'dan-track-dxbox');
+    dxBox.append(el('small', 'dan-track-dxlabel', 'DX分数'));
+    // 这一格是**小字**：不叠描边层 —— 官方那处也是干净的深蓝数字，叠上去只会糊。
+    const dx = stage.rating === null
+      ? numText('—', 'n26', 16, DX_NUM_COLOR, { outline: false, baseline: true })
+      : numText(String(stage.rating.toFixed(1)), 'n26', 16, DX_NUM_COLOR, { outline: false, baseline: true });
+    dx.classList.add('dan-track-dxnum');
+    dxBox.append(dx);
+    item.append(dxBox);
+
+    // 官方的 JacketImage_S 那一格：我们抽的是 CF 题、没有曲绘，槽里放**题号**（`1554C`：
+    // 场次 + 小问）与这题在 CF 上的 rating。原来那版把场次和小问拆成两行、题号只留个小问
+    // 字母，一屏四张卡看不出是哪道题 —— 现在一行题号、一行 rating。
     const [contest, index] = (stage.problemId ?? '').split(':');
     const jacket = el('div', 'dan-track-jacket');
-    jacket.append(el('b', '', index || '?'), el('small', '', contest || '未开始'));
-    card.append(jacket);
+    jacket.append(
+      el('b', '', stage.problemId ? `${contest}${index}` : '未开始'),
+      // 题号没下发（还没开始做）时 rating 也不写：那边 `problemId` 是 null，这一格照同一口径。
+      el('small', '', stage.problemId && stage.difficulty != null ? String(stage.difficulty) : '—'),
+    );
+    item.append(jacket);
 
-    const info = el('div', 'dan-track-info');
-    const head = el('div', 'dan-track-head');
-    head.append(el('span', 'dan-track-no', `STAGE ${String(stage.index).padStart(2, '0')}`));
-    head.append(el('span', 'dan-track-diff', `${stage.difficulty} 分`));
-    head.append(el('span', 'dan-track-name', stage.title ?? '—'));
-    info.append(head);
+    // 题目名已经在上面跟歌名条一起 append 了（两者框内坐标相同）。原来标题条左边还有一格
+    // **档位名牌**（写「上级」「初级」），删掉了：同一张卡上达成率、单题分、题号已经把信息
+    // 说全，档位名重复而且占了半个标题条 —— 歌名条因此顶满上面一整行。
 
-    const achievement = el('div', 'dan-track-ach');
-    achievement.append(el('span', 'dan-track-achlabel', '达成率'));
-    achievement.append(goldNode('dan-track-achvalue dan-gold',
-      stage.achievement === null ? '—' : `${stage.achievement.toFixed(4)}%`));
-    achievement.append(el('span', 'dan-track-judge',
-      stage.outcome === 'cleared' ? (stage.rank ?? '通关')
-        : stage.outcome === 'timeout' ? '超时' : stage.outcome === 'interrupted' ? '中断' : '未开始'));
-    info.append(achievement);
-    card.append(info);
+    // 评级用官方徽章；超时／中断／未开始没有评级，退回文字。徽章放在**右上那块紫场**里
+    // （白盒右端…边框内右沿 / 歌名条下沿…右下白牌上沿）：原版那一块本来就是空的。
+    if (RANK_ART[stage.rank]) {
+      const badge = el('img', 'dan-track-badge');
+      badge.src = `/assets/maimai/${RANK_ART[stage.rank]}`;
+      badge.alt = stage.rank;
+      item.append(badge);
+    } else {
+      item.append(el('span', 'dan-track-judge',
+        stage.outcome === 'timeout' ? '超时' : stage.outcome === 'interrupted' ? '中断' : '未开始'));
+    }
 
-    const side = el('div', 'dan-track-side');
-    side.append(el('span', 'dan-track-lv', String(stage.difficulty)));
-    const score = el('span', 'dan-track-score');
-    score.append(el('small', '', 'DX分数'), el('b', '', stage.rating === null ? '—' : stage.rating.toFixed(1)));
-    side.append(score);
-    side.append(el('small', 'dan-track-limit', `限时 ${fmtLimit(stage.limitSeconds)}`));
-    card.append(side);
-    item.append(card);
+    // 限时写在**底带的左侧**（原版这条底带是空的一块浅色，右端才是 DX 分数那块白牌）。
+    item.append(el('small', 'dan-track-limit', stage.life ? `用时 ${fmtDuration(stage.seconds)}` : `限时 ${fmtLimit(stage.limitSeconds)}`));
+
     tracks.append(item);
   }
 
-  field(dialog, '.dan-result-rankbox strong').textContent = VERDICT_TEXT[run.status] ?? '中断';
-  field(dialog, '.dan-result-rankbox small').textContent = `${cleared.length} / ${run.stageCount} 道通关`;
-
-  // 原作这一格是显示剩余生命的心；我们没有生命值，用「通关几道」占这一格。
-  const life = field(dialog, '.dan-result-life');
+  // New rounds show the remaining time; legacy rounds retain the cleared-count display.
+  const life = field(dialog, '.dan-life');
+  life.title = run.life ? '剩余时间' : '通过题数';
   life.dataset.state = run.status === 'cleared' ? 'ok' : 'bad';
-  field(dialog, '.dan-result-life span').replaceChildren(
-    document.createTextNode(String(cleared.length)), el('small', '', `/${run.stageCount}`));
+  field(dialog, '.dan-life-base').src = clearedRun
+    ? '/assets/maimai/life-base-green.png' : '/assets/maimai/life-base-red.png';
+  field(dialog, '.dan-life-base').alt = clearedRun ? '通关' : '未通关';
+  field(dialog, '.dan-life-count').replaceChildren(
+    run.life ? el('span', 'dan-life-time', fmtClock(run.life.remainingSeconds)) : numText(String(cleared.length), 'n26', 46));
+  life.setAttribute('aria-label', run.life ? `剩余时间 ${fmtClock(run.life.remainingSeconds)}` : `${cleared.length} 道通过`);
 
-  // 原作的「总达成率」是四首歌达成率之和、「DX分数」是四首 DX 分数之和；
-  // 这里对应各道达成率之和与各道单题 rating 之和。
+  // 原作的「总达成率」是四首歌达成率之和、「でらっくスコア」是四首单曲 DX 分数之和。
+  // 我们这边对应：各道达成率之和，以及**各道单题 rating 之和**（同一道题进 B50 用的就是
+  // 这个单题 rating；之和只是展示，不等于 B50 总分真的涨这么多）。
   const totalAchievement = scored.reduce((sum, stage) => sum + stage.achievement, 0);
-  const totalText = scored.length ? `${totalAchievement.toFixed(4)}%` : '—';
-  const totalNode = field(dialog, '.dan-total-ach');
-  totalNode.textContent = totalText;
-  totalNode.dataset.text = totalText;
-  field(dialog, '.dan-total-score b').textContent = run.totalRating === null ? '—' : run.totalRating.toFixed(1);
+  field(dialog, '.dan-total-num').replaceChildren(
+    scored.length ? achievementNumber(totalAchievement, 60) : numText('—', 'n90', 60, DX_NUM_COLOR));
+  field(dialog, '.dan-dxscore-num').replaceChildren(
+    numText(run.totalRating === null ? '—' : String(run.totalRating.toFixed(1)), 'n90', 30, DX_NUM_COLOR, { outline: false, baseline: true }));
 
   const deltas = run.stages.map((stage) => stage.comparison?.ratingDelta).filter((value) => typeof value === 'number');
   let note = run.status === 'cleared'
-    ? `${run.stageCount} 道都在限时内解出。每道题的成绩已经作为单题记录存进练习记录，并计入 B50。`
+    ? `全部 ${run.stageCount} 道题均在限时内完成，成绩已保存并参与 B50 排名。`
     : run.status === 'failed'
-      ? `有一道超出了限时，本轮就此结束。超时那道没有成绩（计时器被取消、不生成练习记录）；已经通过的 ${cleared.length} 道照样计入 B50。`
-      : `这一轮被中断或放弃，没有生成总成绩。已经通过的 ${cleared.length} 道照样计入 B50。`;
-  // 大随机段位不保证难度分布，这是它的定义而不是抽题出了 bug —— 必须说清楚。
-  if (run.draw === 'problem') {
-    note += ' 这一轮是大随机段位：抽题按题目均匀，难度分布就是题库的真实分布，'
-      + '所以「连着好几道都是同一个难度」是正常结果。';
-  }
-  if (deltas.length) note += ` 本轮对 B50 总分的影响：${signed(Math.round(deltas.reduce((sum, value) => sum + value, 0) * 10) / 10)}。`;
+      ? `本轮因超时结束。已完成的 ${cleared.length} 道题成绩保留，超时题不计分。`
+      : `本轮已结束，已完成的 ${cleared.length} 道题成绩保留。`;
+  if (run.life) note = run.status === 'cleared' ? '四题全部为「可」，本轮合格。各题成绩已保存。' : '本轮不合格。已完成题目的实际用时和成绩均已保存。';
+  if (deltas.length) note += ` B50 总分变化：${signed(Math.round(deltas.reduce((sum, value) => sum + value, 0) * 10) / 10)}。`;
   field(dialog, '.dan-result-note').textContent = note;
 
   const again = field(dialog, '.dan-result-again');
@@ -763,21 +1116,22 @@ async function startRun(kind, tier, extra = {}) {
 
 async function beginStage(session) {
   if (busy) return;
-  busy = true;
-  setMessage('正在锁题并起计时…');
+  const tab = reserveProblemTab();
+  busy = true; render();
   try {
-    const claimed = await post('/api/dan/claim', { userId, sessionId: session.id });
-    // 链接唯一的出口：这一跳之前，题目从没进过这个页面。
-    window.location.href = claimed.url;
+    if (session.life && session.stages.length > 1) {
+      await recoveryAnimation(session.stages.at(-2)?.life);
+    }
+    await openClaimedStage(session, tab);
   } catch (error) {
+    if (tab && !tab.closed) tab.close();
     setMessage(error.message, true);
-    busy = false;
     await refresh();
-  }
+  } finally { busy = false; render(); }
 }
 
 async function abandonRun(sessionId) {
-  if (busy || !window.confirm('放弃这一轮？本轮会记为「已放弃」，不计入成绩。')) return;
+  if (busy || !window.confirm('结束本轮练习？已完成的题目成绩会保留。')) return;
   busy = true;
   try {
     await post('/api/dan/abandon', { userId, sessionId });
@@ -812,9 +1166,21 @@ function schedule() {
     }, 5000);
   }
   tickTimer = setInterval(() => {
-    for (const node of document.querySelectorAll('.dan-clock[data-deadline]')) tick(node);
+    updateClocks();
   }, 1000);
+  updateClocks();
+}
+
+function updateClocks() {
   for (const node of document.querySelectorAll('.dan-clock[data-deadline]')) tick(node);
+  for (const node of document.querySelectorAll('.dan-clock[data-started]')) node.textContent = `本题用时 ${fmtClock(serverNow()-Number(node.dataset.started))}`;
+  for (const node of document.querySelectorAll('.dan-life-clock[data-life]')) {
+    const remaining = Math.max(0, Number(node.dataset.life) - (node.dataset.running === 'true' ? Math.max(0, serverNow()-Number(node.dataset.at)) : 0));
+    node.textContent = fmtClock(remaining);
+    node.classList.toggle('urgent', remaining <= 300);
+    const fill = node.parentElement.querySelector('.dan-life-fill');
+    if (fill) fill.style.width = `${remaining / (board.active?.life?.maxSeconds ?? 7200) * 100}%`;
+  }
 }
 
 function tick(node) {
@@ -827,7 +1193,7 @@ $('dailyStart').addEventListener('click', () => startRun('daily'));
 $('customStart').addEventListener('click', () => {
   const min = Number($('customMin').value), max = Number($('customMax').value);
   // 本地先拦一道明显的错（非数字、区间反了），省一次网络往返；真正的口径校验在服务端。
-  if (!Number.isFinite(min) || !Number.isFinite(max)) { setMessage('难度上下限要是数字。', true); return; }
+  if (!Number.isFinite(min) || !Number.isFinite(max)) { setMessage('请输入有效的难度范围。', true); return; }
   if (min > max) { setMessage('难度下限不能大于上限。', true); return; }
   startRun('single', 'custom', { minRating: min, maxRating: max, tags: [...pickedTags] });
 });

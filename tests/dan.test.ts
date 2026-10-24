@@ -1,3 +1,4 @@
+import { HttpClient } from '../src/fetchers/http.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase, Repository } from '../src/db/database.ts';
@@ -220,11 +221,12 @@ test('019 之前的旧行没有 limit_seconds，结算时沿用 session 的统�
   } finally { s.db.close(); }
 });
 
-test('随机段位：逐题限时按当题难度，不是按 session 的统一限时', () => {
+test('旧版随机段位保留逐题限时规则', () => {
   const s = setup();
   try {
     const t0 = 1_000_000;
     createDanSession(s.db, { id: 's1', userId: s.user, kind: 'challenge', tierKey: 'small_random', now: t0 });
+    s.db.prepare('UPDATE dan_sessions SET rules_json=NULL WHERE id=?').run('s1');
     // 只放一道 800 分的题：限时应当是 1800 秒（初级档），而不是 3600。
     drawNextDanStage(s.db, { sessionId: 's1', pool: at(800, 5, 1), now: t0, dateKey: '2026-10-09' });
     const stage = beginStage(s, 's1', t0, 'dan-timer-r1');
@@ -865,7 +867,7 @@ test('API：抽题前不下发链接，claim 才下发，重复 claim 幂等', a
     const claimBody = claim.body as { url: string; difficulty: number; deadlineAt: number; serverNow: number; timerId: string };
     assert.match(claimBody.url, /^https:\/\/codeforces\.com\/contest\/\d+\/problem\/[A-Z]\d*$/);
     assert.equal(claimBody.difficulty, 1800);
-    assert.equal(claimBody.deadlineAt, claimBody.serverNow + 3000, '上级档限时 3000 秒');
+    assert.equal(claimBody.deadlineAt, null, '共享时间槽没有逐题截止时间');
 
     // 4) 重复点击幂等：同一条计时、同一个链接，不会起第二个计时器
     const again = await call('POST', '/api/dan/claim', {}, { userId: s.user, sessionId });
@@ -969,5 +971,184 @@ test('API：空题池回滚轮次，可立即换档位重试', async () => {
     assert.equal(activeDanSession(s.db, s.user), null);
     assert.equal(s.db.prepare('SELECT count(*) AS n FROM dan_sessions').get()!.n, 0);
     assert.equal((await start('advanced')).status, 200);
+  } finally { s.db.close(); }
+});
+
+
+test('共享时间槽：每题独立计时、结算暂停、恢复有上限且不会重复领取', () => {
+  const s = setup(), now = 1_000_000, pool = at(1800, 10, 1);
+  try {
+    createDanSession(s.db, { id: 'life', userId: s.user, kind: 'challenge', tierKey: 'advanced', now });
+    drawNextDanStage(s.db, { sessionId: 'life', pool, now, dateKey: '2026-10-09' });
+    playStage(s, 'life', now, 300, 'life-1');
+    let view = viewOf(s, 'life');
+    assert.equal(view.stages[0].seconds, 300);
+    assert.equal(view.stages[0].life!.remainingSeconds, 6900);
+    assert.equal(view.stages[0].life!.recoverySeconds, 300, '不能恢复超过 120 分钟');
+    assert.equal(view.life!.running, false);
+    assert.equal(view.life!.remainingSeconds, 6900, '结算期间仍显示恢复前的余额');
+    reconcileTimers(s.db, undefined, now + 5000);
+    drawNextDanStage(s.db, { sessionId: 'life', pool, now: now + 5000, dateKey: '2026-10-09' });
+    playStage(s, 'life', now + 6000, 1000, 'life-2');
+    reconcileTimers(s.db, s.account, now + 7001);
+    view = viewOf(s, 'life');
+    assert.equal(view.stages[1].seconds, 1000, '不含结算页停留和动画用时');
+    assert.equal(view.stages[1].life!.startSeconds, 7200);
+    assert.equal(view.stages[1].life!.remainingSeconds, 6200);
+    assert.equal(view.stages[1].life!.recoverySeconds, 600);
+  } finally { s.db.close(); }
+});
+
+test('共享时间槽：只扣当前题的失败提交，每条只扣一次，CE 不扣', () => {
+  const s = setup(), now = 1_000_000;
+  try {
+    createDanSession(s.db, { id: 'penalty', userId: s.user, kind: 'challenge', tierKey: 'beginner', now });
+    drawNextDanStage(s.db, { sessionId: 'penalty', pool: at(1000, 10, 1), now, dateKey: '2026-10-09' });
+    const stage = beginStage(s, 'penalty', now, 'penalty-timer');
+    const statuses = ['WA', 'TLE', 'MLE', 'RE', 'CE', 'AC'] as const;
+    const entries = statuses.map((status, i) => submission('codeforces', {
+      submission_id: `penalty-${i}`, problem_id: stage.problem_id, problem_title: 'Penalty',
+      status, difficulty: 1000, submitted_at: now + (i + 1) * 100,
+    }));
+    s.repo.saveSubmissions(s.account, entries);
+    s.repo.saveSubmissions(s.account, entries);
+    reconcileTimers(s.db, s.account, now + 700);
+    reconcileTimers(s.db, s.account, now + 800);
+    const view = viewOf(s, 'penalty').stages[0];
+    assert.equal(view.seconds, 600);
+    assert.equal(view.life!.penaltySeconds, 480);
+    assert.equal(view.life!.events.length, 4);
+    assert.equal(view.life!.remainingSeconds, 6120);
+    assert.equal(view.life!.recoverySeconds, 600);
+    assert.equal(listPractice(s.db, s.user)[0].seconds, 600);
+  } finally { s.db.close(); }
+});
+
+test('时间耗尽不结束练习：当前与后续各题均不可，但实际 AC 成绩仍保留', () => {
+  const s = setup(), now = 1_000_000, pool = at(1000, 10, 1);
+  try {
+    createDanSession(s.db, { id: 'zero', userId: s.user, kind: 'challenge', tierKey: 'beginner', now });
+    drawNextDanStage(s.db, { sessionId: 'zero', pool, now, dateKey: '2026-10-09' });
+    playStage(s, 'zero', now, 7200, 'zero-1');
+    assert.ok(activeDanSession(s.db, s.user), '恰好归零时不强制结束');
+    assert.equal(viewOf(s, 'zero').stages[0].outcome, 'timeout');
+    for (let i = 2; i <= 4; i++) {
+      drawNextDanStage(s.db, { sessionId: 'zero', pool, now: now + i * 8000, dateKey: '2026-10-09' });
+      playStage(s, 'zero', now + i * 8000, 100, `zero-${i}`);
+    }
+    const view = danHistory(s.db, s.user)[0];
+    assert.equal(view.status, 'failed');
+    assert.ok(view.stages.every(stage => stage.outcome === 'timeout' && stage.rating! > 0));
+    assert.ok(view.stages.every(stage => stage.life!.recoverySeconds === 0));
+    assert.equal(listPractice(s.db, s.user).length, 4);
+    assert.ok(view.totalRating! > 0);
+  } finally { s.db.close(); }
+});
+
+test('时间扣到零后及时 AC 也不可；早前已可的题不被改写', () => {
+  const s = setup(), now = 1_000_000, pool = at(1000, 10, 1);
+  try {
+    createDanSession(s.db, { id: 'latch', userId: s.user, kind: 'challenge', tierKey: 'beginner', now });
+    drawNextDanStage(s.db, { sessionId: 'latch', pool, now, dateKey: '2026-10-09' });
+    playStage(s, 'latch', now, 100, 'latch-1');
+    drawNextDanStage(s.db, { sessionId: 'latch', pool, now: now + 200, dateKey: '2026-10-09' });
+    const stage = beginStage(s, 'latch', now + 200, 'latch-timer');
+    s.repo.saveSubmissions(s.account, ['WA', 'AC'].map((status, i) => submission('codeforces', {
+      submission_id: `latch-${i}`, problem_id: stage.problem_id, problem_title: 'Latch',
+      status: status as 'WA' | 'AC', difficulty: 1000, submitted_at: now + 200 + 7080 + i,
+    })));
+    reconcileTimers(s.db, s.account, now + 8000);
+    const view = viewOf(s, 'latch');
+    assert.equal(view.stages[0].outcome, 'cleared');
+    assert.equal(view.stages[1].outcome, 'timeout');
+    assert.equal(view.stages[1].life!.recoverySeconds, 0);
+  } finally { s.db.close(); }
+});
+
+test('共享时间槽：PENDING 确认前不冻结结算；同步延迟不会扣掉结算后的时间', () => {
+  const s = setup(), now = 1_000_000;
+  try {
+    createDanSession(s.db, { id: 'judging', userId: s.user, kind: 'challenge', tierKey: 'advanced', now });
+    drawNextDanStage(s.db, { sessionId: 'judging', pool: at(1800, 10, 1), now, dateKey: '2026-10-09' });
+    const stage = beginStage(s, 'judging', now, 'judging-timer');
+    const entry = { submission_id: 'judging-wa', problem_id: stage.problem_id, problem_title: 'Judging', difficulty: 1800, submitted_at: now + 100 };
+    s.repo.saveSubmissions(s.account, [submission('codeforces', { ...entry, status: 'PENDING' }),
+      submission('codeforces', { ...entry, submission_id: 'judging-ac', status: 'AC', submitted_at: now + 1000 })]);
+    reconcileTimers(s.db, s.account, now + 8000);
+    assert.equal(viewOf(s, 'judging').stages[0].outcome, null);
+    s.repo.saveSubmissions(s.account, [submission('codeforces', { ...entry, status: 'WA' })]);
+    reconcileTimers(s.db, s.account, now + 9000);
+    const view = viewOf(s, 'judging').stages[0];
+    assert.equal(view.seconds, 1000);
+    assert.equal(view.outcome, 'cleared');
+    assert.equal(view.life!.remainingSeconds, 6080);
+  } finally { s.db.close(); }
+});
+
+test('CF 玩家资料使用缓存，并与当前账号绑定', async () => {
+  const s = setup();
+  try {
+    s.repo.set('cf:profile:v2:fixture', { handle: 'fixture', avatar: 'https://userpic.codeforces.org/1/title.jpg' }, 3600);
+    const result = await handleApi({ db: s.db, dbPath: ':memory:', platforms: ['codeforces'], envFile: 'unused',
+      openWrite: () => s.db, syncJobs: {} as never }, { method: 'POST', pathname: '/api/dx/profile',
+      params: new URLSearchParams(), body: { userId: s.user } });
+    assert.equal(result.status, 200);
+    assert.equal((result.body as { profile: { handle: string } }).profile.handle, 'fixture');
+    assert.ok(WRITE_ROUTES.has('/api/dx/profile'));
+  } finally { s.db.close(); }
+});
+
+test('共享时间耗尽后隔天 AC 仍保存真实用时并允许继续', () => {
+  const s = setup(), now = 1_000_000, pool = at(1000, 10, 1);
+  try {
+    createDanSession(s.db, { id: 'overnight', userId: s.user, kind: 'challenge', tierKey: 'beginner', now });
+    drawNextDanStage(s.db, { sessionId: 'overnight', pool, now, dateKey: '2026-10-09' });
+    playStage(s, 'overnight', now, 90000, 'overnight-1');
+    const view = viewOf(s, 'overnight');
+    assert.equal(view.stages[0].seconds, 90000);
+    assert.equal(view.stages[0].outcome, 'timeout');
+    assert.equal(listPractice(s.db, s.user)[0].seconds, 90000);
+    assert.ok(activeDanSession(s.db, s.user));
+    assert.deepEqual(s.db.prepare('PRAGMA foreign_key_check').all(), []);
+  } finally { s.db.close(); }
+});
+
+test('玩家栏使用 CF avatar，忽略不同的资料大图和旧版缓存', async (t) => {
+  const s = setup();
+  try {
+    s.repo.set('cf:profile:fixture', {handle:'fixture', avatar:'https://userpic.codeforces.org/1/title.jpg'},3600);
+    t.mock.method(HttpClient.prototype, 'json', async () => ({status:'OK',result:[{
+      handle:'fixture', avatar:'//userpic.codeforces.org/1/avatar.jpg', titlePhoto:'https://userpic.codeforces.org/1/title.jpg'
+    }]}));
+    const result = await handleApi({ db:s.db, dbPath:':memory:',platforms:['codeforces'],envFile:'unused',
+      openWrite:()=>s.db,syncJobs:{} as never }, {method:'POST',pathname:'/api/dx/profile',
+      params:new URLSearchParams(),body:{userId:s.user}});
+    assert.equal(result.status,200);
+    assert.equal((result.body as {profile:{avatar:string}}).profile.avatar,'https://userpic.codeforces.org/1/avatar.jpg');
+  } finally { s.db.close(); }
+});
+
+
+test('四题合格：前三题恢复，第四题直接结算且旧快照不再展示末题奖励', () => {
+  const s = setup(), now = 1_000_000, pool = at(1000, 10, 1);
+  try {
+    createDanSession(s.db, { id: 'final-no-reward', userId: s.user, kind: 'challenge', tierKey: 'beginner', now });
+    for (let i = 1; i <= 4; i++) {
+      const started = now + (i - 1) * 3000;
+      drawNextDanStage(s.db, { sessionId: 'final-no-reward', pool, now: started, dateKey: '2026-10-24' });
+      playStage(s, 'final-no-reward', started, 1200, `final-no-reward-${i}`);
+    }
+    let view = danHistory(s.db, s.user)[0];
+    assert.equal(view.status, 'cleared');
+    assert.deepEqual(view.stages.map(stage => stage.life!.recoverySeconds), [600, 600, 600, 0]);
+    assert.equal(view.life!.remainingSeconds, 4200);
+    assert.equal(view.life!.pendingRecovery, 0);
+    assert.equal(listPractice(s.db, s.user).length, 4);
+    const legacy = { ...view.stages[3].life!, recoverySeconds: 600 };
+    s.db.prepare('UPDATE dan_stages SET life_json=? WHERE session_id=? AND stage_index=4')
+      .run(JSON.stringify(legacy), 'final-no-reward');
+    view = danHistory(s.db, s.user)[0];
+    assert.equal(view.stages[3].life!.recoverySeconds, 0);
+    assert.equal(view.life!.remainingSeconds, 4200);
   } finally { s.db.close(); }
 });

@@ -259,3 +259,26 @@
 .cf-group-dialog .browser-auth { margin-top: 14px; }
 .cf-group-dialog .browser-auth .btn { margin: 12px 8px 0 0; }
 .cf-group-dialog [hidden] { display: none !important; }
+
+/* Player identity and the original seven rating frames. */
+#dxSummary { grid-template-columns:1fr; gap:24px; padding:8px 0 24px; }
+.dx-player-card { display:flex; align-items:center; gap:20px; width:fit-content; max-width:100%; padding:20px 24px; border:1px solid var(--border); border-radius:18px; background:var(--surface-gradient); }
+.dx-player-avatar { flex:0 0 72px; width:72px; height:72px; display:grid; place-items:center; position:relative; overflow:hidden; border-radius:12px; background:#27384e; color:#cfe4ff; font-size:32px; font-weight:700; }
+.dx-player-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.dx-player-identity { min-width:90px; display:grid; gap:5px; }
+.dx-player-platform { font-size:10px; letter-spacing:1.5px; color:var(--muted); }
+.dx-player-name { font-size:22px; font-weight:700; color:var(--text); text-decoration:none; overflow-wrap:anywhere; }
+.dx-player-card .dx-player-rating { display:block; margin:0 0 0 8px; padding:0; background:none; }
+.dx-player-card .dx-result-total { margin:0; }
+.dx-board-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.dx-board-stats .dx-stat { background:transparent; border:0; border-left:1px solid var(--border); border-radius:0; padding:10px 18px; gap:6px; }
+.dx-board-stats .dx-stat:first-child { padding-left:0; border-left:0; }
+.dx-board-stats .dx-stat-value { font-family:var(--sans); font-variant-numeric:tabular-nums; font-size:24px; }
+@media(max-width:760px) {
+  .dx-player-card { flex-wrap:wrap; gap:16px; padding:20px; width:100%; }
+  .dx-player-card .dx-player-rating { flex-basis:100%; margin:4px 0; }
+  .dx-player-card .dx-result-total { width:max-content; max-width:100%; }
+  .dx-board-stats { gap:0; }
+  .dx-board-stats .dx-stat { padding:8px; }
+  .dx-board-stats .dx-stat-value { font-size:20px; }
+}

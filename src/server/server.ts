@@ -23,6 +23,7 @@ import { SyncJobRunner } from './sync-job.ts';
 import { createTimerSync } from './timer-sync.ts';
 import { platforms } from '../fetchers/registry.ts';
 import { openDatabase, SCHEMA_VERSION } from '../db/database.ts';
+import { prepareDatabaseForStartup } from '../db/startup.ts';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../../public/', import.meta.url));
 const PROJECT_ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -49,8 +50,7 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 /**
- * 以只读方式打开已有数据库。刻意不复用 openDatabase()：那个入口会建表并执行迁移，
- * 而浏览查询不该改动数据。因此这里只做版本核对，不迁移。
+ * 启动前已完成备份和迁移；查询连接仅核对版本，不在浏览请求中修改结构。
  *
  * 版本必须与 database.ts 的 SCHEMA_VERSION 完全一致：低于它说明库还没迁移，
  * 查询会撞上缺列；高于它说明库来自更新版本的代码。两种情况都给出可执行的指引，
@@ -65,7 +65,7 @@ function openReadOnly(path: string): DatabaseSync {
       throw new Error(`数据库 Schema 版本是 v${version}，比当前代码支持的 v${SCHEMA_VERSION} 更新。请更新项目代码后再打开。`);
     }
     if (version < SCHEMA_VERSION) {
-      throw new Error(`数据库还是 v${version}，需要先迁移到 v${SCHEMA_VERSION}。跑一次 npm run db:init 或 npm run sync 即可；面板自身不负责迁移。`);
+      throw new Error(`数据库还是 v${version}，预期为 v${SCHEMA_VERSION}。请关闭其他程序后重新启动，以完成自动升级。`);
     }
     return db;
   } catch (error) {
@@ -191,6 +191,7 @@ function main(): void {
 
   let db: DatabaseSync;
   try {
+    prepareDatabaseForStartup(dbPath);
     db = openReadOnly(dbPath);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));

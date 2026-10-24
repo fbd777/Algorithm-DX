@@ -1,0 +1,383 @@
+/* Algorithm DX · 深色模式
+ *
+ * 只在 <html data-mm-theme="dark"> 时生效，作为 theme.css 之后的一层「同结构换材质」：
+ * 选择器都带 [data-mm-theme="dark"] 前缀，权重高于 theme.css 的 body.mm-theme 规则，
+ * 所以浅色那一套一个字节都不用改。
+ *
+ * 背景同样是官方那份动态背景，只是换成夜版贴图：theme.js 给 iframe 发
+ * postMessage({mmTheme:'dark'})，bg.html 挂上 theme-night.css（见那两个文件）。
+ *
+ * 底色沿用夜景：深靛蓝面板 + 官方那套紫/粉横条与 14px 硬阴影；卡片、输入框、气泡、
+ * 表格、说明卡全部转深色，正文色跟着 token 一起翻。
+ *
+ * 不翻的两类「成品屏」：段位卡/题库卡的卡面（styles.css 里写死的深色渐变）和点开后的
+ * 成绩单（.dx-result / .dan-result-*）—— 它们本来就是一张画好的屏，明暗两版都保留自己的脸，
+ * 翻成夜版反而两不像；外壳（弹窗遮罩、关闭钮）照常跟主题。
+ */
+
+/* ============ 1. 调色 ============ */
+
+[data-mm-theme="dark"] {
+  color-scheme: dark;
+
+  /* 夜景里直接用的几档色（与 assets/night/sky.png 同源） */
+  --mm-night: #101538;
+  --mm-night-plate: #1b2148;      /* 顶栏胶囊 */
+  --mm-night-surface: #191e42;    /* 大盒子 */
+  --mm-night-surface-2: #1d2348;  /* 盒子里的块、输入框 */
+  --mm-night-surface-3: #232a55;  /* 再抬一层：hover、选中 */
+  --mm-night-line: rgba(255, 255, 255, .12);
+  --mm-night-line-soft: rgba(255, 255, 255, .08);
+  --mm-night-ink: #eceefb;
+  --mm-night-dim: #c6cbe8;
+  --mm-night-muted: #9aa0c4;
+
+  /* 官方调色在深色底上的几处调整 */
+  --mm-navy: #e3e7ff;             /* 这个 token 在本站当「标题色」用 */
+  --mm-ink: #eceefb;
+  --mm-grey: rgba(255, 255, 255, .18);
+  --mm-purple-tint: #231f4c;
+  --mm-purple-deep: #d3a1ff;
+  /* 只改硬阴影的颜色，偏移留给 theme.css 里那三档 vw 阶梯 */
+  --mm-card-shadow-color: rgba(0, 0, 0, .45);
+  --mm-brand-mark: url(/algorithm-dx-icon.svg);
+  --mm-nav-shadow: 10px 10px 0 rgba(0, 0, 0, .45);
+  --mm-soft: 0 10px 26px -14px rgba(0, 0, 0, .65);
+  --mm-gradient: linear-gradient(0deg, #1a1f45 6%, #1d2150 16%, #262a63 30%, #332c72 46%,
+    #402f80 56%, #453a8f 67%, #2a3a74 85%, #151f47 95%);
+
+  /* 仓库既有 token 一并翻过来（styles.css:131-154 那套深色语义在这里复活） */
+  --bg: var(--mm-night);
+  --bg-soft: #141a3c;
+  --panel: var(--mm-night-surface);
+  --panel-2: var(--mm-night-surface-2);
+  --border: var(--mm-night-line);
+  --border-soft: var(--mm-night-line-soft);
+  --text: var(--mm-night-ink);
+  --text-dim: var(--mm-night-dim);
+  --muted: var(--mm-night-muted);
+  --accent: var(--mm-purple-soft);
+  --accent-soft: rgba(186, 94, 234, .18);
+  --ac: #58e08a;
+  --ac-soft: rgba(75, 224, 112, .16);
+  --warn: #ffc266;
+  --warn-soft: rgba(255, 151, 42, .16);
+  --bad: #ff7d92;
+  --bad-soft: rgba(231, 33, 57, .18);
+  --shadow: 8px 8px 0 0 rgba(0, 0, 0, .45);
+  --surface-gradient: var(--mm-night-surface-2);
+  --focus-ring: var(--mm-purple-soft);
+}
+
+html[data-mm-theme="dark"],
+[data-mm-theme="dark"] body { background: var(--mm-night); }
+
+[data-mm-theme="dark"] body.mm-theme {
+  background: var(--mm-night);
+  background-image: var(--mm-gradient);
+  color: var(--mm-night-ink);
+}
+
+[data-mm-theme="dark"] body.mm-theme ::selection { background: var(--mm-purple); color: #fff; }
+
+/* ============ 2. 顶栏与开关 ============ */
+
+[data-mm-theme="dark"] body.mm-theme .site-header {
+  background: var(--mm-night-plate);
+  border-color: var(--mm-night-line-soft);
+  box-shadow: var(--mm-nav-shadow);
+}
+[data-mm-theme="dark"] body.mm-theme .site-header .brand,
+[data-mm-theme="dark"] body.mm-theme .site-header .brand-text h1 { color: var(--mm-night-ink); }
+[data-mm-theme="dark"] body.mm-theme .site-header .nav .btn { color: var(--mm-night-dim); }
+[data-mm-theme="dark"] body.mm-theme .site-header .nav .btn:hover { color: var(--mm-purple-soft); }
+[data-mm-theme="dark"] body.mm-theme .site-header .global-sync-bar {
+  background: var(--mm-night-surface-2);
+  border-color: var(--mm-night-line-soft);
+}
+
+[data-mm-theme="dark"] .mm-menu-btn { background: var(--mm-night-plate); }
+[data-mm-theme="dark"] .mm-menu-btn span { background: var(--mm-pink); }
+[data-mm-theme="dark"] body.mm-menu-open .mm-menu-btn { background: var(--mm-purple); border-color: var(--mm-purple); }
+[data-mm-theme="dark"] body.mm-menu-open .mm-menu-btn span { background: #fff; }
+@media (max-width: 1000px) {
+  [data-mm-theme="dark"] body.mm-theme .site-header .nav { background: var(--mm-night); }
+  [data-mm-theme="dark"] body.mm-theme .site-header .nav .btn:not(:last-child) { border-bottom-color: var(--mm-night-line); }
+}
+
+/* 开关本身：深色下换成太阳，底色转深 */
+[data-mm-theme="dark"] body.mm-theme .mm-theme-btn {
+  border-color: var(--mm-purple-soft);
+  background: var(--mm-night-surface-3);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, .45);
+}
+[data-mm-theme="dark"] body.mm-theme .mm-theme-btn__moon { opacity: 0; transform: scale(.4) rotate(90deg); }
+[data-mm-theme="dark"] body.mm-theme .mm-theme-btn__sun { opacity: 1; transform: none; }
+[data-mm-theme="dark"] body.mm-theme .mm-theme-btn:hover { background: var(--mm-purple); }
+[data-mm-theme="dark"] body.mm-theme .mm-theme-btn:hover .mm-theme-btn__sun { fill: #fff; }
+
+/* ============ 3. 文字：白色描边换成暗色投影 ============ */
+
+[data-mm-theme="dark"] body.mm-theme .ac-page-heading h2,
+[data-mm-theme="dark"] body.mm-theme .stats-toolbar h2,
+[data-mm-theme="dark"] body.mm-theme .circle-hero h2,
+[data-mm-theme="dark"] body.mm-theme .dan-hero h2,
+[data-mm-theme="dark"] body.mm-theme .help-heading h2,
+[data-mm-theme="dark"] body.mm-theme .dx-page-intro h2,
+[data-mm-theme="dark"] body.mm-theme .circle-feed-head h2,
+[data-mm-theme="dark"] body.mm-theme .today-section-title {
+  color: var(--mm-navy);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .55);
+}
+[data-mm-theme="dark"] body.mm-theme .analytics-note,
+[data-mm-theme="dark"] body.mm-theme #message,
+[data-mm-theme="dark"] body.mm-theme .dan-msg,
+[data-mm-theme="dark"] body.mm-theme .dan-disclaimer,
+[data-mm-theme="dark"] body.mm-theme .circle-note,
+[data-mm-theme="dark"] body.mm-theme .pager-hint {
+  color: var(--mm-night-dim);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+}
+[data-mm-theme="dark"] body.mm-theme .help-page > p {
+  color: var(--mm-night-dim);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+}
+[data-mm-theme="dark"] body.mm-theme .help-page .help-heading p,
+[data-mm-theme="dark"] body.mm-theme .help-page > section p,
+[data-mm-theme="dark"] body.mm-theme .help-page > section li,
+[data-mm-theme="dark"] body.mm-theme .help-page details p { color: var(--mm-night-dim); }
+[data-mm-theme="dark"] body.mm-theme .circle-hero p,
+[data-mm-theme="dark"] body.mm-theme .ac-page-heading p,
+[data-mm-theme="dark"] body.mm-theme .stats-toolbar p,
+[data-mm-theme="dark"] body.mm-theme .dx-page-intro p { color: var(--mm-night-muted); }
+/* 数据条里两个写死的深色数字（§9） */
+[data-mm-theme="dark"] body.mm-theme .stat.is-ac .stat-value { color: #5fe08f; }
+[data-mm-theme="dark"] body.mm-theme .stat.is-unac .stat-value { color: #ffc266; }
+
+/* ============ 4. 玻璃板（页头/工具条/侧栏这些浮在背景上的块） ============ */
+
+[data-mm-theme="dark"] body.mm-theme .ac-page-heading,
+[data-mm-theme="dark"] body.mm-theme .stats-toolbar,
+[data-mm-theme="dark"] body.mm-theme .circle-hero,
+[data-mm-theme="dark"] body.mm-theme .dan-hero,
+[data-mm-theme="dark"] body.mm-theme .help-heading,
+[data-mm-theme="dark"] body.mm-theme .help-toc,
+[data-mm-theme="dark"] body.mm-theme .pager,
+[data-mm-theme="dark"] body.mm-theme .dx-page-intro,
+[data-mm-theme="dark"] body.mm-theme .circle-feed-head {
+  background: rgba(19, 24, 52, .88);
+  border: 1px solid var(--mm-night-line);
+  box-shadow: 0 18px 40px -30px rgba(0, 0, 0, .8);
+}
+@supports ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  [data-mm-theme="dark"] body.mm-theme .ac-page-heading,
+  [data-mm-theme="dark"] body.mm-theme .stats-toolbar,
+  [data-mm-theme="dark"] body.mm-theme .circle-hero,
+  [data-mm-theme="dark"] body.mm-theme .dan-hero,
+  [data-mm-theme="dark"] body.mm-theme .help-heading,
+  [data-mm-theme="dark"] body.mm-theme .help-toc,
+  [data-mm-theme="dark"] body.mm-theme .pager,
+  [data-mm-theme="dark"] body.mm-theme .dx-page-intro,
+  [data-mm-theme="dark"] body.mm-theme .circle-feed-head {
+    background: rgba(19, 24, 52, .88);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+    backdrop-filter: blur(12px) saturate(1.2);
+  }
+}
+
+/* 落在背景花纹上的那几处小字：浅色层给的是白底板，这里换成夜色底板 */
+[data-mm-theme="dark"] body.mm-theme .app > .analytics-note,
+[data-mm-theme="dark"] body.mm-theme .app > #message,
+[data-mm-theme="dark"] body.mm-theme .app > .dan-msg,
+[data-mm-theme="dark"] body.mm-theme .circle-main > #message,
+[data-mm-theme="dark"] body.mm-theme .heatmap-top > .analytics-note,
+[data-mm-theme="dark"] body.mm-theme .help-page > p {
+  background: var(--mm-night-surface-2);
+  box-shadow: 0 8px 20px -14px rgba(0, 0, 0, .9);
+  text-shadow: none;
+}
+
+/* ============ 5. 官方盒子与通用块 ============ */
+
+[data-mm-theme="dark"] body.mm-theme .filters,
+[data-mm-theme="dark"] body.mm-theme .admin,
+[data-mm-theme="dark"] body.mm-theme .foot,
+[data-mm-theme="dark"] body.mm-theme .section,
+[data-mm-theme="dark"] body.mm-theme .stat-row,
+[data-mm-theme="dark"] body.mm-theme .ac-platform-strip,
+[data-mm-theme="dark"] body.mm-theme .placeholder,
+[data-mm-theme="dark"] body.mm-theme .empty,
+[data-mm-theme="dark"] body.mm-theme.ac-page .filters,
+[data-mm-theme="dark"] body.mm-theme .analytics,
+[data-mm-theme="dark"] body.mm-theme .today-panel,
+[data-mm-theme="dark"] body.mm-theme .dx-timer,
+[data-mm-theme="dark"] body.mm-theme .circle-sidebar,
+[data-mm-theme="dark"] body.mm-theme .circle-filters,
+[data-mm-theme="dark"] body.mm-theme .dx-rules {
+  background: var(--mm-night-surface);
+  color: var(--mm-night-ink);
+}
+[data-mm-theme="dark"] body.mm-theme .analytics-chart,
+[data-mm-theme="dark"] body.mm-theme .today-card,
+[data-mm-theme="dark"] body.mm-theme .dx-pages,
+[data-mm-theme="dark"] body.mm-theme .dx-records-filters,
+[data-mm-theme="dark"] body.mm-theme .circle-card,
+[data-mm-theme="dark"] body.mm-theme .help-page > section {
+  background: var(--mm-night-surface-2);
+  border-color: var(--mm-night-line-soft);
+  color: var(--mm-night-ink);
+}
+/* 这块左侧有官方绿条，别被上面的 border-color 一起抹掉 */
+[data-mm-theme="dark"] body.mm-theme .analytics-metrics > div {
+  background: var(--mm-night-surface-2);
+  border-color: var(--mm-night-line-soft);
+  border-left: 4px solid var(--mm-green);
+  color: var(--mm-night-ink);
+}
+/* 空格子原来和面板几乎同色（#1b2145 对 #191e42），整年没练的日子直接看不见，
+   图例最短的一格也是空的：抬亮一点，靠白描边分层 */
+[data-mm-theme="dark"] body.mm-theme .heat-cell { border-color: rgba(255, 255, 255, .14); }
+[data-mm-theme="dark"] body.mm-theme .level-0 { background: rgba(255, 255, 255, .09); }
+[data-mm-theme="dark"] body.mm-theme .level-1 { background: #1d4a37; }
+[data-mm-theme="dark"] body.mm-theme .level-2 { background: #256f4a; }
+[data-mm-theme="dark"] body.mm-theme .level-3 { background: #2f9d62; }
+[data-mm-theme="dark"] body.mm-theme .level-4 { background: var(--mm-green); }
+
+[data-mm-theme="dark"] body.mm-theme .foot-note { color: var(--mm-night-muted); }
+[data-mm-theme="dark"] body.mm-theme.ac-page .card:hover { background: var(--mm-night-surface-3); }
+[data-mm-theme="dark"] body.mm-theme .ac-page .card-stats .k { color: var(--mm-night-muted); }
+[data-mm-theme="dark"] body.mm-theme .ac-page .card-stats .v { color: var(--mm-night-ink); }
+[data-mm-theme="dark"] body.mm-theme .dx-card.is-empty { color: var(--mm-night-muted); }
+[data-mm-theme="dark"] body.mm-theme .dx-more a {
+  background: var(--mm-night-surface-2);
+  border-color: var(--mm-night-line);
+  color: var(--mm-navy);
+}
+[data-mm-theme="dark"] body.mm-theme .dx-ranked,
+[data-mm-theme="dark"] body.mm-theme .dx-rank,
+[data-mm-theme="dark"] body.mm-theme .today-total { color: #7ef0a4; }
+
+/* ============ 6. 控件：输入、按钮、气泡、表格、弹窗 ============ */
+
+[data-mm-theme="dark"] body.mm-theme .input,
+[data-mm-theme="dark"] body.mm-theme .select {
+  background: var(--mm-night-surface-2);
+  border-color: var(--mm-night-line);
+  color: var(--mm-night-ink);
+  color-scheme: dark;
+}
+[data-mm-theme="dark"] body.mm-theme .input::placeholder { color: #8f94b4; }
+[data-mm-theme="dark"] body.mm-theme .analytics-controls .input { color: var(--mm-night-ink); color-scheme: dark; }
+[data-mm-theme="dark"] body.mm-theme .btn-ghost {
+  background: var(--mm-night-surface-2);
+  border-color: var(--mm-night-line);
+  color: var(--mm-night-dim);
+}
+[data-mm-theme="dark"] body.mm-theme .btn-ghost:hover { background: var(--mm-night-surface-3); color: var(--mm-navy); }
+[data-mm-theme="dark"] body.mm-theme .chip {
+  background: var(--mm-night-surface-2);
+  border-color: var(--mm-night-line);
+  color: var(--mm-night-dim);
+}
+/* 浅色里这组是「淡紫底 + 白药丸」，深色照搬会变成「紫底 + 深蓝药丸」，看着像反的。
+   夜里的对应关系是「比盒子更深一层的底 + 比底更亮的药丸」 */
+[data-mm-theme="dark"] body.mm-theme .tabs { background: #151a3c; }
+[data-mm-theme="dark"] body.mm-theme .tab.is-active { background: #262d5c; color: var(--mm-navy); box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+[data-mm-theme="dark"] body.mm-theme .db-chip {
+  background: var(--mm-night-surface-2);
+  border-color: var(--mm-night-line);
+  color: #a8e6c8;
+}
+[data-mm-theme="dark"] body.mm-theme .ac-page .db-chip { color: #a8e6c8; border-color: var(--mm-night-line); }
+[data-mm-theme="dark"] body.mm-theme .expand-btn {
+  background: var(--mm-night-surface-2);
+  border-color: var(--mm-night-line);
+  color: var(--mm-night-dim);
+}
+[data-mm-theme="dark"] body.mm-theme .rt-table { background: var(--mm-night-surface-2); }
+[data-mm-theme="dark"] body.mm-theme .rt-table th { background: var(--mm-purple-tint); color: var(--mm-navy); }
+[data-mm-theme="dark"] body.mm-theme .rt-table td { border-color: var(--mm-night-line-soft); }
+[data-mm-theme="dark"] body.mm-theme .modal-card,
+[data-mm-theme="dark"] body.mm-theme dialog {
+  background: var(--mm-night-surface);
+  border-color: var(--mm-night-line);
+  color: var(--mm-night-ink);
+}
+[data-mm-theme="dark"] body.mm-theme dialog::backdrop { background: rgba(6, 9, 26, .62); }
+[data-mm-theme="dark"] body.mm-theme .account-owner { background: var(--mm-night-surface-2); }
+[data-mm-theme="dark"] body.mm-theme .account-owner-content { background: #1c224a; }
+[data-mm-theme="dark"] body.mm-theme .help-inline { background: var(--mm-night-surface-2); border-color: var(--mm-night-line-soft); }
+[data-mm-theme="dark"] body.mm-theme .help-inline summary { color: var(--mm-navy); }
+[data-mm-theme="dark"] body.mm-theme .account-owner-avatar { background: var(--mm-purple-tint); color: var(--mm-purple-soft); }
+
+/* 气泡：底色转深，字色跟着暗色不刺眼 */
+[data-mm-theme="dark"] body.mm-theme .badge,
+[data-mm-theme="dark"] body.mm-theme .ac-card-tags .badge { background: rgba(255, 255, 255, .1); color: #cdd3f2; border-color: transparent; }
+[data-mm-theme="dark"] body.mm-theme .badge.ac { background: rgba(75, 224, 112, .16); color: #7ef0a4; }
+[data-mm-theme="dark"] body.mm-theme .badge.warn { background: rgba(255, 151, 42, .16); color: #ffc266; }
+[data-mm-theme="dark"] body.mm-theme .badge.bad { background: rgba(231, 33, 57, .18); color: #ff93a5; }
+[data-mm-theme="dark"] body.mm-theme .badge.diff { background: rgba(53, 132, 254, .18); color: #9cc6ff; }
+[data-mm-theme="dark"] body.mm-theme .badge.contest { background: rgba(186, 94, 234, .18); color: #d7aeff; }
+[data-mm-theme="dark"] body.mm-theme .badge.platform { background: rgba(2, 200, 211, .16); color: #7fe6ee; }
+[data-mm-theme="dark"] body.mm-theme .badge.score { background: rgba(255, 151, 42, .16); color: #ffc266; }
+
+/* 提示条：浅色那版是实心暖白底，所以深色也必须是实心底 —— 只铺一层 10% 的色纱的话，
+   夜里的云和彩虹会直接透到字缝里（这块正好压在彩虹上）。色纱按同一个比例调进实心底里，
+   颜色关系不变，字下面有底。 */
+[data-mm-theme="dark"] body.mm-theme .notice { background: #2e283c; color: #f0dcb4; }
+[data-mm-theme="dark"] body.mm-theme .notice strong { color: #ffd79a; }
+[data-mm-theme="dark"] body.mm-theme .notice-warn { background: #2e283c; color: #ecd9a4; }
+[data-mm-theme="dark"] body.mm-theme .notice-warn strong { color: #f6dfa8; }
+[data-mm-theme="dark"] body.mm-theme .notice-warn span { color: #d9c48d; }
+[data-mm-theme="dark"] body.mm-theme .notice-ac { background: #1c2f43; color: #b6e3bc; }
+[data-mm-theme="dark"] body.mm-theme .notice-ac strong { color: #d6f0da; }
+[data-mm-theme="dark"] body.mm-theme .notice-ac.is-bad,
+[data-mm-theme="dark"] body.mm-theme .notice-danger { background: #301c3d; color: #ffb9b4; }
+[data-mm-theme="dark"] body.mm-theme .notice-ac.is-bad strong,
+[data-mm-theme="dark"] body.mm-theme .notice-danger strong { color: #ff9d97; }
+[data-mm-theme="dark"] body.mm-theme .notice-neutral { background: #25294a; color: var(--mm-night-muted); }
+
+/* ============ 7. 题友圈 ============ */
+
+[data-mm-theme="dark"] body.mm-theme .circle-eyebrow { color: var(--mm-purple-soft); }
+[data-mm-theme="dark"] body.mm-theme .circle-person:hover { background: var(--mm-night-surface-3); }
+[data-mm-theme="dark"] body.mm-theme .circle-person[aria-pressed="true"] {
+  background: rgba(186, 94, 234, .22);
+  border-color: var(--mm-purple-soft);
+  color: #e3c6ff;
+}
+[data-mm-theme="dark"] body.mm-theme .circle-avatar {
+  background: hsl(var(--hue, 160) 34% 26%);
+  color: hsl(var(--hue, 160) 70% 84%);
+}
+[data-mm-theme="dark"] body.mm-theme .circle-result { background: rgba(255, 255, 255, .08); color: #c3c9e6; }
+[data-mm-theme="dark"] body.mm-theme .circle-result.ac { background: rgba(75, 224, 112, .14); color: #7ef0a4; }
+[data-mm-theme="dark"] body.mm-theme .circle-coverage-status.needs-attention {
+  background: rgba(255, 151, 42, .14);
+  color: #ffc266;
+}
+[data-mm-theme="dark"] body.mm-theme .circle-card-head,
+[data-mm-theme="dark"] body.mm-theme .circle-card-foot { border-color: var(--mm-night-line-soft); }
+
+/* ============ 8. 使用指南 ============ */
+
+[data-mm-theme="dark"] body.mm-theme .help-page .help-toc a {
+  background: var(--mm-night-surface-2);
+  border-color: var(--mm-night-line);
+  color: var(--mm-navy);
+}
+[data-mm-theme="dark"] body.mm-theme .help-page .help-toc a:hover {
+  background: var(--mm-purple-tint);
+  border-color: var(--mm-purple-soft);
+  color: #e3c6ff;
+}
+[data-mm-theme="dark"] body.mm-theme kbd {
+  background: var(--mm-purple-tint);
+  border-color: var(--mm-purple-soft);
+  color: var(--mm-navy);
+}
+
+/* ============ 9. 底图之外还需要单独一提的两处 ============ */
+
+/* 背景 iframe 之上、正文之下的兜底层，深色下别闪白 */
+[data-mm-theme="dark"] body.mm-theme .app { position: relative; }
