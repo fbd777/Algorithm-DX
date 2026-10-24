@@ -1,7 +1,15 @@
 const colors = ['#5bceac','#62a8ff','#ad93ff','#f2c66d','#f38a96','#68d5e7','#c1cbdd'];
 const node = (tag,text,cls) => { const n=document.createElement(tag); if(text)n.textContent=text; if(cls)n.className=cls;return n; };
-const font = 'system-ui, "Microsoft YaHei", sans-serif';
+// 画布里的字也要跟官方那套字体（@font-face 已加载，render 前会 await document.fonts.ready）
+const font = '"M PLUS 1p", "M PLUS 1p Symbols", "Microsoft YaHei", "PingFang SC", sans-serif';
 function text(ctx, value, x, y, size=12, color='#a9b8cd',align='left') { ctx.font=`${size}px ${font}`;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(String(value),x,y); }
+// 画布上的底色、网格和字号不跟 CSS 变量走，得按主题自己取一套；
+// 切换主题时由 stats-page 重新画一遍（导出图片始终用深色海报底，不受这里影响）
+const PALETTE = {
+  light: { plot:'#f2eefb', grid:'#ded6ee', track:'#e7e1f4', text:'#5a5470', muted:'#7b7490', value:'#2f2a44', stroke:'#00000022' },
+  dark: { plot:'#141e2e', grid:'#27364b', track:'#233147', text:'#a9b8cd', muted:'#8798b2', value:'#e0eafb', stroke:'#ffffff55' },
+};
+const pal = () => PALETTE[document.documentElement.dataset.mmTheme === 'dark' ? 'dark' : 'light'];
 function shorten(value,n=24) { return value.length>n ? value.slice(0,n-1)+'…' : value; }
 
 export function chart(title, input, note='', type='bar') {
@@ -11,16 +19,16 @@ export function chart(title, input, note='', type='bar') {
   const height=type==='bar' ? Math.max(160,rows.length*29+30) : type==='donut' ? Math.max(250,rows.length*27+40) : 260;
   const canvas=node('canvas',null,'stat-canvas');canvas.width=1040;canvas.height=height*2;canvas.setAttribute('role','img');
   canvas.setAttribute('aria-label',`${title}。${rows.map(r=>`${r.label}：${r.count}`).join('；')}`);
-  const ctx=canvas.getContext('2d');ctx.scale(2,2);ctx.fillStyle='#141e2e';ctx.fillRect(0,0,520,height);
-  if (!total) {text(ctx,'此范围暂无数据',260,height/2,15,'#8798b2','center');}
+  const ctx=canvas.getContext('2d');ctx.scale(2,2);const p=pal();ctx.fillStyle=p.plot;ctx.fillRect(0,0,520,height);
+  if (!total) {text(ctx,'此范围暂无数据',260,height/2,15,p.muted,'center');}
   else if (type==='donut') {
     let angle=-Math.PI/2;
     rows.forEach((r,i)=> {const end=angle+r.count/total*Math.PI*2;ctx.beginPath();ctx.arc(115,125,76,angle,end);ctx.strokeStyle=colors[i%colors.length];ctx.lineWidth=24;ctx.stroke();angle=end;
-      ctx.fillStyle=colors[i%colors.length];ctx.fillRect(225,22+i*27,9,9);text(ctx,shorten(r.label,23),243,31+i*27);text(ctx,`${r.count} · ${(r.count/total*100).toFixed(1)}%`,505,31+i*27,11,'#e0eafb','right');});
-    text(ctx,total,115,127,30,'#e6edf3','center');text(ctx,'次提交',115,151,12,'#8798b2','center');
+      ctx.fillStyle=colors[i%colors.length];ctx.fillRect(225,22+i*27,9,9);text(ctx,shorten(r.label,23),243,31+i*27,12,p.text);text(ctx,`${r.count} · ${(r.count/total*100).toFixed(1)}%`,505,31+i*27,11,p.value,'right');});
+    text(ctx,total,115,127,30,p.value,'center');text(ctx,'次提交',115,151,12,p.muted,'center');
   } else if(type==='line' || type==='columns') {
     const left=42,right=500,top=28,bottom=210,axisMax=Math.ceil(max/4)*4;
-    for(let i=0;i<=4;i++){const y=bottom-(bottom-top)*i/4;ctx.strokeStyle='#27364b';ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();text(ctx,axisMax*i/4,left-8,y+4,10,'#8798b2','right');}
+    for(let i=0;i<=4;i++){const y=bottom-(bottom-top)*i/4;ctx.strokeStyle=p.grid;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();text(ctx,axisMax*i/4,left-8,y+4,10,p.muted,'right');}
     const x=i=>left+(right-left)*(rows.length===1?0.5:i/(rows.length-1));
     const y=r=>bottom-r.count/axisMax*(bottom-top);
     if(type==='line') {
@@ -28,10 +36,10 @@ export function chart(title, input, note='', type='bar') {
       ctx.lineTo(x(rows.length-1),bottom);ctx.lineTo(x(0),bottom);ctx.closePath();const g=ctx.createLinearGradient(0,top,0,bottom);g.addColorStop(0,'#5bceac55');g.addColorStop(1,'#5bceac00');ctx.fillStyle=g;ctx.fill();
       rows.forEach((r,i)=>{if(rows.length<=40){ctx.beginPath();ctx.arc(x(i),y(r),3,0,Math.PI*2);ctx.fillStyle=colors[0];ctx.fill();}});
     } else rows.forEach((r,i)=>{const w=(right-left)/rows.length;ctx.fillStyle=colors[1];ctx.fillRect(left+i*w+2,y(r),Math.max(1,w-4),bottom-y(r));});
-    rows.forEach((r,i)=>{if(i===0||i===rows.length-1||i%Math.max(1,Math.ceil(rows.length/6))===0) text(ctx,r.label.length>7?r.label.slice(5):r.label,type==='line'?x(i):left+(i+.5)*(right-left)/rows.length,233,10,'#8798b2','center');});
-    text(ctx,'提交次数',left,14,10);
+    rows.forEach((r,i)=>{if(i===0||i===rows.length-1||i%Math.max(1,Math.ceil(rows.length/6))===0) text(ctx,r.label.length>7?r.label.slice(5):r.label,type==='line'?x(i):left+(i+.5)*(right-left)/rows.length,233,10,p.muted,'center');});
+    text(ctx,'提交次数',left,14,10,p.muted);
   } else {
-    rows.forEach((r,i)=>{const y=20+i*29; text(ctx,shorten(r.label,25),5,y+12,12);ctx.fillStyle='#233147';ctx.fillRect(195,y,250,12);ctx.fillStyle=r.color||colors[i%colors.length];ctx.fillRect(195,y,250*r.count/max,12);if(r.color){ctx.strokeStyle='#ffffff55';ctx.lineWidth=1;ctx.strokeRect(195,y,250*r.count/max,12);}text(ctx,r.count,508,y+12,12,'#e0eafb','right');});
+    rows.forEach((r,i)=>{const y=20+i*29; text(ctx,shorten(r.label,25),5,y+12,12,p.text);ctx.fillStyle=p.track;ctx.fillRect(195,y,250,12);ctx.fillStyle=r.color||colors[i%colors.length];ctx.fillRect(195,y,250*r.count/max,12);if(r.color){ctx.strokeStyle=p.stroke;ctx.lineWidth=1;ctx.strokeRect(195,y,250*r.count/max,12);}text(ctx,r.count,508,y+12,12,p.value,'right');});
   }
   const viewport=node('div',null,'stat-canvas-frame');viewport.append(canvas);box.append(viewport);
   const detail=node('details',null,'chart-values');detail.append(node('summary','查看完整数据'));

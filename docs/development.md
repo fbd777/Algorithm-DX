@@ -49,7 +49,14 @@ public/
   index.html                 面板骨架（含账号管理区）
   app.js                     Feed 渲染、筛选器、折叠、账号管理与同步进度
   dx.html / dx.js            DX Rating 榜（b35 + b15），填写完成用时
-  styles.css                 深色主题，无外部字体或 CDN
+  styles.css / ui.css        重做前那一版的配色与组件样式，现在是皮肤的浅色底子
+  theme.css                  maimai 官网皮肤层，参数取自 vendor/maimai/style.css
+  theme-dark.css             深色模式层，规则一律带 [data-mm-theme="dark"] 前缀
+  theme-night.css            夜版背景，只换 /assets/night/ 那套贴图
+  theme.js                   主题开关、移动端菜单、回到顶部（换主题的唯一写入口）
+  bg.html                    背景 iframe 的宿主页：官网那份动态背景
+  vendor/maimai/**           官网素材原样快照（style.css / img / fonts，见其 README）
+  assets/night/**            夜版贴图，由官方素材离线重上色生成
 tests/
   phase1.test.ts             旧接口回归测试
   phase2.test.ts             迁移、适配器、同步和调度测试
@@ -67,6 +74,21 @@ dashboard.cmd                Windows 一键启动面板（纯 ASCII，双击即�
 data/                       首次运行生成，本地数据不提交
 data/backups/               npm run backup 生成的快照目录
 ```
+
+## 前端皮肤与深色模式
+
+皮肤复刻 maimai DX 国际版官网 PRiSM PLUS 时期的样式：`public/vendor/maimai/` 是原样快照（只改过 URL），
+落到本站组件上的那一层全在 `public/theme.css`，与官方的有意偏差集中在它末尾那节，改之前先看那节。
+
+- 主题落在 `<html data-mm-theme="light|dark">`，偏好存在 `localStorage['mm-theme']`，没手动选过就跟系统。
+- 各页 `<head>` 里有一小段脚本在首帧前定好主题（六页重复同一段是有意的：抽成外链会先亮后暗）。
+- 载入顺序 `fonts.css → styles.css → 各页自己的 CSS → ui.css → theme.css → theme-dark.css`，
+  深色层一律带 `[data-mm-theme="dark"]` 前缀，所以浅色那套不用改。
+- 画布里的图是 JS 画的，CSS 管不到：`theme.js` 换主题时发 `mm-theme-change`，`stat-charts.js` 收到就按
+  当前主题重画（配色在它自己的 PALETTE 里）。
+- 页面不引外部字体或 CDN，离线可用：M PLUS 1p 只自托管 latin / latin-ext 子集，中文回退系统字体。
+- `bg.html` 是背景 iframe 的宿主页（结构取自归档快照，另加三行重置与夜版切换脚本），放在 `public/` 根下，
+  好让 `vendor/maimai/` 只留原样素材。
 
 ## 数据模型
 

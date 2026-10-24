@@ -1,13 +1,15 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>使用指南 · Algorithm DX</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/ui.css">
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark">
+<script>/* 首屏前定好主题，避免先亮后暗 */(function(){try{var t=localStorage.getItem('mm-theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.mmTheme=t;document.documentElement.style.colorScheme=t;}catch(e){document.documentElement.dataset.mmTheme='light';}})();</script><title>使用指南 · Algorithm DX</title><link rel="stylesheet" href="/vendor/maimai/fonts.css"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/ui.css"><link rel="stylesheet" href="/theme.css"><link rel="stylesheet" href="/theme-dark.css">
 </head>
-<body>
+<body class="mm-theme"><iframe class="mm-bg-frame" data-src="/bg.html" title="" aria-hidden="true" tabindex="-1" scrolling="no"></iframe>
+
 <header class="topbar site-header">
   <a class="brand" href="/">
-    <img class="mark" src="/algorithm-dx-icon.svg" width="66" height="40" alt="" aria-hidden="true">
+    <span class="mark" aria-hidden="true"></span>
     <div class="brand-text"><h1>Algorithm DX</h1><p>记录练习，查看进步</p></div>
   </a>
-  <nav class="nav" aria-label="主导航">
+  <nav class="nav" id="mmNav" aria-label="主导航">
     <a class="btn btn-ghost" href="/">AC 记录</a>
     <a class="btn btn-ghost" href="/circle.html">题友圈</a>
     <a class="btn btn-ghost" href="/dx.html">DX Rating</a>
@@ -16,6 +18,10 @@
     <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
     <a class="btn btn-primary" href="/help.html" aria-current="page">使用指南</a>
   </nav>
+  <button class="mm-theme-btn" id="mmThemeBtn" type="button" role="switch" aria-checked="false" aria-label="深色模式" title="切换到深色模式"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="mm-theme-btn__moon" d="M20.2 14.6A8.7 8.7 0 0 1 9.4 3.8a8.7 8.7 0 1 0 10.8 10.8Z"/><circle class="mm-theme-btn__sun" cx="12" cy="12" r="4.7"/></svg></button>
+  <button class="mm-menu-btn" id="mmMenuBtn" type="button" aria-expanded="false" aria-controls="mmNav" aria-label="打开菜单">
+    <span></span><span></span>
+  </button>
 </header><main class="app help-page">
 <div class="help-heading"><span class="stats-eyebrow">GETTING STARTED</span><h2>使用指南</h2><p>从绑定第一个账号，到记录练习、看懂成绩与统计。</p><a class="btn btn-ghost" href="/?admin=1">前往账号管理 ↗</a></div>
 <nav class="help-toc" aria-label="教程目录"><a href="#start">首次使用</a><a href="#identity">名称与账号 ID</a><a href="#cookie">通用 Cookie 教程</a><a href="#luogu">洛谷数据范围</a><a href="#sync">同步与历史</a><a href="#cf-groups">CF 自建比赛</a><a href="#matiji">码蹄集同步</a><a href="#dx">用时与 B50</a><a href="#faq">常见问题</a><a href="#scoring">评分规则</a><a href="#validation">模型与验证</a><a href="#dan">随机抽题</a></nav>
@@ -136,4 +142,6 @@
 </div>
 </details>
 </footer>
-</main><script src="/help.js" type="module"></script></body></html>
+</main><script src="/help.js" type="module"></script><a class="mm-top off" href="#" aria-label="回到顶部"><img src="/vendor/maimai/img/common/top.png" alt="TOP"></a>
+<script src="/theme.js" type="module"></script>
+</body></html>

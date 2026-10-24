@@ -1,0 +1,81 @@
+/* ============ 夜版背景 ============
+ *
+ * 结构、层级、尺寸、动画全部沿用官方 style.css，这里只做一件事：换贴图素材
+ * （全部在 /assets/night/，由官方素材重上色生成，官方文件一个没动）。
+ *
+ * 用哪一层：
+ *   sky / sky-frame   天空渐变（内层渐变块 / 圆角外那圈）
+ *   pattern           渐变上的图案叠加
+ *   shines            闪点（官方在 ≥769px 换成 PC 那张，这里跟着换）
+ *   cloud-*           六片云（白体换成夜蓝，原来的粉/橙暖色描边按原色留着）
+ *   rainbow-back      彩虹后面那片云
+ *   rainbow-bottom    彩虹两端那两片云（同样分 SP / PC 两份）
+ *   rainbow           彩虹（降成月虹）
+ *   aurora            曙光（配合 screen 叠加 + 模糊化成柔光）
+ * 月亮和流星保持官方素材：夜里它们本来就该是最亮的。
+ *
+ * **带 -sp / -pc 的素材必须跟着官方的断点走**：官方在基础规则里用 `_sp`、在
+ * `@media (min-width:769px)` 里换成 `_pc`。只挂一份的话，宽屏会拿手机那张顶 PC 那格 ——
+ * 彩虹两端那片云的 SP 版是被图片边界切平的窄裁版（左右两边 85% / 44% 的像素是实心的），
+ * 铺进 PC 那格就会在画面中间露出两条平直的切边。下面每个断点都跟官方一一对应。
+ *
+ * 换素材之外还有四处按夜版需要动了样式，都在下面并注明原因：
+ *   html/body 底色、彩虹底边淡出、曙光的叠加方式与柔光、月亮那圈月光。
+ */
+
+/* iframe 底色（渐变块圆角之外露出的那一圈由 .bg 的贴图负责） */
+html, body { background: #0e1234; }
+
+/* —— 天空 —— */
+.bg { background-image: url(/assets/night/sky-frame.png); }
+.bg--gradient { background-image: url(/assets/night/sky.png); }
+.bg--gradient:before { background-image: url(/assets/night/pattern.png); }
+
+/* —— 手机档（官方基础规则那套素材）—— */
+.bg--shine { background-image: url(/assets/night/shines-sp.png); }
+.bg--aurora,
+.bg--aurora:before,
+.bg--aurora:after { background-image: url(/assets/night/aurora-sp.png); }
+.bg--rainbow:before { background-image: url(/assets/night/rainbow-sp.png); }
+.bg--rainbow__cloud { background-image: url(/assets/night/rainbow-bottom-sp.png); }
+.bg--rainbow__cloud:after { background-image: url(/assets/night/rainbow-back-sp.png); }
+
+/* —— 云（两张云官方不分档，同一张素材）—— */
+.bg--cloud__item.i1 { background-image: url(/assets/night/cloud-back-l.png); }
+.bg--cloud__item.i2 { background-image: url(/assets/night/cloud-back-r.png); }
+.bg--cloud__item.i3 { background-image: url(/assets/night/cloud-back-c.png); }
+.bg--cloud__item.i4 { background-image: url(/assets/night/cloud-front-l.png); }
+.bg--cloud__item.i5 { background-image: url(/assets/night/cloud-front-r.png); }
+.bg--cloud__item.i6 { background-image: url(/assets/night/cloud-front-c.png); }
+
+/* —— 宽屏档：官方在这里把闪点、曙光、彩虹、彩虹两端那片云都换成 PC 素材 ——
+   曙光的 :before/:after 官方在宽屏没有换图（还是 SP 那张），所以它们只在上面那一档里换。 */
+@media only screen and (min-width:769px) {
+  .bg--shine { background-image: url(/assets/night/shines-pc.png); }
+  .bg--aurora { background-image: url(/assets/night/aurora-pc.png); }
+  .bg--rainbow:before { background-image: url(/assets/night/rainbow-pc.png); }
+  .bg--rainbow__cloud { background-image: url(/assets/night/rainbow-bottom-pc.png); }
+}
+
+/* —— 彩虹：弧贴近地平线处淡出 ——
+   官方那张彩虹贴图的两个「脚」是被图片边界切平的。白天那里正好是渐变底部的白色地平光，
+   切边看不出来；夜里背景压深之后，平直的切边就露出来了，所以让弧在贴近地平线处淡出。
+   两端那片云的底边同理，那一刀直接做在 rainbow-bottom-pc 素材里（见生成脚本）。 */
+.bg--rainbow:before {
+  -webkit-mask-image: linear-gradient(0deg, transparent 0, #000 13%);
+  mask-image: linear-gradient(0deg, transparent 0, #000 13%);
+}
+
+/* —— 曙光：换素材之外还要叠加方式，这两行没法省 ——
+   官方那几道竖向光幕在深色天空上会显出硬边方块，所以夜里用 screen 只加光、再模糊成柔光；
+   贴图两端本来是硬接缝（官方自己在浅色天空上被背景亮度盖住了），夜版素材两端各淡了 4%。 */
+.bg--aurora,
+.bg--aurora:before,
+.bg--aurora:after {
+  mix-blend-mode: screen;
+  filter: blur(1.1vw) saturate(1.2) brightness(.95);
+}
+.bg--aurora { opacity: .32; }
+
+/* —— 月亮：素材保持官方，这里只加一圈月光（夜里唯一需要「加光」的地方）—— */
+.bg--moon { filter: drop-shadow(0 0 2.6vw rgba(168, 205, 255, .5)); }
