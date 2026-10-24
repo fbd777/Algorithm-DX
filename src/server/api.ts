@@ -536,11 +536,12 @@ function yearStartSeconds(year: number): number {
  *  2. 只有 AC 过的题；
  *  3. **只有填过完成用时的题才进榜** —— 没填的不算 0 分，是不存在；
  *  4. 旧题 / 新题按**出题日期**分（`releasedAt` = 比赛开始时间），与 AC 时间无关。
+ * 年度始终读取运行服务的系统本地日历；旧链接中的 year 参数不改变分区。
  */
 function dx(ctx: ApiContext, params: URLSearchParams): ApiResult {
   const userId = parseIntOrNull(params.get('user'), 1, Number.MAX_SAFE_INTEGER, 'user');
   if (userId === null) throw new BadRequest('缺少 user 参数');
-  const year = clampInt(params.get('year'), new Date().getFullYear(), 2000, 3000, 'year');
+  const year = new Date().getFullYear();
   const since = yearStartSeconds(year);
 
   const entries = listDxEntries(ctx.db, userId, DX_PLATFORM);
@@ -584,15 +585,6 @@ function dx(ctx: ApiContext, params: URLSearchParams): ApiResult {
       yearEnd: until,
       recorded,
       scoring: { divisor: PROBLEM_RATING_DIVISOR, atT97: factorFromAchievement(97), atSSSPlus: factorFromAchievement(100.5) },
-      // 年度下拉的选项：本年度 + 已 AC 题目**出题**年份，新的在前。
-      // 用出题年份而不是 AC 年份 —— 选 2024 年问的是「2024 年出的题里我拿了多少」。
-      years: [
-        ...new Set([
-          year,
-          new Date().getFullYear(),
-          ...entries.flatMap((e) => (e.releasedAt === null ? [] : [new Date(e.releasedAt * 1000).getFullYear()])),
-        ]),
-      ].sort((a, b) => b - a),
       curve: curveInfo(),
       slots: { old: OLD_SLOTS, current: NEW_SLOTS },
       board,
@@ -691,7 +683,7 @@ function addPractice(ctx: ApiContext, body: unknown): ApiResult {
 function exportBacktest(ctx: ApiContext, params: URLSearchParams): ApiResult {
   const user = parseIntOrNull(params.get('user'), 1, Number.MAX_SAFE_INTEGER, 'user');
   if (user === null || !ctx.db.prepare('SELECT 1 FROM users WHERE id=?').get(user)) throw new BadRequest('用户不存在');
-  const year = clampInt(params.get('year'), new Date().getFullYear(), 2000, 3000, 'year');
+  const year = new Date().getFullYear();
   return { status: 200, downloadName: params.get('download') === '1' ? `algorithm-dx-backtest-${year}.json` : undefined,
     body: localBacktestReport(listDxEntries(ctx.db, user, DX_PLATFORM), listPractice(ctx.db, user),
     year, yearStartSeconds(year), yearStartSeconds(year + 1)) };

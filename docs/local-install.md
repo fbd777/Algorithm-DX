@@ -2,16 +2,16 @@
 
 ## 下载入口
 
-- [项目 v0.1.0 源码 ZIP](https://github.com/fbd777/Algorithm-DX/archive/refs/tags/v0.1.0.zip) · [版本发布记录](https://github.com/fbd777/Algorithm-DX/releases)
-- [Node.js 官方下载](https://nodejs.org/en/download)：选择 24.x LTS，至少 24.15；Windows 通常选择 x64 MSI 安装程序。
+- [项目 v0.2.2 源码 ZIP](https://github.com/fbd777/Algorithm-DX/archive/refs/tags/v0.2.2.zip) · [版本发布记录](https://github.com/fbd777/Algorithm-DX/releases)
+- [Node.js 官方下载](https://nodejs.org/en/download)：推荐选择 **24.x LTS 的最新补丁版本（24.22.1 或更新的 24.x 版本）**；Windows 通常选择 x64 MSI 安装程序。
 
 项目 ZIP 需要先解压，不是独立 EXE 安装包。
 
 ## Windows 首次使用
 
-1. 安装 Node.js 24.15 或更新版本，安装时保留加入 PATH 的选项。安装后重新打开终端或启动窗口。
+1. 安装 Node.js 24.x LTS 的最新补丁版本（24.22.1 或更新的 24.x 版本），安装时保留加入 PATH 的选项。安装后重新打开终端或启动窗口。
 2. 下载完整仓库并解压到自己有写权限的固定目录。
-3. 双击根目录的 `create-desktop-shortcut.cmd`，在当前用户桌面创建 **Algorithm DX** 快捷方式。
+3. 打开解压后的文件夹，找到与 `README.md` 同一层的 `create-desktop-shortcut.cmd`，双击运行，在当前用户桌面创建 **Algorithm DX** 快捷方式。创建一次后，以后直接从桌面启动。
 4. 双击桌面快捷方式（首次启动自动创建 `data/algorithm-dx.sqlite` 和名为「我」的本人用户，不预设任何平台账号或登录凭据）。
 5. 浏览器打开后，在「账号管理」中绑定自己的账号，再按平台说明配置所需凭据并同步。
 
@@ -67,11 +67,12 @@ npm run desktop:shortcut -- -ShortcutName "Algorithm DX Test"
 
 ## macOS / Linux
 
-安装 Node.js 24.15+，执行 `npm start`，按终端显示的地址打开浏览器。有桌面环境可用 `npm start -- --open`。`.cmd` 和快捷方式生成器仅适用于 Windows。
+安装 Node.js 24.x LTS 的最新补丁版本（24.22.1 或更新的 24.x 版本），执行 `npm start`，按终端显示的地址打开浏览器。有桌面环境可用 `npm start -- --open`。`.cmd` 和快捷方式生成器仅适用于 Windows。
 
 ## 常见问题
 
 - 找不到 Node.js：安装所需版本，并确认 `node --version` 能运行。
+- 已安装较早的 Node.js 24.x：建议升级到最新的 24.x 补丁版本，参见 [24.22.1 安全更新说明](https://nodejs.org/en/blog/release/v24.22.1)。升级前关闭项目服务，升级后重新打开终端，确认 `node --version` 显示新版本，再启动项目。
 - 桌面创建失败：检查桌面目录是否可写、重定向桌面是否可访问；也可直接双击 `dashboard.cmd`。
 - 浏览器未打开：保留服务窗口，手动访问窗口中显示的地址。
 - 数据库版本不匹配：新版启动时会自动备份并升级旧库；若提示数据库更高版本，请使用更新的软件包，不要删除旧库。

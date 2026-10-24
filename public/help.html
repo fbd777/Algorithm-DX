@@ -29,13 +29,13 @@
 <div class="help-heading">
   <span class="stats-eyebrow">GETTING STARTED</span>
   <h2>使用指南</h2>
-  <p>第一次用？先绑定账号、同步记录，再开始一次计时练习。Cookie、群组比赛和评分公式可以用到时再看。</p>
+  <p>第一次用建议先绑定账号、同步记录，再开始一次计时练习。Cookie、群组比赛和评分公式可以用到的时候再看。</p>
   <a class="btn btn-ghost" href="/?admin=1">前往账号管理</a>
 </div>
 <nav class="help-toc" aria-label="入门教程目录">
   <a href="#start">1. 绑定账号</a><a href="#identity">2. 账号怎么填</a><a href="#sync">3. 同步记录</a><a href="#dx">4. 记录用时</a><a href="#dan">5. 随机练习</a><a href="#faq">6. 常见问题</a>
 </nav>
-<p>按需查阅：<a href="#cookie">获取 Cookie</a> · <a href="#luogu">洛谷</a> · <a href="#nowcoder">牛客</a> · <a href="#matiji">码蹄集</a> · <a href="#cf-groups">CF 自建比赛</a> · <a href="#cf-source-matching">群组原题配对</a> · <a href="#scoring">B50 评分规则</a> · <a href="#validation">评分模型与回测</a></p>
+<p>按需查阅：<a href="#cookie">获取 Cookie</a> · <a href="#luogu">洛谷</a> · <a href="#nowcoder">牛客</a> · <a href="#matiji">码蹄集</a> · <a href="#cf-groups">CF 自建比赛</a> · <a href="#cf-source-matching">群组原题配对</a> · <a href="#scoring">B50 评分规则</a> · <a href="#validation">评分模型与回测</a> · <a href="#community">官方 QQ 群</a></p>
 
 <section id="start">
 <h2>1. 绑定你的第一个平台账号</h2>
@@ -116,7 +116,7 @@
 <ul>
   <li><strong>练习历史：</strong>查看每一次尝试，包括重做、辅助解题和未完成的记录。</li>
   <li><strong>全部成绩：</strong>查看每道题的最佳有效成绩，可以筛选、排序和导出。</li>
-  <li><strong>Rating 总览：</strong>显示 B50，即旧题中得分最高的 35 道，加上所选年度新题中得分最高的 15 道。DX Rating 是这些单题得分的总和，详见<a href="#scoring">评分规则</a>。</li>
+  <li><strong>Rating 总览：</strong>显示 B50，即旧题中得分最高的 35 道，加上当前系统年度新题中得分最高的 15 道。DX Rating 是这些单题得分的总和，详见<a href="#scoring">评分规则</a>。</li>
 </ul>
 <details><summary>「自动识别」能判断我有没有看题解吗？</summary>
 <p>不能。应用只根据本机已保存的记录判断：本次练习开始前已经 AC 过这道题，就建议「熟题重做」；没有足够记录时保留未知。是否首次独立完成、是否使用题解或 AI，需要你自己选择，手动选择优先。辅助解题、未完成和已作废记录会保留在历史中，但不计入 B50。</p>
@@ -136,10 +136,11 @@
 <h3>四题挑战：四道题共用 120 分钟</h3>
 <ul>
   <li>每轮连续做四道题。各题用时单独记录，但挑战剩余时间共用。</li>
-  <li>每次答案错误（WA）、超时（TLE）、超内存（MLE）或运行错误（RE），扣 2 分钟。编译错误（CE）和平台错误不扣。</li>
+  <li>每次答案错误（WA）、超时（TLE）、超内存（MLE）或运行错误（RE），扣 10 分钟。编译错误（CE）和平台错误不扣。</li>
   <li>通过一题时，若剩余时间仍大于 0，且本轮此前从未耗尽时间，该题记为「可」（在挑战时间内通过），前三题各恢复最多 10 分钟，总余额不超过 120 分钟。第四题直接进入本轮结算，不再加时。</li>
   <li>结算期间暂停倒计时。关闭结算弹窗，准备好后点击「开始下一题」；恢复动画结束后才揭题并继续计时。同步和判题延迟不计入用时。</li>
   <li>四题全部记为「可」，本轮才合格。时间耗尽后仍可继续练习，但当前和后续题均记为「不可」，不再恢复时间，本轮不合格。已完成题目的实际成绩仍可参与 B50。</li>
+  <li>进行中的挑战沿用开局时的规则；升级不会重算历史结算。</li>
 </ul>
 <p>「随机挑战」也使用这套四题规则，难度覆盖 800–2600。<strong>小随机</strong>让各个难度被抽中的机会相同；<strong>大随机</strong>让每道题被抽中的机会相同，因此题量多的难度更常出现。更新前已经创建的轮次仍沿用创建时的规则。</p>
 </section>
@@ -153,7 +154,7 @@
 <p>先确认是 Codeforces 题目，已经同步，并记录了有效用时。题目还需要 CF 官方难度；尚未评级时可以先记用时，公布评级并同步后才参与计分。辅助解题、未完成、已作废的记录不计分。有分也不一定上榜：旧题取前 35 道，新题取前 15 道，其他成绩在「全部成绩」查看。</p>
 </details>
 <details><summary>今年做的题，为什么被放进旧题区？</summary>
-<p>新旧题看出题年份，不看你完成题目的日期。例如选择 2026 年时，2026 年发布的是新题，2025 年及以前发布的是旧题。切换年度只是重新划分题目，仍使用当前保存的成绩，不会还原当年的分数。</p>
+<p>新旧题看出题年份，不看你完成题目的日期。年度自动读取运行程序的电脑系统年份，无需选择。例如系统年份为 2026 年时，2026 年发布的是新题，2025 年及以前发布的是旧题。跨年后重新读取榜单，上年度新题自动归入旧题区，已有练习用时保留。</p>
 </details>
 <details><summary>同步成功，但记录数比平台官网少怎么办？</summary>
 <p>先确认历史回补是否完成。公开范围、第三方镜像延迟、隐藏或已删除的记录，都可能造成差异；反复同步近期记录不能补齐平台不提供的历史。洛谷比赛中的临时题号不计入题目数量，但提交明细仍保留，因此也可能与平台展示的题数不同。</p>
@@ -338,6 +339,13 @@
 <details><summary>查看当前模型、适用范围与验证状态</summary><div id="curveDetails">正在读取…</div></details>
 <p>想比较当前与旧版模型对已有练习记录的评分，可在「DX Rating → 更多 → 本地回测 / 导出」查看报告并下载汇总 JSON。这项操作只在本机计算，不会自动修改评分参数或上传练习数据。</p>
 <p>报告会区分计时来源、练习类型和未完成次数。练习日期不明的记录无法参与按时间分析；样本少或 B35 / B15 尚未填满时，不宜据此判断训练成效。实现与研究资料在项目 <code>docs/cf-maimai-study.md</code>、<code>docs/backtesting.md</code> 中。</p>
+</section>
+
+<section id="community">
+<h2>交流与反馈</h2>
+<p>Algorithm DX 官方 QQ 群：<strong>1131941735</strong></p>
+<p>在 QQ 中搜索群号即可申请加入。欢迎交流练习心得、反馈使用问题，也可以一起讨论后续功能。</p>
+<p>需要记录问题或提出改进建议，也可以前往 <a href="https://github.com/fbd777/Algorithm-DX/issues" target="_blank" rel="noopener">GitHub Issues</a>。</p>
 </section>
 
 <footer class="project-support">

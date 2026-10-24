@@ -69,6 +69,8 @@
   --focus-ring: var(--mm-purple-soft);
 }
 
+[data-mm-theme="dark"] body.mm-theme .dx-b50-card { --b50-rank-ink:var(--rank,#8998af); }
+
 html[data-mm-theme="dark"],
 [data-mm-theme="dark"] body { background: var(--mm-night); }
 

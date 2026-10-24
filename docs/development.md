@@ -104,6 +104,8 @@ data/backups/               npm run backup 生成的快照目录
 
 - `dan_sessions` / `dan_stages`（v18，v19/v20 各加了一列）：随机抽题与段位認定。一轮认定一行（档位、`kind` ∈ `challenge`/`single`/`daily`、题数、单题限时、rating 区间、状态），每道题一行（**抽题时快照下来的难度与限时**、`claimed_at`、计时器 id、结果）。难度快照进 `dan_stages` 而不是结算时回查题库，否则题库缓存过期或 CF 修订题目 rating 会让历史记录跟着变；`settlement_json` 同样在结束时冻结。v19 给 `dan_stages` 加了 `limit_seconds`：两个随机段位（`small_random` / `big_random`）rating 不分段、抽到的题横跨 800–2600，限时得随题走，NULL 表示沿用 session 的档位统一限时。v20 给 `dan_sessions` 加了 `tags_json`：自定义单题抽题（`tier='custom'`）的标签条件，NULL 表示无条件；难度范围复用本来就有的 `min_rating` / `max_rating`。随机段位沿用 `kind='challenge'`、自定义沿用 `kind='single'`，都靠 `tier` 区分 —— 加 `kind` 值要重建整张表（SQLite 改不了 `CHECK`）。一个用户同时只能有一轮 `active`，由 partial unique index `one_active_dan_per_user` 兜底。题号与链接在 `claimed_at` 之前不写入响应，详见 [随机抽题与段位認定](dan.md)。
 
+v21 为挑战加入 `rules_json` 与逐题 `life_json`，保存开局规则和结算时的共享时间状态；新挑战按共享时间规则运行，旧的单题限时轮次保留原口径。v22 放宽计时记录的数据库用时上限，让耗尽共享时间后继续练习、隔天 AC 的实际用时也能保存。普通手动补录仍限 24 小时；已有的长时间挑战记录可修改类型、日期，并保留或缩短原用时，历史挑战结算不随练习记录编辑而重算。
+
 时间统一存 UTC Unix 秒；执行时间为毫秒，内存为字节；缺失值为 NULL。删除用户或账号会级联删除相关提交，未来 UI 必须明确告知这一行为。
 
 Schema 以 `PRAGMA user_version` 标记，当前版本由 `src/db/database.ts` 的迁移列表决定。初始化可重复运行；升级通过增量迁移保留记录。`openDatabase()` 在版本高于代码支持时拒绝打开，低于时取得 `BEGIN IMMEDIATE` 写锁、重新读取版本，并在同一事务里按顺序补齐全部迁移；提交前校验版本、外键和完整性，失败整体回滚。重建被引用表时在事务外暂时关闭外键执行，提交前检查引用，结束后恢复，避免触发历史计时关联的 `ON DELETE SET NULL`。
@@ -131,7 +133,7 @@ Schema 以 `PRAGMA user_version` 标记，当前版本由 `src/db/database.ts` �
 | `GET /api/feed` | 题目级聚合分页，已 AC 优先；平台可多选，另支持用户、状态、关键词筛选 |
 | `GET /api/problem` | 单题全部提交与判题时间线，用于按需展开「尝试 N 次」 |
 | `GET /api/sync/status` | 后台同步任务的当前进度与结果 |
-| `GET /api/dx` | DX Rating 榜：曲线元信息、旧题 35 格 + 本年度新题 15 格（按**出题日期**分）、待填写清单（含未评定的题，`problemRating` 为 null）、缺出题日期的题数 |
+| `GET /api/dx` | DX Rating 榜：曲线元信息、旧题 35 格 + 当前系统年度新题 15 格（按**出题日期**分，年度读取服务端本地日历，忽略旧 `year` 参数）、待填写清单（含未评定的题，`problemRating` 为 null）、缺出题日期的题数 |
 | `POST /api/dx/time` · `POST /api/dx/time/clear` | 填写 / 清除某道题的完成用时（只接受已 AC 的 Codeforces 题） |
 | `GET /api/dan` | 抽题面板与记录页：档位表、题库缓存是否就绪、每日一题的**难度**、进行中的一轮、历史记录。只读，冷缓存时返回 `poolReady: false` |
 | `POST /api/dan/start` | 开一轮随机抽题 / 挑战 / 每日一题；已有一轮没结束时回 **409 `SESSION_ACTIVE`** |

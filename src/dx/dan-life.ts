@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-export const DAN_LIFE_RULES = { version: 2, initialSeconds: 7200, maxSeconds: 7200, recoverySeconds: 600, penaltySeconds: 120 } as const;
+export const DAN_LIFE_RULES = { version: 3, initialSeconds: 7200, maxSeconds: 7200, recoverySeconds: 600, penaltySeconds: 600 } as const;
 export type LifeRules = { version: number; initialSeconds: number; maxSeconds: number; recoverySeconds: number; penaltySeconds: number };
 export interface LifeResult {
   startSeconds: number; remainingSeconds: number; recoverySeconds: number;
@@ -51,6 +51,8 @@ export function sessionLife(db: DatabaseSync, session: { id: string; stage_count
     { stage_index: number; timer_id: string | null; life_json: string | null; outcome: string | null } | undefined;
   const life = stage ? stageLife(db, session, stage, now) : null;
   return { ...rules, ...life, remainingSeconds: life?.remainingSeconds ?? rules.initialSeconds,
+    // Keep the rule separate from the accumulated penalty on the current stage.
+    penaltyPerSubmissionSeconds: rules.penaltySeconds,
     // Recovery is earned at AC, displayed during the transition, consumed once by the next stage.
     pendingRecovery: stage?.outcome && session.status === 'active' ? life?.recoverySeconds ?? 0 : 0,
     running: Boolean(stage?.timer_id && !stage.outcome),

@@ -113,7 +113,9 @@ export function editPractice(db: DatabaseSync, userId: number, id: number, revis
     if (!row) throw new Error('记录不存在或已作废，请刷新后重试');
     if (row.revision !== revision) throw new Error('记录已被修改，请刷新后重新打开');
     const input: PracticeInput = { ...changes, userId, platform: String(row.platform), problemId: String(row.problem_id), timingSource: 'manual' };
-    validatePractice(input);
+    // A challenge may legitimately finish after 24 hours. Preserve or shorten that
+    // existing duration when correcting metadata, without extending manual entry limits.
+    validatePractice(input, Number(row.seconds) > 86400 && input.seconds <= Number(row.seconds));
     const known = db.prepare(`SELECT MAX(s.status='AC') AS solved FROM submissions s JOIN accounts a ON a.id=s.account_id
       WHERE a.user_id=? AND a.is_archived=0 AND s.platform=? AND s.problem_id=?`).get(userId, input.platform, input.problemId)!;
     if (!row.is_manual && known.solved === null) throw new Error('该题已不属于当前账号记录');

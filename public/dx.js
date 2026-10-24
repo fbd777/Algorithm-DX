@@ -87,9 +87,11 @@ function readDuration() {
 
   if ([h, m, s].some((n) => !Number.isInteger(n) || n < 0)) return { error: '时、分、秒都要填非负整数' };
   if (m > 59 || s > 59) return { error: '分和秒都要小于 60' };
-  if (h > 24) return { error: '小时数不能超过 24（用时上限就是 24 小时）' };
-
   const seconds = h * 3600 + m * 60 + s;
+  const maxSeconds = state.modalTarget?.maxSeconds ?? 86400;
+  if (!Number.isSafeInteger(seconds) || seconds > maxSeconds) {
+    return { error: maxSeconds > 86400 ? '这条长时间挑战记录可保留或缩短原用时，不能增加。' : '用时不能超过 24 小时' };
+  }
   // 服务端只接受 1 秒起的用时；三个框全空等于没填。
   if (seconds < 1) return { error: '三个框都是空的 —— 至少填一个不为 0 的数' };
   return { seconds };
@@ -140,8 +142,8 @@ async function requestSync(accountId) {
 
 const pageParams = new URLSearchParams(location.search);
 let pageView = ['practice', 'history', 'recorded', 'board'].includes(pageParams.get('view')) ? pageParams.get('view') : 'board';
-const requestedYear = Number(pageParams.get('year'));
-const state = { userId: null, year: Number.isInteger(requestedYear) && requestedYear >= 2000 && requestedYear <= 3000 ? requestedYear : null,
+// The server supplies the system calendar year; URLs cannot select a season.
+const state = { userId: null, year: null,
   data: null, meta: null, modalTarget: null };
 
 function updatePageNavigation() {
@@ -152,7 +154,6 @@ function updatePageNavigation() {
     const params = new URLSearchParams();
     if (view !== 'board') params.set('view', view);
     if (state.userId !== null) params.set('user', String(state.userId));
-    if (state.year !== null) params.set('year', String(state.year));
     link.href = '/dx.html' + (params.size ? '?' + params : '');
     link.className = `btn ${view === pageView ? 'btn-primary' : 'btn-ghost'}`;
     if (view === pageView) link.setAttribute('aria-current', 'page');
@@ -167,7 +168,6 @@ function updatePageNavigation() {
     ? '回看每次练习的用时与成绩，可搜索、排序，并修改或作废记录。'
     : '记得实际用时就补录，不必补齐刷题历史。不记得用时可以选择不再提醒。';
   setPracticeView(pageView === 'history');
-  $('yearSelect').hidden = practiceView;
   $('rankTableBtn').hidden = practiceView;
   $('scoringNote').hidden = pageView !== 'board';
   $('saveB50Btn').hidden = pageView !== 'board';
@@ -281,10 +281,44 @@ function renderReleaseNotice(data) {
 }
 
 function slotCard(slot, partition) {
-  const card = scoreCard({ ...slot.entry, score: slot.score }, `${partition} #${slot.position}`);
-  card.dataset.problemId = slot.entry.problemId;
-  card.tabIndex = -1;
-  return card;
+  const item = slot.entry, score = slot.score;
+  const title = item.problemTitle || item.problemId;
+  return el('article', {
+    class: 'dx-card dx-b50-card', 'data-rank': score.rank,
+    'data-problem-id': item.problemId, tabindex: -1,
+    'aria-label': `${partition} 第 ${slot.position} 名 · ${item.problemId} ${title}`,
+  }, [
+    el('div', { class: 'dx-b50-heading' }, [
+      el('span', { text: `${partition} #${pad2(slot.position)}` }),
+      el('span', { text: item.problemId }),
+    ]),
+    el('h3', { class: 'dx-b50-title', title }, [item.problemUrl
+      ? el('a', { href: item.problemUrl, target: '_blank', rel: 'noreferrer', text: title })
+      : el('span', { text: title })]),
+    el('div', { class: 'dx-b50-performance' }, [
+      el('strong', { class: 'dx-b50-achievement', 'aria-label': `完成度 ${score.achievementShown.toFixed(4)}%` }, [
+        document.createTextNode(score.achievementShown.toFixed(4)), el('small', { text: '%' }),
+      ]),
+      el('span', { class: 'dx-b50-rank', text: score.rank }),
+    ]),
+    el('div', { class: 'dx-b50-meta' }, [
+      el('span', { text: `难度 ${item.problemRating ?? '—'}` }),
+      el('span', { text: fmtClock(item.recordedSeconds), title: '最佳用时', 'aria-label': `最佳用时 ${fmtClock(item.recordedSeconds)}` }),
+    ]),
+    el('details', { class: 'dx-b50-details' }, [
+      el('summary', {}, [
+        el('span', { class: 'dx-b50-details-label', text: '详情' }),
+        el('span', { class: 'dx-b50-rating', 'aria-label': `单题 Rating ${num1(score.rating)}` }, [
+          document.createTextNode('Rating '), el('strong', { text: num1(score.rating) }),
+        ]),
+      ]),
+      el('div', { class: 'dx-b50-detail-body' }, [
+        el('p', { class: 'dx-b50-full-title', text: title }),
+        el('p', { text: `首次 AC ${fmtDate(item.solvedAt)}` }),
+        el('div', { class: 'dx-b50-actions' }, scoreActions(item)),
+      ]),
+    ]),
+  ]);
 }
 
 function renderGrids(data) {
@@ -337,7 +371,7 @@ function pendingRow(item) {
       title:
         item.releasedAt === null
           ? '尚未确认原题出题日期，暂按旧题处理'
-          : `出题 ${fmtDate(item.releasedAt)} · ${item.outsideYear ? '晚于所选年度' : item.isCurrent ? '新题' : '旧题'}；按比赛开始时间划分 B35 / B15`,
+          : `出题 ${fmtDate(item.releasedAt)} · ${item.outsideYear ? '晚于当前年度' : item.isCurrent ? '新题' : '旧题'}；按比赛开始时间划分 B35 / B15`,
     }),
     // 比赛自动计时（口径 B）：窗口内按「被切的时间顺序」逐题相减算出的纯耗时。
     // 服务端算好秒数；算不出（练习解 / 跳题穿插 / 比赛时长缺失）就没有这个按钮。
@@ -417,7 +451,7 @@ function renderRecorded(data) {
   $('recordedSection').hidden = records.length === 0;
   $('recordedEmpty').hidden = records.length > 0 || allRecords.length === 0;
   $('recordedCount').textContent = `${records.length} / ${allRecords.length}`;
-  const labels = { waitingRating: '等待题目难度', onBoard: '已上榜', belowCutoff: '未进入 B50', outsideYear: '出题日期晚于所选年度' };
+  const labels = { waitingRating: '等待题目难度', onBoard: '已上榜', belowCutoff: '未进入 B50', outsideYear: '出题日期晚于当前年度' };
   const size=Number($('recordedPageSize').value),pages=Math.max(1,Math.ceil(records.length/size));
   recordsPage=Math.min(recordsPage,pages-1);
   list.className=$('recordedView').value==='list'?'dx-library-list':'dx-library-grid';
@@ -429,7 +463,20 @@ function renderRecorded(data) {
   }
 }
 
-/** Shared score cards keep B50 and the library visually consistent. */
+/** Actions shared by compact B50 cards and the full record library. */
+function scoreActions(item) {
+  return [
+    el('button', { class: 'btn btn-mini', type: 'button', text: '再练一次', onclick: () => {
+      if (timerController.running()) { $('timerRunning').scrollIntoView({ behavior: 'smooth' }); return; }
+      $('timerProblem').value = item.problemId; $('timerKind').value = 'repeat';
+      $('timerProblem').dispatchEvent(new Event('input'));
+      $('timerForm').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('timerStart').focus();
+    } }),
+    el('button', { class: 'btn btn-ghost btn-mini', type: 'button', text: '手动记录', onclick: () => openModal(item, item.problemTitle || item.problemId) }),
+  ];
+}
+
+/** Full score cards for browsing the record library. */
 function scoreCard(item, statusLabel) {
     const score=item.score;
     return el('article', { class:'dx-library-card dx-card', 'data-rank':score?.rank ?? '', 'aria-label':`${item.problemId} ${item.problemTitle}` },[
@@ -442,13 +489,7 @@ function scoreCard(item, statusLabel) {
         el('div',{},[el('span',{text:'难度'}),el('strong',{text:item.problemRating ?? (item.sourceProblemId?'原题未评级':item.problemUrl?.includes('/group/')?'待核对原题':'待公布')})]),
         el('div',{},[el('span',{text:'最佳用时'}),el('strong',{text:fmtClock(item.recordedSeconds)})]),
       ]),
-      el('div',{class:'dx-library-card-foot'},[el('span',{text:`首次 AC ${fmtDate(item.solvedAt)}`}),
-        el('button',{class:'btn btn-mini',type:'button',text:'再练一次',onclick:()=>{
-          if(timerController.running()) { $('timerRunning').scrollIntoView({behavior:'smooth'}); return; }
-          $('timerProblem').value=item.problemId; $('timerKind').value='repeat'; $('timerProblem').dispatchEvent(new Event('input'));
-          $('timerForm').scrollIntoView({behavior:'smooth',block:'center'}); $('timerStart').focus();
-        }}),
-        el('button',{class:'btn btn-ghost btn-mini',type:'button',text:'手动记录',onclick:()=>openModal(item,item.problemTitle || item.problemId)})]),
+      el('div',{class:'dx-library-card-foot'},[el('span',{text:`首次 AC ${fmtDate(item.solvedAt)}`}), ...scoreActions(item)]),
     ]);
 }
 
@@ -474,7 +515,7 @@ function renderEmpty(data) {
     $('emptyBody').textContent = '已有 AC 记录会保留，无需补齐过去的用时。准备好题目和 IDE 后，点击「开始计时」即可。';
   } else {
     $('emptyTitle').textContent = '没有可计分的题目';
-    $('emptyBody').textContent = '已填用时的记录可能在等待题目难度，或出题日期晚于所选年度。请查看「全部成绩」中的状态。';
+    $('emptyBody').textContent = '已填用时的记录可能在等待题目难度，或出题日期晚于当前年度。请查看「全部成绩」中的状态。';
   }
 }
 
@@ -591,6 +632,7 @@ function openModal(entry, title) {
   practiceDateEdited = false;
   practiceDateProblem = '';
   state.modalTarget.dateLookup = prefillPracticeDate().then(() => resolvePracticeKind());
+  $('timeHours').max = '24';
   $('timeHours').value = '';
   $('timeMinutes').value = '';
   $('timeSeconds').value = '';
@@ -612,7 +654,8 @@ function openEditModal(row) {
   $('practiceManual').checked = !!row.is_manual;
   practiceDateRevision++;
   practiceKindRevision++;
-  state.modalTarget = { userId: state.userId, problemId: row.problem_id, editId: row.id, revision: row.revision };
+  state.modalTarget = { userId: state.userId, problemId: row.problem_id, editId: row.id, revision: row.revision, maxSeconds: Math.max(86400, row.seconds) };
+  $('timeHours').max = String(Math.floor(state.modalTarget.maxSeconds / 3600));
   $('timeModalTitle').textContent = '修改练习记录';
   $('timeModalSub').textContent = `${row.problem_id} · ${row.problem_title || '题名未知'}`;
   $('practiceProblem').value = row.problem_id;
@@ -631,7 +674,7 @@ function openEditModal(row) {
   $('timeVoid').checked = false;
   $('timeSubmit').textContent = '保存修改';
   $('timeStatus').textContent = '';
-  $('timeHint').textContent = '更正后会重新计算本题最佳成绩和 Rating。勾选作废仅作废此条记录，不保存其他修改。';
+  $('timeHint').textContent = (row.seconds > 86400 ? '本次挑战超过 24 小时，可保留或缩短原用时。' : '') + '更正后会重新计算本题最佳成绩和 Rating。勾选作废仅作废此条记录，不保存其他修改。';
   $('timeModal').hidden = false;
   $('timeMinutes').focus();
   $('timeMinutes').select();
@@ -837,10 +880,10 @@ async function openBacktest() {
   $('backtestBody').append(el('p', { text: '正在本机回测…' }));
   const user = state.userId, year = state.year;
   try {
-    const report = await api('/api/dx/backtest', { user: String(user), year: String(year) });
+    const report = await api('/api/dx/backtest', { user: String(user) });
     if (user !== state.userId || year !== state.year || $('backtestModal').hidden) return;
     previewReport = report;
-    previewDownloadUrl = '/api/dx/backtest?' + new URLSearchParams({ user: String(user), year: String(year), download: '1' });
+    previewDownloadUrl = '/api/dx/backtest?' + new URLSearchParams({ user: String(user), download: '1' });
     clear($('backtestBody'));
     $('backtestBody').append(el('p', { text: `${report.year} 年出题分区 · ${report.coverage.attempts} 次有效记录 · 日期未知 ${report.coverage.unknownAttemptDate} 次。回测只纳入定数 ${report.models.fitRange.join('–')}，未满 B35/B15 不代表充分训练。` }));
     const pct = value => value === null ? '无可计分记录' : `${(value * 100).toFixed(1)}%`;
@@ -861,10 +904,6 @@ function downloadBacktest() {
   if (!previewReport || !previewDownloadUrl) return;
   const link = el('a', { href: previewDownloadUrl, download: `algorithm-dx-backtest-${previewReport.year}.json` });
   document.body.append(link); link.click(); link.remove();
-}
-
-function currentYear() {
-  return new Date().getFullYear();
 }
 
 async function loadMeta() {
@@ -888,13 +927,6 @@ async function loadMeta() {
   }
 }
 
-function renderYearOptions(years) {
-  const select = $('yearSelect');
-  clear(select);
-  for (const year of years) select.append(el('option', { value: String(year), text: `${year} 年` }));
-  if (state.year !== null) select.value = String(state.year);
-}
-
 let loadRevision = 0;
 async function load(preservePage = false) {
   const requestRevision = ++loadRevision;
@@ -906,13 +938,11 @@ async function load(preservePage = false) {
     return;
   }
   const params = { user: String(state.userId) };
-  if (state.year !== null) params.year = String(state.year);
   const data = await api('/api/dx', params);
   if (requestRevision !== loadRevision) return;
   state.data = data;
   state.year = data.year;
   updatePageNavigation();
-  renderYearOptions(data.years ?? [data.year]);
   if (pageView === 'board') {
     renderReleaseNotice(data);
     renderSummary(data);
@@ -937,7 +967,7 @@ function setBusy(busy, label = '同步最新数据') {
   button.textContent = busy ? label : '同步最新数据';
 }
 
-/** 只重读本机数据（切换用户 / 年度时用）。不碰网络 —— 按钮只留给「同步最新数据」。 */
+/** 只重读本机数据（切换用户时用）。不碰网络 —— 按钮只留给「同步最新数据」。 */
 async function refresh() {
   setBusy(true, '读取中…');
   try {
@@ -1154,11 +1184,6 @@ $('userSelect').addEventListener('change', (event) => {
   void timerController.refresh().catch(error=>{$('timerStatus').textContent=error.message;});
   refresh();
 });
-$('yearSelect').addEventListener('change', (event) => {
-  state.year = Number(event.target.value);
-  recordsPage=0;
-  refresh();
-});
 
 updatePageNavigation();
 async function focusResultOnBoard({ userId, problemId }) {
@@ -1209,7 +1234,6 @@ if (pageParams.get('resultPreview') === '1') {
     },
   });
 }
-renderYearOptions([currentYear()]);
 await refresh();
 if (pageParams.get('add') === '1' && state.userId !== null) {
   openModal({ problemId: pageParams.get('problem') ?? '', platform: pageParams.get('platform') ?? 'codeforces' }, '记录练习');

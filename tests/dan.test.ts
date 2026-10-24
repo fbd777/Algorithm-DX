@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { openDatabase, Repository } from '../src/db/database.ts';
 import { submission } from '../src/fetchers/common.ts';
 import { reconcileTimers, startTimer } from '../src/dx/timer.ts';
-import { listPractice, recordPractice } from '../src/dx/practice.ts';
+import { listPractice, recordPractice, editPractice } from '../src/dx/practice.ts';
 import { scoreProblem, lookupT97 } from '../src/dx/rating.ts';
 import { listDxEntries } from '../src/server/queries.ts';
 import { handleApi, WRITE_ROUTES } from '../src/server/api.ts';
@@ -999,7 +999,7 @@ test('共享时间槽：每题独立计时、结算暂停、恢复有上限且�
   } finally { s.db.close(); }
 });
 
-test('共享时间槽：只扣当前题的失败提交，每条只扣一次，CE 不扣', () => {
+test('共享时间槽：当前题每条失败提交扣 10 分钟，只扣一次，CE 不扣', () => {
   const s = setup(), now = 1_000_000;
   try {
     createDanSession(s.db, { id: 'penalty', userId: s.user, kind: 'challenge', tierKey: 'beginner', now });
@@ -1016,9 +1016,11 @@ test('共享时间槽：只扣当前题的失败提交，每条只扣一次，CE
     reconcileTimers(s.db, s.account, now + 800);
     const view = viewOf(s, 'penalty').stages[0];
     assert.equal(view.seconds, 600);
-    assert.equal(view.life!.penaltySeconds, 480);
+    assert.equal(viewOf(s, 'penalty').life!.penaltyPerSubmissionSeconds, 600);
+    assert.equal(view.life!.penaltySeconds, 2400);
     assert.equal(view.life!.events.length, 4);
-    assert.equal(view.life!.remainingSeconds, 6120);
+    assert.ok(view.life!.events.every(event => event.seconds === -600));
+    assert.equal(view.life!.remainingSeconds, 4200);
     assert.equal(view.life!.recoverySeconds, 600);
     assert.equal(listPractice(s.db, s.user)[0].seconds, 600);
   } finally { s.db.close(); }
@@ -1055,7 +1057,7 @@ test('时间扣到零后及时 AC 也不可；早前已可的题不被改写', (
     const stage = beginStage(s, 'latch', now + 200, 'latch-timer');
     s.repo.saveSubmissions(s.account, ['WA', 'AC'].map((status, i) => submission('codeforces', {
       submission_id: `latch-${i}`, problem_id: stage.problem_id, problem_title: 'Latch',
-      status: status as 'WA' | 'AC', difficulty: 1000, submitted_at: now + 200 + 7080 + i,
+      status: status as 'WA' | 'AC', difficulty: 1000, submitted_at: now + 200 + 6600 + i,
     })));
     reconcileTimers(s.db, s.account, now + 8000);
     const view = viewOf(s, 'latch');
@@ -1081,7 +1083,29 @@ test('共享时间槽：PENDING 确认前不冻结结算；同步延迟不会扣
     const view = viewOf(s, 'judging').stages[0];
     assert.equal(view.seconds, 1000);
     assert.equal(view.outcome, 'cleared');
-    assert.equal(view.life!.remainingSeconds, 6080);
+    assert.equal(view.life!.remainingSeconds, 5600);
+  } finally { s.db.close(); }
+});
+
+test('罚时调整后，已开始的轮次仍使用其保存的规则', () => {
+  const s = setup(), now = 1_000_000;
+  try {
+    createDanSession(s.db, { id: 'old-penalty', userId: s.user, kind: 'challenge', tierKey: 'beginner', now });
+    s.db.prepare('UPDATE dan_sessions SET rules_json=? WHERE id=?').run(JSON.stringify({
+      version: 2, initialSeconds: 7200, maxSeconds: 7200, recoverySeconds: 600, penaltySeconds: 120,
+    }), 'old-penalty');
+    drawNextDanStage(s.db, { sessionId: 'old-penalty', pool: at(1000, 10, 1), now, dateKey: '2026-10-09' });
+    const stage = beginStage(s, 'old-penalty', now, 'old-penalty-timer');
+    s.repo.saveSubmissions(s.account, [
+      submission('codeforces', { submission_id: 'old-wa', problem_id: stage.problem_id, status: 'WA', submitted_at: now + 100 }),
+      submission('codeforces', { submission_id: 'old-ac', problem_id: stage.problem_id, status: 'AC', submitted_at: now + 1000 }),
+    ]);
+    reconcileTimers(s.db, s.account, now + 1100);
+    const view = viewOf(s, 'old-penalty');
+    assert.equal(view.life!.penaltyPerSubmissionSeconds, 120);
+    assert.equal(view.stages[0].life!.penaltySeconds, 120);
+    assert.equal(view.stages[0].life!.remainingSeconds, 6080);
+    assert.equal(view.stages[0].seconds, 1000);
   } finally { s.db.close(); }
 });
 
@@ -1150,5 +1174,36 @@ test('四题合格：前三题恢复，第四题直接结算且旧快照不再�
     view = danHistory(s.db, s.user)[0];
     assert.equal(view.stages[3].life!.recoverySeconds, 0);
     assert.equal(view.life!.remainingSeconds, 4200);
+  } finally { s.db.close(); }
+});
+
+
+test('隔天挑战记录可修改类型和日期，仍保留长用时且不能任意扩大补录上限', () => {
+  const s = setup(), now = 1_000_000, pool = at(1000, 10, 1);
+  try {
+    createDanSession(s.db, { id: 'edit-overnight', userId: s.user, kind: 'challenge', tierKey: 'beginner', now });
+    drawNextDanStage(s.db, { sessionId: 'edit-overnight', pool, now, dateKey: '2026-10-09' });
+    playStage(s, 'edit-overnight', now, 90000, 'edit-overnight-1');
+    const row = listPractice(s.db, s.user)[0];
+    const changes = { seconds: row.seconds, outcome: row.outcome, practiceKind: 'assisted' as const, attemptedAt: row.attempted_at };
+    editPractice(s.db, s.user, row.id, row.revision, changes);
+    let saved = listPractice(s.db, s.user)[0];
+    assert.equal(saved.seconds, 90000);
+    assert.equal(saved.practice_kind, 'assisted');
+    assert.equal(s.db.prepare('SELECT 1 FROM problem_times WHERE user_id=? AND problem_id=?').get(s.user, row.problem_id), undefined);
+    editPractice(s.db, s.user, row.id, saved.revision, { ...changes, attemptedAt: null });
+    saved = listPractice(s.db, s.user)[0];
+    assert.equal(saved.attempted_at, null);
+    assert.throws(() => editPractice(s.db, s.user, row.id, saved.revision, { ...changes, seconds: 90001 }), /用时/);
+    editPractice(s.db, s.user, row.id, saved.revision, { ...changes, seconds: 87000 });
+    saved = listPractice(s.db, s.user)[0];
+    assert.equal(saved.seconds, 87000);
+    assert.throws(() => editPractice(s.db, s.user, row.id, saved.revision, { ...changes, seconds: 87001 }), /用时/);
+    editPractice(s.db, s.user, row.id, saved.revision, { ...changes, seconds: 600 });
+    saved = listPractice(s.db, s.user)[0];
+    assert.throws(() => editPractice(s.db, s.user, row.id, saved.revision, { ...changes, seconds: 86401 }), /用时/);
+    assert.throws(() => recordPractice(s.db, { userId: s.user, platform: 'codeforces', problemId: row.problem_id,
+      seconds: 90000, outcome: 'ac', practiceKind: 'first', timingSource: 'manual', attemptedAt: null }), /用时/);
+    assert.equal(viewOf(s, 'edit-overnight').stages[0].seconds, 90000, '历史挑战结算保持原始用时');
   } finally { s.db.close(); }
 });

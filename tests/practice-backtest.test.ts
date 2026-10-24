@@ -272,7 +272,7 @@ test('practice API validates ownership and supports paginated history plus read-
     ctx.openWrite = () => { throw new Error('read route attempted write'); };
     assert.equal((await call('GET', '/api/dx/backtest')).status, 200);
     const attachment = await call('GET', '/api/dx/backtest', undefined, new URLSearchParams({ user: String(user), year: '2026', download: '1' }));
-    assert.equal(attachment.downloadName, 'algorithm-dx-backtest-2026.json');
+    assert.equal(attachment.downloadName, `algorithm-dx-backtest-${new Date().getFullYear()}.json`);
     assert.equal((await call('GET', '/api/dx/backtest', undefined, new URLSearchParams({ user: '999' }))).status, 400);
   } finally { db.close(); }
 });

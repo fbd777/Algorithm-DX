@@ -76,25 +76,6 @@
 
 .mm-mascot-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
-/* 顶栏入口：和深色模式开关并排，沿用同一个圆钮语言 */
-body.mm-theme .mm-mascot-btn {
-  flex: 0 0 auto;
-  height: 44px;
-  margin-left: 6px;
-  padding: 0 16px;
-  border: 3px solid var(--mm-purple, #8b6fd6);
-  border-radius: 100px;
-  background: #fff;
-  color: var(--mm-purple, #6b4bbd);
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-body.mm-theme .mm-mascot-btn:hover { background: #f3efff; }
-body.mm-theme[data-mm-theme="dark"] .mm-mascot-btn { background: #221c33; color: #d8ccff; }
-body.mm-theme[data-mm-theme="dark"] .mm-mascot-btn:hover { background: #2c2542; }
-
 /* 结算弹窗里的结算角色没加载出来时别留破图 */
 .mm-mascot-failed { display: none; }
 

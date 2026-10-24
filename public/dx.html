@@ -27,7 +27,6 @@
     <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
     <a class="btn btn-ghost" href="/help.html">使用指南</a>
   </nav>
-  <button class="mm-mascot-btn" id="mmMascotBtn" type="button" aria-label="结算角色设置" title="结算角色设置">结算角色</button>
   <button class="mm-theme-btn" id="mmThemeBtn" type="button" role="switch" aria-checked="false" aria-label="深色模式" title="切换到深色模式"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="mm-theme-btn__moon" d="M20.2 14.6A8.7 8.7 0 0 1 9.4 3.8a8.7 8.7 0 1 0 10.8 10.8Z"/><circle class="mm-theme-btn__sun" cx="12" cy="12" r="4.7"/></svg></button>
   <button class="mm-menu-btn" id="mmMenuBtn" type="button" aria-expanded="false" aria-controls="mmNav" aria-label="打开菜单">
     <span></span><span></span>
@@ -37,13 +36,12 @@
 
   <div class="page-toolbar" role="group" aria-label="页面操作">
 <select id="userSelect" class="select" aria-label="选择用户"></select>
-      <select id="yearSelect" class="select" aria-label="选择年度"></select>
       <button id="syncBtn" class="btn btn-ghost" type="button" title="从 Codeforces 拉取最新提交，再重新读取本机数据">同步最新数据</button>
       <button id="rankTableBtn" class="btn btn-ghost" type="button" title="各难度拿到 S ~ SSS+ 分别要压到多少时间">参考表</button>
       <button id="saveB50Btn" class="btn btn-ghost" type="button" disabled>保存 B50 图片</button>
       <span id="saveB50Status" class="field-hint" role="status"></span>
       <button id="practiceBtn" class="btn btn-primary" type="button">手动添加做题记录</button>
-      <details class="dx-more"><summary class="btn btn-ghost">更多</summary><button id="backtestBtn" class="btn btn-ghost" type="button">本地回测 / 导出</button><a href="/help.html#validation">回测说明</a></details>
+      <details class="dx-more"><summary class="btn btn-ghost">更多</summary><button id="mmMascotBtn" class="btn btn-ghost" type="button">结算角色设置</button><button id="backtestBtn" class="btn btn-ghost" type="button">本地回测 / 导出</button><a href="/help.html#validation">回测说明</a></details>
   </div>
 
   <nav class="dx-pages" aria-label="练习与成绩">
@@ -79,13 +77,6 @@
 
   <section class="dx-summary" id="dxSummary" aria-label="总览"></section>
   <section class="dx-next" id="dxNext" aria-label="下一步" hidden></section>
-  <details class="dx-rules"><summary>总分怎么算？为什么有些题没上榜？</summary>
-    <p>同步 AC 记录 → 填写实际用时 → 自动计算单题得分并选入 B50。同一题保留最佳有效成绩，每道题只占一格。</p>
-    <p>新旧题按<strong>比赛发布年份</strong>划分。例如今年完成一道往年发布的题，仍属于旧题。年度选择用于划分题目，不是筛选练习日期。</p>
-    <p>空位按 0 分计算；未上榜的成绩仍会保留。题目尚未公布难度时可以先填用时，公布并同步后再参与排名。DX Rating 是娱乐向换算，不是 Codeforces 官方 Rating。</p>
-    <a href="/help.html#scoring">查看完整评分规则 ↗</a>
-  </details>
-
   <section class="section" id="oldSection">
     <div class="section-head">
       <h2>旧题 <span class="section-count" id="oldCount"></span></h2>
@@ -160,9 +151,9 @@
   <form id="recordsFilters" class="dx-records-filters">
   <div class="practice-tools">
     <label class="field"><span class="field-label">搜索题号或题名</span><input id="recordedSearch" class="input" type="search" placeholder="例如 2266:A 或题目名称" maxlength="120"></label>
-    <label class="field"><span class="field-label">上榜状态</span><select id="recordedFilter" class="select"><option value="all">全部状态</option><option value="onBoard">已上榜</option><option value="belowCutoff">未进入 B50</option><option value="waitingRating">等待题目难度</option><option value="outsideYear">晚于所选年度</option></select></label>
+    <label class="field"><span class="field-label">上榜状态</span><select id="recordedFilter" class="select"><option value="all">全部状态</option><option value="onBoard">已上榜</option><option value="belowCutoff">未进入 B50</option><option value="waitingRating">等待题目难度</option><option value="outsideYear">晚于当前年度</option></select></label>
     <label class="field"><span class="field-label">评级</span><select id="recordedRank" class="select"><option value="all">全部评级</option><option>SSS+</option><option>SSS</option><option>SS+</option><option>SS</option><option>S+</option><option>S</option><option value="other">其他（S 以下）</option><option>AAA</option><option>AA</option><option>A</option><option>BBB</option><option>BB</option><option>B</option><option>C</option><option>D</option></select></label>
-    <label class="field"><span class="field-label">题目分区</span><select id="recordedPartition" class="select"><option value="all">全部年份</option><option value="old">所选年度之前的旧题</option><option value="new">所选年度的新题</option></select></label>
+    <label class="field"><span class="field-label">题目分区</span><select id="recordedPartition" class="select"><option value="all">全部分区</option><option value="old">当前年度之前的旧题</option><option value="new">当前年度的新题</option></select></label>
   </div>
   <div class="dx-range-filters">
     <fieldset><legend>题目难度</legend><input id="difficultyMin" type="number" min="0" step="100" class="input" aria-label="最低难度" placeholder="最低"><span>—</span><input id="difficultyMax" type="number" min="0" step="100" class="input" aria-label="最高难度" placeholder="最高"></fieldset>

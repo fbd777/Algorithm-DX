@@ -28,14 +28,14 @@ if(url.pathname.startsWith('/api/')){
 res.setHeader('Content-Type','application/json; charset=utf-8');
 if(url.pathname==='/api/sync/status'){res.end(JSON.stringify({revision:1,nextAutoAt:Date.now()+600000}));return;}
 let raw='';for await(const chunk of req)raw+=chunk;
-requests.push({path:url.pathname,at:Date.now()});
+requests.push({path:url.pathname,search:url.search,at:Date.now()});
 const result=await handleApi(ctx,{method:req.method,pathname:url.pathname,params:url.searchParams,body:raw?JSON.parse(raw):undefined});res.statusCode=result.status;res.end(JSON.stringify(result.body));return;
 }
 if(url.pathname==='/favicon.ico'){res.statusCode=204;res.end();return;}
 if(url.pathname==='/fixture-avatar.svg'){res.setHeader('Content-Type','image/svg+xml');res.end('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#356d8b"/><circle cx="50" cy="37" r="20" fill="#cee9f4"/><ellipse cx="50" cy="90" rx="37" ry="29" fill="#cee9f4"/></svg>');return;}
 const assetPath=url.pathname==='/'?'index.html':url.pathname.slice(1);
 if(!publicFiles.has(assetPath)){missingAssets.push(url.pathname);res.statusCode=404;res.end('Missing or case-mismatched asset');return;}
-res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml'}[extname(url.pathname)]??'application/octet-stream')+'; charset=utf-8');res.end(readFileSync(join('public',url.pathname==='/'?'index.html':url.pathname)));
+res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml'}[extname(assetPath)]??'application/octet-stream')+'; charset=utf-8');res.end(readFileSync(join('public',url.pathname==='/'?'index.html':url.pathname)));
 }catch(e){res.statusCode=500;res.end(String(e));}}).listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
 const origin='http://127.0.0.1:'+server.address().port,dir=mkdtempSync(join(tmpdir(),'dan-life-ui-'));
 const child=spawn('C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',['--headless=new','--disable-gpu','--remote-debugging-port=0','--user-data-dir='+dir,'--no-first-run','about:blank'],{stdio:'ignore',windowsHide:true});let cdp;
@@ -70,10 +70,23 @@ await waitFor("!!document.querySelector('.dan-transition')");
 assert.equal(db.prepare("SELECT count(*) AS n FROM practice_timers WHERE status='running'").get().n,0,'animation must not start timer');
 await shot('challenge-recovery');await waitFor("!document.querySelector('.dan-transition') && !!document.querySelector('.dan-clock[data-started]')");
 const lastClaim=requests.filter(r=>r.path==='/api/dan/claim').at(-1);assert.ok(lastClaim.at-clickAt>=1000,'claim only after animation');
-const life=JSON.parse(db.prepare('SELECT life_json FROM dan_stages WHERE stage_index=1').get().life_json);assert.equal(life.remainingSeconds,5880);assert.equal(life.recoverySeconds,600);
+const life=JSON.parse(db.prepare('SELECT life_json FROM dan_stages WHERE stage_index=1').get().life_json);assert.equal(life.remainingSeconds,5400);assert.equal(life.recoverySeconds,600);
 await shot('challenge-running');
 await cdp.call('Emulation.setDeviceMetricsOverride',{width:1280,height:860,deviceScaleFactor:1,mobile:false},sessionId);
 await cdp.call('Page.navigate',{url:origin+'/dx.html'},sessionId);await waitFor("!!document.querySelector('.dx-player-card img')");await evaluate("document.querySelector('#dxSummary').scrollIntoView({block:'center'})");await shot('player-card');
+// Legacy bookmarks cannot select a year, and navigation/backtest send no year override.
+await cdp.call('Page.navigate',{url:origin+'/dx.html?year=2000'},sessionId);
+await waitFor("!!document.querySelector('.dx-player-card img') && document.querySelector('#footInfo').textContent.includes('更新于')");
+assert.equal(await evaluate("document.querySelector('#yearSelect')"),null);
+assert.ok(await evaluate("document.querySelector('#footInfo').textContent.startsWith('"+new Date().getFullYear()+" 年')"));
+assert.equal(await evaluate("[...document.querySelectorAll('.dx-pages a')].some(a=>new URL(a.href).searchParams.has('year'))"),false);
+await evaluate("document.querySelector('.dx-more').open=true;document.querySelector('#backtestBtn').click()");
+await waitFor("!document.querySelector('#backtestDownload').disabled");
+assert.ok(await evaluate("document.querySelector('#backtestBody').textContent.includes('"+new Date().getFullYear()+" 年出题分区')"));
+assert.ok(requests.some(r=>r.path==='/api/dx/backtest'));
+for(const request of requests.filter(r=>r.path==='/api/dx'||r.path==='/api/dx/backtest'))assert.equal(new URLSearchParams(request.search).has('year'),false);
+await evaluate("document.querySelector('#backtestClose').click();document.querySelector('.dx-more').open=false");
+await shot('system-year-b50');
 await cdp.call('Page.navigate',{url:origin+'/help.html'},sessionId);await waitFor("document.querySelector('#identity') && document.querySelector('.mm-theme-btn')");await shot('guide-022');
 
 // Complete the round after exhausting the bank on stage 2.
@@ -120,6 +133,7 @@ await cdp.call('Emulation.setEmulatedMedia',{features:[]},sessionId);
 for(const page of ['/','/circle.html','/stats.html','/help.html','/dx.html','/dan.html']) {
   await cdp.call('Page.navigate',{url:origin+page},sessionId);
   await waitFor("document.readyState==='complete' && !!document.getElementById('mmThemeBtn')");
+  assert.equal(await evaluate('location.pathname'),page,'navigated to the requested page');
   for(const theme of ['light','dark']) {
     await evaluate(`if(document.documentElement.dataset.mmTheme!=='${theme}')document.getElementById('mmThemeBtn').click()`);
     assert.equal(await evaluate('document.documentElement.dataset.mmTheme'),theme);
@@ -162,7 +176,31 @@ await waitFor("document.querySelector('.dan-result[open]')");
 assert.deepEqual(await evaluate("[...document.querySelectorAll('.dan-track-stamp')].map(n=>n.alt)"),['可','可','可','可']);
 assert.equal(await evaluate("document.querySelector('.dan-life-time').textContent"),'70:00');
 await shot('challenge-success');
+// Editing an overnight challenge keeps its duration; ordinary entry still caps at 24 hours.
+const overnight=await handleApi(ctx,{method:'POST',pathname:'/api/dan/start',params:new URLSearchParams(),body:{userId:user,kind:'challenge',tier:'beginner',tz:480}});
+assert.equal(overnight.status,200);
+await handleApi(ctx,{method:'POST',pathname:'/api/dan/claim',params:new URLSearchParams(),body:{userId:user,sessionId:overnight.body.session.id}});
+const longTimer=db.prepare("SELECT * FROM practice_timers WHERE status='running'").get(),longEnd=Math.floor(Date.now()/1000);
+db.prepare('UPDATE practice_timers SET started_at=? WHERE id=?').run(longEnd-90000,longTimer.id);
+db.prepare('UPDATE dan_stages SET claimed_at=? WHERE timer_id=?').run(longEnd-90000,longTimer.id);
+repo.saveSubmissions(account,[submission('codeforces',{submission_id:'ui-overnight',problem_id:longTimer.problem_id,problem_title:'Overnight challenge',status:'AC',difficulty:1000,submitted_at:longEnd})]);
+reconcileTimers(db,account,longEnd);
+const longId=db.prepare('SELECT attempt_id FROM practice_timers WHERE id=?').get(longTimer.id).attempt_id;
+await cdp.call('Page.navigate',{url:origin+'/dx.html?view=history'},sessionId);
+await waitFor("[...document.querySelectorAll('.practice-history-card')].some(n=>n.textContent.includes('Overnight challenge'))");
+await evaluate("[...document.querySelectorAll('.practice-history-card')].find(n=>n.textContent.includes('Overnight challenge')).querySelector('button').click()");
+assert.equal(await evaluate("document.querySelector('#timeHours').value"),'25');
+assert.equal(await evaluate("document.querySelector('#timeForm').checkValidity()"),true);
+await evaluate("document.querySelector('#practiceKind').value='assisted';document.querySelector('#timeSubmit').click()");
+await waitFor("document.querySelector('#timeModal').hidden");
+const corrected=db.prepare('SELECT seconds,practice_kind FROM practice_attempts WHERE id=?').get(longId);
+assert.equal(corrected.seconds,90000);assert.equal(corrected.practice_kind,'assisted');
+await evaluate("document.querySelector('#practiceBtn').click()");
+assert.equal(await evaluate("document.querySelector('#timeHours').max"),'24');
+await evaluate("document.querySelector('#practiceProblem').value='manual-preview';document.querySelector('#timeHours').value='24';document.querySelector('#timeMinutes').value='1';document.querySelector('#timeSubmit').click()");
+await waitFor("document.querySelector('#timeStatus').textContent.includes('不能超过 24 小时')");
+assert.equal(db.prepare("SELECT count(*) n FROM practice_attempts WHERE problem_id='manual-preview'").get().n,0);
 assert.equal(errors.length,0,JSON.stringify(errors));
 assert.equal(missingAssets.length,0,'Missing local assets: '+JSON.stringify([...new Set(missingAssets)]));
-console.log('PASS: real APIs and desktop browser; independent timing, pause/recovery/new tab, failure propagation, retained scores, avatar, real-score isolation, accessible sprites, reduced motion, all-page themes and guide.');
+console.log('PASS: real APIs and desktop browser; independent timing, pause/recovery/new tab, failure propagation, retained scores, avatar, real-score isolation, accessible sprites, reduced motion, all-page themes, guide and overnight record editing.');
 }finally{cdp?.close();child.kill();server.close();db.close();}

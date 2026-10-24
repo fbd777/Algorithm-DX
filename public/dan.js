@@ -654,7 +654,8 @@ function lifePanel(session) {
   const hint = life.inheritedFailure || (life.failed && !life.running)
     ? '本轮不合格 · 可以继续完成剩余题目，成绩仍会保存'
     : life.running && life.remainingSeconds <= 0 ? '时间已耗尽，等待提交同步确认；可以继续练习'
-    : life.pendingRecovery ? `下一题开始前恢复 +${fmtClock(life.pendingRecovery)}` : 'AC 恢复 10 分钟 · WA / TLE / MLE / RE 每次扣 2 分钟';
+    : life.pendingRecovery ? `下一题开始前恢复 +${fmtClock(life.pendingRecovery)}`
+    : `前三题 AC 恢复 10 分钟 · WA / TLE / MLE / RE 每次扣 ${(life.penaltyPerSubmissionSeconds ?? (life.version >= 3 ? 600 : 120)) / 60} 分钟`;
   panel.append(el('p', 'dan-life-hint', hint));
   if (life.events?.length) {
     const events = el('div', 'dan-life-events');

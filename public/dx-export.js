@@ -1,3 +1,5 @@
+import { drawDxRatingFrame } from './dx-rating-frame.js';
+
 /** Render server-provided B50 scores locally, independent of viewport and scroll position. */
 export async function saveB50Image(data, userName) {
   await document.fonts.ready;
@@ -15,8 +17,10 @@ export async function saveB50Image(data, userName) {
   if (!ctx) throw new Error('浏览器无法生成图片，请换用支持图片导出的浏览器');
   ctx.scale(scale, scale);
   ctx.fillStyle = '#0c121c'; ctx.fillRect(0, 0, width, height);
-  const text = (value, x, y, size = 20, color = '#e6edf3', weight = 400, maxWidth) => {
-    ctx.font = `${weight} ${size}px "Segoe UI", "Microsoft YaHei", sans-serif`;
+  const font = (size, weight) => `${weight} ${size}px "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", sans-serif`;
+  const text = (value, x, y, size = 20, color = '#e6edf3', weight = 400, maxWidth, align = 'left') => {
+    ctx.font = font(size, weight);
+    ctx.textAlign = align;
     ctx.fillStyle = color;
     let label = String(value);
     if (maxWidth && ctx.measureText(label).width > maxWidth) {
@@ -25,6 +29,22 @@ export async function saveB50Image(data, userName) {
       label = chars.join('') + '…';
     }
     ctx.fillText(label, x, y);
+  };
+  // Keep two lines for titles, including long Chinese names and unbroken IDs.
+  const title = (value, x, y, maxWidth) => {
+    let remaining = String(value).replace(/\s+/g, ' ').trim();
+    ctx.font = font(20, 600);
+    const chars = Array.from(remaining);
+    let end = 0;
+    while (end < chars.length && ctx.measureText(chars.slice(0, end + 1).join('')).width <= maxWidth) end++;
+    let first = chars.slice(0, end).join('');
+    if (end < chars.length) {
+      const space = first.lastIndexOf(' ');
+      if (space > first.length / 2) first = first.slice(0, space);
+    }
+    remaining = remaining.slice(first.length).trimStart();
+    text(first, x, y, 20, '#e6edf3', 600, maxWidth);
+    if (remaining) text(remaining, x, y + 25, 20, '#e6edf3', 600, maxWidth);
   };
   const box = (x, y, w, h, fill, stroke = '#283247') => {
     ctx.beginPath(); ctx.roundRect(x, y, w, h, 16);
@@ -37,8 +57,7 @@ export async function saveB50Image(data, userName) {
   text('ALGORITHM DX', margin, 65, 22, '#90baff', 700);
   text('BEST 50', margin, 127, 46, '#e6edf3', 800);
   text(`${userName} · ${data.year} 年度`, margin, 169, 24, '#a4b1c5', 400, 980);
-  text('DX RATING', 1160, 76, 20, '#a4b1c5', 600);
-  text(Number(data.board.rating).toFixed(1), 1160, 142, 58, '#ffd166', 800);
+  drawDxRatingFrame(ctx, data.board.rating, 1160, 74);
   const oldTotal = data.board.old.reduce((n, slot) => n + (slot.score?.rating ?? 0), 0);
   const newTotal = data.board.current.reduce((n, slot) => n + (slot.score?.rating ?? 0), 0);
   box(margin, 205, width - margin * 2, 70, '#151f30');
@@ -47,7 +66,7 @@ export async function saveB50Image(data, userName) {
   let y = 308;
   for (const group of groups) {
     text(group.title, margin, y + 30, 28, '#e6edf3', 700);
-    text(`${group.count} / ${group.capacity}`, width - margin - 118, y + 30, 22, '#a4b1c5');
+    text(`${group.count} / ${group.capacity}`, width - margin, y + 30, 22, '#a4b1c5', 400, 118, 'right');
     text(group.label === 'B35' ? `${data.year} 年以前发布` : `${data.year} 年发布`, margin, y + 61, 18, '#8998af');
     y += 86;
     for (let i = 0; i < group.capacity; i++) {
@@ -55,7 +74,7 @@ export async function saveB50Image(data, userName) {
       const entry = slot?.entry, score = slot?.score;
       if (!entry || !score) {
         box(x, cy, cardWidth, cardHeight, '#101824', '#1e293b');
-        text(`${group.label} #${i + 1}`, x + 18, cy + 35, 17, '#57677e');
+        text(`${group.label} #${String(i + 1).padStart(2, '0')}`, x + 18, cy + 29, 14, '#57677e', 600);
         text('待上榜', x + 18, cy + 119, 24, '#57677e');
         continue;
       }
@@ -65,16 +84,19 @@ export async function saveB50Image(data, userName) {
       gradient.addColorStop(0, '#1b2336'); gradient.addColorStop(1, '#101827');
       box(x, cy, cardWidth, cardHeight, gradient);
       ctx.fillStyle = tone; ctx.fillRect(x, cy + 16, 3, cardHeight - 32);
-      text(score.rank, x + 18, cy + 38, 28, tone, 800);
-      text(`${group.label} #${i + 1}`, x + cardWidth - 88, cy + 35, 16, '#a4b1c5');
-      text(entry.problemId, x + 18, cy + 68, 16, '#8998af', 400, cardWidth - 36);
-      text(entry.problemTitle || entry.problemId, x + 18, cy + 98, 20, '#e6edf3', 600, cardWidth - 36);
-      text('完成度', x + 18, cy + 130, 14, '#8998af');
-      text('单题 Rating', x + 163, cy + 130, 14, '#8998af');
-      text(score.achievementShown.toFixed(4) + '%', x + 18, cy + 155, 22, '#e6edf3', 700);
-      text(Number(score.rating).toFixed(1), x + 163, cy + 155, 22, '#e6edf3', 700);
-      text(`难度 ${entry.problemRating ?? '—'}`, x + 18, cy + 193, 17, '#a4b1c5');
-      text(clock(entry.recordedSeconds), x + 163, cy + 193, 19, '#a4b1c5', 600);
+      const right = x + cardWidth - 18;
+      text(`${group.label} #${String(i + 1).padStart(2, '0')}`, x + 18, cy + 29, 14, '#a4b1c5', 600);
+      text(entry.problemId, right, cy + 29, 14, '#8998af', 400, cardWidth - 130, 'right');
+      title(entry.problemTitle || entry.problemId, x + 18, cy + 59, cardWidth - 36);
+      text('完成度', x + 18, cy + 107, 13, '#8998af');
+      text(score.achievementShown.toFixed(4) + '%', x + 18, cy + 140, 31, '#e6edf3', 800, cardWidth - 110);
+      text(score.rank, right, cy + 140, 25, tone, 800, 66, 'right');
+      text(`难度 ${entry.problemRating ?? '—'}`, x + 18, cy + 166, 15, '#a4b1c5');
+      text(clock(entry.recordedSeconds), right, cy + 166, 15, '#a4b1c5', 600, 110, 'right');
+      ctx.beginPath(); ctx.moveTo(x + 18, cy + 181); ctx.lineTo(right, cy + 181);
+      ctx.strokeStyle = '#283247'; ctx.lineWidth = 1; ctx.stroke();
+      text('单题 Rating', x + 18, cy + 202, 14, '#8998af');
+      text(Number(score.rating).toFixed(1), right, cy + 202, 16, '#a4b1c5', 600, 100, 'right');
     }
     y += Math.ceil(group.capacity / 5) * (cardHeight + gap);
   }
