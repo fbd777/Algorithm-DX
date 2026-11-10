@@ -714,7 +714,15 @@ export function listDxEntries(db: DatabaseSync, userId: number, platform: string
        LEFT JOIN cf_group_rating_sources gs ON s.platform='codeforces' AND gs.problem_id=s.problem_id
        LEFT JOIN contests c
               ON c.platform = s.platform
-             AND c.contest_id = CAST(substr(s.problem_id, 1, instr(s.problem_id, ':') - 1) AS INTEGER)
+             AND c.contest_id = CASE
+               WHEN s.platform='atcoder' AND s.problem_url LIKE 'https://atcoder.jp/contests/%/tasks/%'
+                 THEN substr(
+                   substr(s.problem_url,length('https://atcoder.jp/contests/')+1),
+                   1,
+                   instr(substr(s.problem_url,length('https://atcoder.jp/contests/')+1),'/')-1
+                 )
+               ELSE CAST(substr(s.problem_id, 1, instr(s.problem_id, ':') - 1) AS INTEGER)
+             END
        LEFT JOIN problem_times pt
               ON pt.user_id = a.user_id AND pt.platform = s.platform AND pt.problem_id = s.problem_id
        WHERE a.is_archived = 0 AND a.user_id = ? AND s.platform = ? AND s.status = 'AC'

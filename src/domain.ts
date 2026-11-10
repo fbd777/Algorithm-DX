@@ -54,14 +54,25 @@ export interface Account { id: number; user_id: number; platform: string; handle
  * 只有提供这个来源的平台才实现 `fetch_problem_releases`。
  */
 export interface ProblemRelease {
-  /** 平台内的比赛 id，与 problem_id 里 `:` 前面那一段对应（CF 是 `339:A` → 339）。 */
-  contestId: number;
+  /** 平台内的比赛 id；CF 是数字，AtCoder 是 `abc001` 这类字符串。 */
+  contestId: number | string;
   /** 比赛名。只用于显示与排查，不参与判定。 */
   name: string;
   /** 比赛开始时间（epoch 秒），即题目的发布日期。 */
   startTime: number;
   /** 比赛时长（秒）。CF 的 contest.list 提供；**判「比赛内提交」靠它，缺失时不判**。 */
   durationSeconds: number | null;
+}
+
+/** Platform problem metadata normalized for the DX difficulty scale. */
+export interface ProblemMetadata {
+  problemId: string;
+  title: string;
+  /** Codeforces-scale difficulty. null means the source estimate is unusable. */
+  rating: number | null;
+  /** Source-native displayed difficulty, retained for diagnostics/documentation. */
+  nativeRating: number | null;
+  experimental: boolean;
 }
 
 /**
