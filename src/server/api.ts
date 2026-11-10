@@ -536,11 +536,17 @@ function dxPlatform(value: string | null | undefined): string {
   return platform;
 }
 
+function dxView(value:string|null|undefined):'mixed'|'codeforces'|'atcoder'{
+  const view=(value??'mixed').trim();
+  if(view==='mixed'||(DX_PLATFORMS as readonly string[]).includes(view))return view as 'mixed'|'codeforces'|'atcoder';
+  throw new BadRequest('DX 榜单只支持：混合、Codeforces、AtCoder');
+}
+
 /**
  * DX 榜。
  *
  * 四条口径都在服务端定死，前端不做任何筛选：
- *  1. Codeforces 与 AtCoder 分平台独立计榜；
+ *  1. 默认混合 Codeforces 与 AtCoder，也可切换单平台榜；
  *  2. 只有 AC 过的题；
  *  3. **只有填过完成用时的题才进榜** —— 没填的不算 0 分，是不存在；
  *  4. 旧题 / 新题按**出题日期**分（`releasedAt` = 比赛开始时间），与 AC 时间无关。
@@ -551,36 +557,38 @@ function dx(ctx: ApiContext, params: URLSearchParams): ApiResult {
   if (userId === null) throw new BadRequest('缺少 user 参数');
   const year = new Date().getFullYear();
   const since = yearStartSeconds(year);
-  const platform=dxPlatform(params.get('platform'));
-
-  let entries = listDxEntries(ctx.db, userId, platform);
-  if(platform==='atcoder'){
+  const platform=dxView(params.get('platform'));
+  const platforms=platform==='mixed'?[...DX_PLATFORMS]:[platform];
+  let entries = platforms.flatMap(item=>listDxEntries(ctx.db,userId,item));
+  if(platforms.includes('atcoder')){
     const native=new Map((cachedAtCoderProblemRatings(new Repository(ctx.db))??[]).map(row=>[row.problemId,row.nativeRating??null]));
-    entries=entries.map(entry=>({...entry,nativeProblemRating:native.get(entry.problemId)??null}));
+    entries=entries.map(entry=>entry.platform==='atcoder'?{...entry,nativeProblemRating:native.get(entry.problemId)??null}:entry);
   }
+  if(platform==='mixed')entries=entries.map(entry=>({...entry,canonicalProblemId:`${entry.platform}:${entry.canonicalProblemId??entry.problemId}`}));
   const until = yearStartSeconds(year + 1);
   const eligible = entries.filter(e => e.releasedAt === null || e.releasedAt < until);
   const board = buildBoard(eligible, since);
-  const selected = new Set([...board.old, ...board.current].flatMap(s => s.entry ? [s.entry.problemId] : []));
+  const entryKey=(entry:{platform:string;problemId:string})=>`${entry.platform}:${entry.problemId}`;
+  const selected = new Set([...board.old, ...board.current].flatMap(s => s.entry ? [entryKey(s.entry)] : []));
   const recorded = entries.filter(e => e.recordedSeconds !== null).map(e => ({
     ...e,
     score: scoreProblem(e),
     state: e.releasedAt !== null && e.releasedAt >= until ? 'outsideYear'
-      : e.problemRating === null ? 'waitingRating' : selected.has(e.problemId) ? 'onBoard' : 'belowCutoff',
+      : e.problemRating === null ? 'waitingRating' : selected.has(entryKey(e)) ? 'onBoard' : 'belowCutoff',
   }));
   // 待填写清单的口径与排序都在 buildPending 里（没填用时的题都收，含未评定的；
   // 未评定的填完等评级回填后自动进榜）。按 AC 时间倒序。
   // 「比赛计时」按钮的值在这里覆盖：时间轴（窗口内全部提交）→ 纯函数算纯耗时 →
   // 逐题挂到待填写行上。算不出（练习解 / 跳题穿插 / duration 缺失）就是 null。
-  const autoSeconds = platform===DX_PLATFORM?computeContestAutoSeconds(listContestTimeline(ctx.db, userId, platform)):new Map<string,number>();
-  const dismissed = dismissedProblems(ctx.db, userId, platform);
+  const autoSeconds = platforms.includes(DX_PLATFORM)?computeContestAutoSeconds(listContestTimeline(ctx.db, userId, DX_PLATFORM)):new Map<string,number>();
+  const dismissed=new Map(platforms.map(item=>[item,dismissedProblems(ctx.db,userId,item)]));
   const reminderNow = Math.floor(Date.now()/1000);
   const pending = buildPending(entries, since).map((p) => ({
     ...p,
-    sourceProblemId: entries.find(e=>e.problemId===p.problemId)?.sourceProblemId??null,
-    sourceProblemUrl: entries.find(e=>e.problemId===p.problemId)?.sourceProblemUrl??null,
-    reminderGroup: reminderGroup(p.solvedAt, dismissed.has(p.problemId), reminderNow),
-    autoSeconds: autoSeconds.get(p.problemId) ?? null,
+    sourceProblemId: entries.find(e=>e.platform===p.platform&&e.problemId===p.problemId)?.sourceProblemId??null,
+    sourceProblemUrl: entries.find(e=>e.platform===p.platform&&e.problemId===p.problemId)?.sourceProblemUrl??null,
+    reminderGroup: reminderGroup(p.solvedAt, dismissed.get(p.platform)?.has(p.problemId)??false, reminderNow),
+    autoSeconds: p.platform===DX_PLATFORM?(autoSeconds.get(p.problemId) ?? null):null,
     outsideYear: p.releasedAt !== null && p.releasedAt >= until,
     isCurrent: p.isCurrent && p.releasedAt !== null && p.releasedAt < until,
   }));
@@ -618,7 +626,7 @@ function dx(ctx: ApiContext, params: URLSearchParams): ApiResult {
   };
 }
 
-/** 写端点的公共目标字段。平台不从请求体取 —— 榜单只覆盖 CF，别让它被参数改写。 */
+/** 写端点的公共目标字段。写入必须落到明确的单一平台，不能使用 mixed 视图值。 */
 function dxTarget(input: Record<string, unknown>): { userId: number; platform: string; problemId: string } {
   return {
     userId: positiveInt(input, 'userId'),
