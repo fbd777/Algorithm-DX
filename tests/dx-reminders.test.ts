@@ -50,3 +50,23 @@ test('reminder preferences do not leak across replacement accounts',()=>{
     repo.addAccount(user,'codeforces','new');assert.equal(dismissedProblems(db,user).size,0);
   }finally{db.close();}
 });
+
+test('AtCoder has an independent B50 and reminder namespace',async()=>{
+  const db=openDatabase(':memory:');try{
+    const repo=new Repository(db),user=repo.createUser('me');
+    const cf=repo.addAccount(user,'codeforces','cf-user');
+    const at=repo.addAccount(user,'atcoder','at-user');
+    const now=Math.floor(Date.now()/1000);
+    repo.saveSubmissions(cf,[submission('codeforces',{submission_id:'cf-1',problem_id:'same',problem_title:'CF problem',status:'AC',difficulty:1400,submitted_at:now-20})]);
+    repo.saveSubmissions(at,[submission('atcoder',{submission_id:'at-1',problem_id:'same',problem_title:'AtCoder problem',problem_url:'https://atcoder.jp/contests/abc100/tasks/same',status:'AC',difficulty:1619,submitted_at:now-10})]);
+    recordPractice(db,{userId:user,platform:'atcoder',problemId:'same',seconds:600,outcome:'ac',practiceKind:'unknown',timingSource:'manual',attemptedAt:null});
+    const ctx={db,dbPath:':memory:',platforms:['codeforces','atcoder'],envFile:'unused',openWrite:()=>db,syncJobs:{} as any};
+    const read=async(platform:string)=> (await handleApi(ctx,{method:'GET',pathname:'/api/dx',params:new URLSearchParams({user:String(user),platform})})).body as any;
+    const cfBoard=await read('codeforces'),atBoard=await read('atcoder');
+    assert.equal(cfBoard.platform,'codeforces');assert.equal(cfBoard.board.total,0);assert.equal(cfBoard.pending[0].problemTitle,'CF problem');
+    assert.equal(atBoard.platform,'atcoder');assert.equal(atBoard.board.total,1);assert.equal(atBoard.recorded[0].problemRating,1619);
+    setTimeReminder(db,user,'same',true,'codeforces');
+    assert.ok(dismissedProblems(db,user,'codeforces').has('same'));
+    assert.ok(!dismissedProblems(db,user,'atcoder').has('same'));
+  }finally{db.close();}
+});

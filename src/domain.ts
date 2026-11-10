@@ -68,6 +68,7 @@ export interface ProblemRelease {
 export interface ProblemMetadata {
   problemId: string;
   title: string;
+  problemUrl?: string;
   /** Codeforces-scale difficulty. null means the source estimate is unusable. */
   rating: number | null;
   /** Source-native displayed difficulty, retained for diagnostics/documentation. */
@@ -83,9 +84,14 @@ export interface ProblemMetadata {
  * 题一旦滑出近期窗口，评级就永远补不上了。所以另取一份全量评级来回填 NULL。
  */
 export interface ProblemRating {
-  contestId: number;
+  contestId: number | string;
   index: string;
   rating: number;
+  /** Non-CF pools use their native problem id and URL directly. */
+  problemId?: string;
+  problemUrl?: string;
+  title?: string;
+  nativeRating?: number | null;
   /**
    * 题目的官方标签（CF 的 `problemset.problems` 原样带回）。
    * 老缓存（`cf:problemset-ratings:v1`）里没有这个字段 —— 读取方必须把它当

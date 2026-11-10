@@ -660,6 +660,7 @@ function parseJsonOrNull(value: unknown): unknown {
 /* ---------- DX Rating ---------- */
 
 export interface DxEntryRow {
+  platform: string;
   canonicalProblemId: string;
   sourceProblemId: string | null;
   sourceProblemUrl: string | null;
@@ -698,6 +699,7 @@ export function listDxEntries(db: DatabaseSync, userId: number, platform: string
   const rows = db
     .prepare(
       `SELECT s.problem_id,
+              MAX(s.platform) AS platform,
               MAX(CASE WHEN s.platform='codeforces' AND s.problem_url LIKE 'https://codeforces.com/group/%' AND gs.method IN ('content','user_confirmed') THEN gs.source_problem_id ELSE s.problem_id END) AS canonical_problem_id,
               MAX(CASE WHEN s.problem_url LIKE 'https://codeforces.com/group/%' AND gs.method IN ('content','user_confirmed') THEN gs.source_problem_id END) AS source_problem_id,
               MAX(CASE WHEN s.problem_url LIKE 'https://codeforces.com/group/%' AND gs.method IN ('content','user_confirmed') THEN gs.source_url END) AS source_url,
@@ -731,6 +733,7 @@ export function listDxEntries(db: DatabaseSync, userId: number, platform: string
     )
     .all(userId, platform) as Record<string, unknown>[];
   return rows.map((row) => ({
+    platform: String(row.platform),
     problemId: String(row.problem_id),
     canonicalProblemId: String(row.canonical_problem_id ?? row.problem_id),
     sourceProblemId: row.source_problem_id == null ? null : String(row.source_problem_id),

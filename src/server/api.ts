@@ -50,6 +50,7 @@ import {
 } from '../account-admin.ts';
 import {
   DX_PLATFORM,
+  DX_PLATFORMS,
   NEW_SLOTS,
   OLD_SLOTS,
   buildBoard,
@@ -97,6 +98,7 @@ import {
   type DanKind,
 } from '../dx/dan.ts';
 import { CodeforcesSyncFetcher, cachedProblemRatings } from '../fetchers/codeforces-sync.ts';
+import { AtCoderFetcher, cachedAtCoderProblemRatings } from '../fetchers/atcoder.ts';
 import { Repository } from '../db/database.ts';
 import type { ProblemRating } from '../domain.ts';
 import { dismissedProblems, reminderGroup, REMINDER_DAYS, setTimeReminder } from '../dx/reminders.ts';
@@ -223,7 +225,7 @@ const ADMIN_STATUS: Record<AdminErrorCode, number> = {
 /** 填写完成用时失败的文案与状态码。与账号那套分开，两边的失败原因完全不同。 */
 const DX_TIME_MESSAGES: Record<DxTimeErrorCode, string> = {
   USER_NOT_FOUND: '指定的用户不存在',
-  PLATFORM_UNSUPPORTED: '目前只有 Codeforces 的题目计入 DX Rating',
+  PLATFORM_UNSUPPORTED: '目前只有 Codeforces 和 AtCoder 的题目计入 DX Rating',
   PROBLEM_NOT_SOLVED: '这道题还没有 AC 记录，不能填用时',
   TIME_INVALID: `用时必须是 ${MIN_SECONDS} 秒到 ${MAX_SECONDS / 3600} 小时之间的整数`,
 };
@@ -528,11 +530,17 @@ function yearStartSeconds(year: number): number {
   return Math.floor(new Date(year, 0, 1, 0, 0, 0, 0).getTime() / 1000);
 }
 
+function dxPlatform(value: string | null | undefined): string {
+  const platform=(value??DX_PLATFORM).trim();
+  if(!(DX_PLATFORMS as readonly string[]).includes(platform))throw new BadRequest(`DX 平台只支持：${DX_PLATFORMS.join('、')}`);
+  return platform;
+}
+
 /**
  * DX 榜。
  *
  * 四条口径都在服务端定死，前端不做任何筛选：
- *  1. 只有 Codeforces 的题；
+ *  1. Codeforces 与 AtCoder 分平台独立计榜；
  *  2. 只有 AC 过的题；
  *  3. **只有填过完成用时的题才进榜** —— 没填的不算 0 分，是不存在；
  *  4. 旧题 / 新题按**出题日期**分（`releasedAt` = 比赛开始时间），与 AC 时间无关。
@@ -543,8 +551,13 @@ function dx(ctx: ApiContext, params: URLSearchParams): ApiResult {
   if (userId === null) throw new BadRequest('缺少 user 参数');
   const year = new Date().getFullYear();
   const since = yearStartSeconds(year);
+  const platform=dxPlatform(params.get('platform'));
 
-  const entries = listDxEntries(ctx.db, userId, DX_PLATFORM);
+  let entries = listDxEntries(ctx.db, userId, platform);
+  if(platform==='atcoder'){
+    const native=new Map((cachedAtCoderProblemRatings(new Repository(ctx.db))??[]).map(row=>[row.problemId,row.nativeRating??null]));
+    entries=entries.map(entry=>({...entry,nativeProblemRating:native.get(entry.problemId)??null}));
+  }
   const until = yearStartSeconds(year + 1);
   const eligible = entries.filter(e => e.releasedAt === null || e.releasedAt < until);
   const board = buildBoard(eligible, since);
@@ -559,8 +572,8 @@ function dx(ctx: ApiContext, params: URLSearchParams): ApiResult {
   // 未评定的填完等评级回填后自动进榜）。按 AC 时间倒序。
   // 「比赛计时」按钮的值在这里覆盖：时间轴（窗口内全部提交）→ 纯函数算纯耗时 →
   // 逐题挂到待填写行上。算不出（练习解 / 跳题穿插 / duration 缺失）就是 null。
-  const autoSeconds = computeContestAutoSeconds(listContestTimeline(ctx.db, userId, DX_PLATFORM));
-  const dismissed = dismissedProblems(ctx.db, userId);
+  const autoSeconds = platform===DX_PLATFORM?computeContestAutoSeconds(listContestTimeline(ctx.db, userId, platform)):new Map<string,number>();
+  const dismissed = dismissedProblems(ctx.db, userId, platform);
   const reminderNow = Math.floor(Date.now()/1000);
   const pending = buildPending(entries, since).map((p) => ({
     ...p,
@@ -579,7 +592,7 @@ function dx(ctx: ApiContext, params: URLSearchParams): ApiResult {
     status: 200,
     body: {
       user: userId,
-      platform: DX_PLATFORM,
+      platform,
       year,
       yearStart: since,
       yearEnd: until,
@@ -609,7 +622,7 @@ function dx(ctx: ApiContext, params: URLSearchParams): ApiResult {
 function dxTarget(input: Record<string, unknown>): { userId: number; platform: string; problemId: string } {
   return {
     userId: positiveInt(input, 'userId'),
-    platform: DX_PLATFORM,
+    platform: dxPlatform(input.platform===undefined?undefined:text(input,'platform',64)),
     problemId: text(input, 'problemId', 64),
   };
 }
@@ -652,7 +665,7 @@ function practiceHistory(ctx: ApiContext, params: URLSearchParams): ApiResult {
     const scoreReason = row.voided_at !== null ? '已作废，不计分'
       : row.outcome !== 'ac' ? '未完成，不计分'
       : row.practice_kind === 'assisted' ? '辅助解题，不计分'
-      : row.platform !== DX_PLATFORM ? '该平台仅记录练习，不参与 CF 评分'
+      : !(DX_PLATFORMS as readonly string[]).includes(row.platform) ? '该平台仅记录练习，不参与 DX 评分'
       : row.problem_rating === null ? '未填写题目难度' : null;
     const score = scoreReason ? null : scoreProblem({
       platform: row.platform, problemId: row.problem_id, problemTitle: row.problem_title,
@@ -667,7 +680,8 @@ function practiceHistory(ctx: ApiContext, params: URLSearchParams): ApiResult {
 function addPractice(ctx: ApiContext, body: unknown): ApiResult {
   const input = objectBody(body);
   const result = recordPractice(ctx.openWrite(), {
-    ...dxTarget(input), platform: input.platform === undefined ? DX_PLATFORM : text(input, 'platform', 64).trim(),
+    userId:positiveInt(input,'userId'), problemId:text(input,'problemId',64),
+    platform: input.platform === undefined ? DX_PLATFORM : text(input, 'platform', 64).trim(),
     manual: input.manual === true, title: input.title === undefined ? undefined : text(input, 'title', 200),
     difficulty: input.difficulty == null ? null : input.difficulty as number,
     seconds: positiveInt(input, 'seconds'),
@@ -697,8 +711,13 @@ function exportBacktest(ctx: ApiContext, params: URLSearchParams): ApiResult {
  * 只走写连接 —— 缓存过期时 `fetch_problem_ratings` 会去抓一次并写 `fetch_cache`，
  * 而 GET 那条连接是 `PRAGMA query_only = ON`（见本文件顶部）。
  */
-async function danPool(db: DatabaseSync): Promise<ProblemRating[]> {
+async function danPool(db: DatabaseSync,platform=DX_PLATFORM): Promise<ProblemRating[]> {
+  if(platform==='atcoder')return new AtCoderFetcher(new HttpClient(db),new Repository(db)).fetch_problem_ratings();
   return (await new CodeforcesSyncFetcher(new Repository(db), new HttpClient(db)).fetch_problem_ratings()) ?? [];
+}
+
+function cachedDanPool(cache:Repository,platform:string):ProblemRating[]|null{
+  return platform==='atcoder'?cachedAtCoderProblemRatings(cache):cachedProblemRatings(cache);
 }
 
 /** 段位認定/每日一题的时区偏移：越界就退回默认，和其它接口一样不报错。 */
@@ -727,8 +746,8 @@ function danTimerRequestId(sessionId: string, stageIndex: number): string {
  * 平均口径在榜填满 50 格时与 DX Rating **完全相等**，不满时是诚实的水平估计。
  * 与 /api/dx 同一套分板规则（本年度出题的进 b15，其余进 b35，未出题日期按旧题）。
  */
-function danEquivalentRating(db: DatabaseSync, userId: number): number | null {
-  const entries = listDxEntries(db, userId, DX_PLATFORM);
+function danEquivalentRating(db: DatabaseSync, userId: number,platform=DX_PLATFORM): number | null {
+  const entries = listDxEntries(db, userId, platform);
   const year = new Date().getFullYear();
   const until = yearStartSeconds(year + 1);
   const eligible = entries.filter((e) => e.releasedAt === null || e.releasedAt < until);
@@ -759,18 +778,20 @@ function danTagCatalog(pool: readonly ProblemRating[]): { name: string; count: n
  * 题库只从 `fetch_cache` 读（读连接不能写），冷缓存如实报告 `poolReady:false`，
  * 由前端引导走一次写接口去抓。
  */
-function danOverview(ctx: ApiContext, userId: number, tzOffsetMinutes: number): ApiResult {
+function danOverview(ctx: ApiContext, userId: number, tzOffsetMinutes: number,platform=DX_PLATFORM): ApiResult {
   if (!ctx.db.prepare('SELECT 1 FROM users WHERE id=?').get(userId)) throw new BadRequest('用户不存在');
-  const pool = cachedProblemRatings(new Repository(ctx.db));
+  platform=dxPlatform(platform);
+  const pool = cachedDanPool(new Repository(ctx.db),platform);
   const now = Math.floor(Date.now() / 1000);
   const dateKey = danDateKey(now, tzOffsetMinutes);
   // 每日一题的难度带按用户当前的等效 Rating 定（没有水平数据时退回全段）。
-  const band = dailyBand(danEquivalentRating(ctx.db, userId));
-  const daily = pool ? dailyProblem(ctx.db, userId, pool, dateKey, band) : null;
+  const band = dailyBand(danEquivalentRating(ctx.db, userId,platform),platform==='atcoder'?1:100);
+  const daily = pool ? dailyProblem(ctx.db, userId, pool, dateKey, band,platform) : null;
   const active = activeDanSession(ctx.db, userId);
   return {
     status: 200,
     body: {
+      platform,
       tiers: DAN_TIERS.map((tier) => ({ key: tier.key, name: tier.name, minRating: tier.minRating,
         maxRating: tier.maxRating, limitSeconds: tier.limitSeconds, draw: tier.draw,
         perStageLimit: tier.perStageLimit === true })),
@@ -788,9 +809,9 @@ function danOverview(ctx: ApiContext, userId: number, tzOffsetMinutes: number): 
       serverNow: now,
       poolReady: pool !== null,
       poolSize: pool?.length ?? 0,
-      daily: daily ? { dateKey, difficulty: daily.rating } : null,
+      daily: daily ? { dateKey, difficulty: daily.rating,nativeDifficulty:daily.nativeRating??null } : null,
       active: active ? danSessionView(ctx.db, active) : null,
-      history: danHistory(ctx.db, userId, 20),
+      history: danHistory(ctx.db, userId, 20,platform),
     },
   };
 }
@@ -826,7 +847,7 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
         case '/api/dan': {
           const user = parseIntOrNull(params.get('user'), 1, Number.MAX_SAFE_INTEGER, 'user');
           if (user === null) throw new BadRequest('缺少 user 参数');
-          return danOverview(ctx, user, clampInt(params.get('tz'), DEFAULT_TZ_OFFSET_MINUTES, -840, 840, 'tz'));
+          return danOverview(ctx, user, clampInt(params.get('tz'), DEFAULT_TZ_OFFSET_MINUTES, -840, 840, 'tz'),dxPlatform(params.get('platform')));
         }
         case '/api/dx/backtest':
           return exportBacktest(ctx, params);
@@ -946,11 +967,12 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           return setDxTime(ctx, body);
         case '/api/dx/reminder': {
           const input = objectBody(body);
-          return {status:200,body:setTimeReminder(ctx.openWrite(),positiveInt(input,'userId'),text(input,'problemId',64),input.dismissed as boolean)};
+          return {status:200,body:setTimeReminder(ctx.openWrite(),positiveInt(input,'userId'),text(input,'problemId',64),input.dismissed as boolean,dxPlatform(input.platform===undefined?undefined:text(input,'platform',64)))};
         }
         case '/api/dx/timer/start': {
           const input = objectBody(body);
           const timer = startTimer(ctx.openWrite(), { userId: positiveInt(input,'userId'), problemId: text(input,'problemId',300),
+            platform:dxPlatform(input.platform===undefined?undefined:text(input,'platform',64)),
             practiceKind: text(input,'practiceKind',20) as PracticeInput['practiceKind'], requestId: text(input,'requestId',100) });
           return { status: 200, body: { timer, serverNow: Math.floor(Date.now()/1000) } };
         }
@@ -1005,6 +1027,7 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
         }
         case '/api/dan/start': {
           const input = objectBody(body), userId = positiveInt(input, 'userId');
+          const platform=dxPlatform(input.platform===undefined?undefined:text(input,'platform',64));
           const kind = text(input, 'kind', 20) as DanKind;
           if (!['challenge', 'single', 'daily'].includes(kind)) throw new BadRequest('抽题模式无效');
           const tierKey = kind === 'daily' ? DAILY_TIER.key : text(input, 'tier', 40);
@@ -1014,7 +1037,7 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           let pool: ProblemRating[] | null = null;
           let custom: { minRating: number; maxRating: number; tags: string[] } | undefined;
           if (tierKey === DAN_CUSTOM_TIER.key) {
-            pool = await danPool(db);
+            pool = await danPool(db,platform);
             const requested = Array.isArray(input.tags) ? input.tags.filter((t): t is string => typeof t === 'string') : [];
             const known = new Set(pool.flatMap((problem) => [...(problem.tags ?? [])]));
             const unknown = requested.filter((tag) => !known.has(tag));
@@ -1023,11 +1046,11 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           }
           const sessionId = newDanSessionId();
           // Fetch before opening a transaction; creation and drawing must commit together.
-          pool ??= await danPool(db);
-          const band = kind === 'daily' ? dailyBand(danEquivalentRating(db, userId)) : {};
+          pool ??= await danPool(db,platform);
+          const band = kind === 'daily' ? dailyBand(danEquivalentRating(db, userId,platform),platform==='atcoder'?1:100) : {};
           db.exec('SAVEPOINT dan_start');
           try {
-            const session = createDanSession(db, { id: sessionId, userId, kind, tierKey, now, ...band, ...custom });
+            const session = createDanSession(db, { id: sessionId, userId, platform,kind, tierKey, now, ...band, ...custom });
             const drawn = drawNextDanStage(db, { sessionId, pool, now, dateKey: danDateKey(now, tzFromBody(input)) });
             const view = danSessionView(db, session);
             db.exec('RELEASE dan_start');
@@ -1047,7 +1070,7 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           if (!pending) throw new BadRequest('没有待开始的题目，请刷新');
           // 先起计时器：起不来（没绑 CF 账号、已有计时在跑）就整件事失败，不进入锁题。
           if (pending.claimed_at === null) {
-            const timer = startTimer(db, { userId, problemId: pending.problem_id, practiceKind: 'unknown',
+            const timer = startTimer(db, { userId, platform:session.platform,problemId: pending.problem_id, practiceKind: 'unknown',
               requestId: danTimerRequestId(sessionId, pending.stage_index) }, now);
             claimDanStage(db, { sessionId, timerId: timer.id, now });
           }
@@ -1055,7 +1078,7 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           const stage = currentDanStage(db, sessionId)!;
           return { status: 200, body: {
             sessionId, stageIndex: stage.stage_index, difficulty: stage.difficulty,
-            problemId: stage.problem_id, url: danProblemUrl(stage.problem_id), timerId: stage.timer_id,
+            problemId: stage.problem_id, url: stage.problem_url??danProblemUrl(stage.problem_id,session.platform), timerId: stage.timer_id,
             deadlineAt: session.rules_json ? null : (stage.claimed_at ?? now) + danStageLimitOf(stage, session), serverNow: now,
           } };
         }
@@ -1080,7 +1103,7 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           let session = activeDanSession(db, userId);
           let poolEmpty = false;
           if (session) {
-            const pool = await danPool(db);
+            const pool = await danPool(db,session.platform);
             try {
               drawNextDanStage(db, { sessionId: session.id, pool, now, dateKey: danDateKey(now, tzFromBody(input)) });
             } catch (error) {

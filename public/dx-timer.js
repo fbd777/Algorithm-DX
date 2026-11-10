@@ -22,7 +22,7 @@ function difficultyOf(value) {
  */
 const PRACTICE_KIND_LABEL = { first: 'INDEPENDENT', repeat: 'REPLAY', assisted: 'ASSISTED', unknown: 'PRACTICE' };
 
-export function initDxTimer({ getUser, onComplete, onResultClose }) {
+export function initDxTimer({ getUser, getPlatform=()=> 'codeforces', onComplete, onResultClose }) {
   const $ = id => document.getElementById(id);
   let timer = null, user = null, clockOffset = 0, requestId = null, busy = false, polling = false, revision = 0;
   let result = null, boardRefresh = Promise.resolve(), fastPollUntil = 0;
@@ -93,6 +93,7 @@ export function initDxTimer({ getUser, onComplete, onResultClose }) {
       title: result.title,
       difficulty,
       tone: color.tone,
+      platform:result.platform,
     }));
     const achievementText = score ? score.achievementShown.toFixed(4) : null;
     // URL overrides are available only while rendering an explicit preview sample.
@@ -195,8 +196,13 @@ export function initDxTimer({ getUser, onComplete, onResultClose }) {
     $('timerResultOpen').hidden = timer?.status !== 'completed' || !result;
     if (running) {
       $('timerProblemLabel').textContent = timer.problem_id;
-      const [contest,index] = timer.problem_id.split(':');
-      $('timerProblemLink').href = `https://codeforces.com/${Number(contest)>=100000?'gym':'contest'}/${contest}/problem/${index}`;
+      if(timer.platform==='atcoder'){
+        const contest=timer.problem_id.replace(/_[^_]+$/,'');
+        $('timerProblemLink').href=`https://atcoder.jp/contests/${encodeURIComponent(contest)}/tasks/${encodeURIComponent(timer.problem_id)}`;
+      }else{
+        const [contest,index] = timer.problem_id.split(':');
+        $('timerProblemLink').href = `https://codeforces.com/${Number(contest)>=100000?'gym':'contest'}/${contest}/problem/${index}`;
+      }
       $('timerStarted').textContent = '开始于 '+new Date(timer.started_at*1000).toLocaleString('zh-CN');
     }
     tick();
@@ -242,7 +248,7 @@ export function initDxTimer({ getUser, onComplete, onResultClose }) {
     const capturedUser=getUser(); ++revision; busy=true; render();
     requestId ??= crypto.randomUUID();
     try {
-      await receive(await request('/api/dx/timer/start',{userId:capturedUser,problemId:$('timerProblem').value,practiceKind:$('timerKind').value,requestId}),capturedUser);
+      await receive(await request('/api/dx/timer/start',{userId:capturedUser,platform:getPlatform(),problemId:$('timerProblem').value,practiceKind:$('timerKind').value,requestId}),capturedUser);
       requestId=null;
     } catch(error) { $('timerStatus').textContent=error.message; }
     finally {busy=false;render();}

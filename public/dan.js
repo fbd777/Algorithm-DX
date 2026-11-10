@@ -31,6 +31,9 @@ const VERDICT_TEXT = { cleared: '合格', failed: '不合格', abandoned: '中�
 const FRESH_RUN_SECONDS = 90;
 
 const tz = -new Date().getTimezoneOffset();
+const pageParams=new URLSearchParams(location.search);
+let platform=['codeforces','atcoder'].includes(pageParams.get('platform'))?pageParams.get('platform'):'codeforces';
+const platformName=()=>platform==='atcoder'?'AtCoder':'Codeforces';
 let userId = null;
 let board = null;
 let clockOffset = 0;
@@ -104,7 +107,7 @@ async function boot() {
   // 抽题/认定必须绑在本人身上：计时器要拿本人绑定的 CF 账号去核对 AC。
   const self = users.find((user) => user.is_self) ?? users[0];
   if (!self) {
-    setMessage('还没有用户。请先在「账号管理」里创建「我」并绑定 Codeforces 账号。', true);
+    setMessage('还没有用户。请先在「账号管理」里创建「我」并绑定 Codeforces 或 AtCoder 账号。', true);
     return;
   }
   userId = self.id;
@@ -112,8 +115,12 @@ async function boot() {
 }
 
 async function refresh() {
-  const data = await get(`/api/dan?user=${userId}&tz=${tz}`);
+  const data = await get(`/api/dan?user=${userId}&tz=${tz}&platform=${platform}`);
   board = data;
+  platform=data.active?.platform??data.platform??platform;
+  $('platformSelect').value=platform;
+  $('platformSelect').disabled=Boolean(data.active);
+  $('customMin').step=$('customMax').step=platform==='atcoder'?'1':'100';
   clockOffset = data.serverNow - Date.now() / 1000;
   render();
 }
@@ -216,7 +223,7 @@ function renderIdle() {
   }
   const dailyHost = $('dailyDifficulty');
   dailyHost.replaceChildren();
-  if (board.daily) dailyHost.append(difficultyNode(board.daily.difficulty, '今日难度 · CF 官方 Rating'));
+  if (board.daily) dailyHost.append(difficultyNode(board.daily.difficulty, platform==='atcoder'?'今日 CF 等效难度':'今日难度 · CF 官方 Rating'));
   else dailyHost.append(el('p', 'dan-note', board.poolReady ? '推荐范围内暂无可抽题目。' : '题库尚未加载。'));
   $('dailyStart').disabled = busy || !board.daily;
 
@@ -287,7 +294,8 @@ function stageCard(session, stage) {
     head.append(el('span', 'dan-chip', '还没开始'));
   }
   card.append(head);
-  card.append(difficultyNode(stage.difficulty, '题目难度 · CF 官方 Rating'));
+  card.append(difficultyNode(stage.difficulty, session.platform==='atcoder'?'CF 等效难度':'题目难度 · CF 官方 Rating'));
+  if(session.platform==='atcoder'&&stage.nativeDifficulty!=null)card.append(el('p','dan-note',`AtCoder Problems 原生难度 ${stage.nativeDifficulty}`));
 
   const actions = el('div', 'dan-actions');
   if (!stage.claimed) {
@@ -298,7 +306,7 @@ function stageCard(session, stage) {
     start.addEventListener('click', () => beginStage(session));
     actions.append(start);
   } else {
-    const go = el('a', 'btn btn-primary', '回到 Codeforces');
+    const go = el('a', 'btn btn-primary', `回到 ${session.platform==='atcoder'?'AtCoder':'Codeforces'}`);
     go.href = stage.problemUrl ?? '#';
     go.rel = 'noreferrer noopener';
     go.target = '_blank';
@@ -593,7 +601,7 @@ async function openClaimedStage(session, tab) {
   const opened = Boolean(tab && !tab.closed);
   if (opened) tab.location.replace(claimed.url);
   await refresh();
-  setMessage(opened ? '题目已在新标签页打开，这里会继续显示计时。' : '题目已开始计时。请点击「回到 Codeforces」打开题目。');
+  setMessage(opened ? '题目已在新标签页打开，这里会继续显示计时。' : `题目已开始计时。请点击「回到 ${platformName()}」打开题目。`);
 }
 async function recoveryAnimation(life) {
   const overlay = el('div', 'dan-transition');
@@ -1104,7 +1112,7 @@ async function startRun(kind, tier, extra = {}) {
   setMessage(kind === 'daily' ? '正在抽今天的题…' : '正在抽题…');
   render();
   try {
-    await post('/api/dan/start', { userId, kind, tier, tz, ...extra });
+    await post('/api/dan/start', { userId, platform,kind, tier, tz, ...extra });
     await refresh();
     setMessage('');
   } catch (error) {
@@ -1199,6 +1207,12 @@ $('customStart').addEventListener('click', () => {
   startRun('single', 'custom', { minRating: min, maxRating: max, tags: [...pickedTags] });
 });
 $('refresh').addEventListener('click', () => refresh().catch((error) => setMessage(error.message, true)));
+$('platformSelect').value=platform;
+$('platformSelect').addEventListener('change',event=>{
+  platform=event.target.value;board=null;shownStages=null;
+  const url=new URL(location.href);if(platform==='codeforces')url.searchParams.delete('platform');else url.searchParams.set('platform',platform);history.replaceState(null,'',url);
+  refresh().catch(error=>setMessage(error.message,true));
+});
 
 boot()
   .then(() => startAutoSync(() => refresh()))
