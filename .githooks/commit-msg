@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+
+message_file=$1
+expected_author='miaoledor <596571042@qq.com>'
+author_ident=$(git var GIT_AUTHOR_IDENT)
+
+case "$author_ident" in
+  "$expected_author"*) ;;
+  *)
+    printf 'ERROR: commits in this repository must use author %s.\n' "$expected_author" >&2
+    printf 'Current author identity: %s\n' "$author_ident" >&2
+    exit 1
+    ;;
+esac
+
+if ! grep -Eiq '^Co-authored-by:[[:space:]]*swan416ya <3447049424@qq\.com>[[:space:]]*$' "$message_file"; then
+  printf 'ERROR: commit message must contain:\n' >&2
+  printf 'Co-authored-by: swan416ya <3447049424@qq.com>\n' >&2
+  exit 1
+fi
