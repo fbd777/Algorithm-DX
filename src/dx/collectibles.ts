@@ -36,12 +36,20 @@ const STATIC: readonly Collectible[] = [
   { id:'profile_background:result-blue',kind:'profile_background',name:'Result Blue',rarity:'silver',description:'取材于仓库内结算画面的蓝色舞台。',acquisition:'累计 AC 50 道不同题目' },
   { id:'b50_theme:result-blue',kind:'b50_theme',name:'Result Blue',rarity:'silver',description:'带结算画面纹理的 B50 背景。',acquisition:'累计 AC 50 道不同题目' },
   { id:'achievement:dan-clear',kind:'achievement',name:'段位突破',rarity:'gold',description:'完成一次四题挑战。',acquisition:'任一四题挑战合格' },
-  { id:'info_frame:dan-gold',kind:'info_frame',name:'段位金框',rarity:'gold',description:'带 SSS 结算徽记的金色信息框。',acquisition:'任一四题挑战合格' },
+  { id:'info_frame:dan-gold',kind:'info_frame',name:'真初段姓名框',rarity:'gold',description:'使用舞萌「真初段 合格」姓名框素材的首次段位通关纪念。',acquisition:'首次通过任一四题段位挑战',image:'/assets/collectibles/lxns/plate-250051.png' },
   { id:'b50_theme:sss',kind:'b50_theme',name:'SSS Celebration',rarity:'gold',description:'使用 SSS 结算贴图点缀的庆典主题。',acquisition:'任一四题挑战合格' },
 ];
 
 const STARTER_IDS = STATIC.filter(item=>item.rarity==='starter').map(item=>item.id);
 const byId = new Map(STATIC.map(item=>[item.id,item]));
+const DAN_BADGES:Record<string,{rank:number;name:string;image:string}>={
+  beginner:{rank:1,name:'初段',image:'/assets/maimai/course-rank/1.webp'},
+  intermediate:{rank:5,name:'五段',image:'/assets/maimai/course-rank/5.webp'},
+  advanced:{rank:10,name:'十段',image:'/assets/maimai/course-rank/10.webp'},
+  small_random:{rank:11,name:'真伝',image:'/assets/maimai/course-rank/11.webp'},
+  expert:{rank:22,name:'真皆伝',image:'/assets/maimai/course-rank/22.webp'},
+  big_random:{rank:23,name:'裏皆伝',image:'/assets/maimai/course-rank/23.webp'},
+};
 
 function unlock(db:DatabaseSync,userId:number,item:Collectible,source?:Record<string,unknown>):void {
   db.prepare(`INSERT OR IGNORE INTO user_collectibles
@@ -106,10 +114,12 @@ export function collectibleProfile(db:DatabaseSync,userId:number,cfPool:readonly
   const catalog=[...STATIC.map(item=>({...item,unlocked:ownedIds.has(item.id)})),
     ...owned.filter(item=>!byId.has(item.id)).map(item=>({...item,unlocked:true}))];
   const loadout=db.prepare('SELECT * FROM user_profile_loadouts WHERE user_id=?').get(userId) as Record<string,unknown>;
+  const cleared=db.prepare("SELECT tier FROM dan_sessions WHERE user_id=? AND kind='challenge' AND status='cleared'").all(userId) as {tier:string}[];
+  const highestDan=cleared.map(row=>DAN_BADGES[row.tier]).filter(Boolean).sort((a,b)=>b.rank-a.rank)[0]??null;
   return { owned,catalog, loadout:{ titleId:String(loadout.title_id),avatarId:String(loadout.avatar_id),
     avatarSource:String(loadout.avatar_source) as AvatarSource,customAvatar:loadout.custom_avatar_data?String(loadout.custom_avatar_data):null,
     avatarFrameId:String(loadout.avatar_frame_id),profileBackgroundId:String(loadout.profile_background_id),
-    infoFrameId:String(loadout.info_frame_id),b50ThemeId:String(loadout.b50_theme_id) } };
+    infoFrameId:String(loadout.info_frame_id),b50ThemeId:String(loadout.b50_theme_id) },highestDan };
 }
 
 const LOADOUT_FIELDS:Record<CollectibleKind,string|undefined>={achievement:undefined,title:'title_id',avatar:'avatar_id',avatar_frame:'avatar_frame_id',
@@ -140,4 +150,16 @@ export function setProfileAvatar(db:DatabaseSync,userId:number,source:AvatarSour
   db.prepare('UPDATE user_profile_loadouts SET avatar_source=?,custom_avatar_data=COALESCE(?,custom_avatar_data),updated_at=unixepoch() WHERE user_id=?')
     .run(source,stored,userId);
   return collectibleProfile(db,userId);
+}
+
+export function collectibleNotifications(db:DatabaseSync,userId:number,cfPool:readonly ProblemRating[]=[]):Collectible[] {
+  collectibleProfile(db,userId,cfPool);
+  return (db.prepare(`SELECT * FROM user_collectibles WHERE user_id=? AND notified_at IS NULL
+    ORDER BY unlocked_at,collectible_id`).all(userId) as Record<string,unknown>[]).map(rowCollectible);
+}
+
+export function markCollectibleNotified(db:DatabaseSync,userId:number,collectibleId:string):void {
+  const result=db.prepare(`UPDATE user_collectibles SET notified_at=unixepoch()
+    WHERE user_id=? AND collectible_id=? AND notified_at IS NULL`).run(userId,collectibleId);
+  if(!result.changes&&!db.prepare('SELECT 1 FROM user_collectibles WHERE user_id=? AND collectible_id=?').get(userId,collectibleId))throw new Error('收藏品不存在');
 }

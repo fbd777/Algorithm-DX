@@ -284,6 +284,11 @@
 <div class="modal" id="collectionModal" hidden>
   <div class="modal-card modal-card-wide collection-modal-card" role="dialog" aria-modal="true" aria-labelledby="collectionTitle">
     <div class="collection-modal-head"><div><h3 id="collectionTitle">成就与收藏品</h3><p class="modal-sub">完成练习、挑战和整场比赛来解锁；装备会同步应用到个人卡片和 B50 导出图。</p></div><button id="collectionClose" class="btn btn-ghost" type="button">关闭</button></div>
+    <div class="collection-filters" id="collectionFilters">
+      <input id="collectionSearch" class="input" type="search" maxlength="100" placeholder="搜索名称、说明或获取方式">
+      <select id="collectionKindFilter" class="select" aria-label="收藏品类别"><option value="all">全部类别</option><option value="achievement">成就</option><option value="title">称号</option><option value="avatar">预设头像</option><option value="avatar_frame">头像框</option><option value="profile_background">背景板</option><option value="info_frame">姓名框</option><option value="b50_theme">B50 背景</option></select>
+      <select id="collectionRarityFilter" class="select" aria-label="收藏品稀有度"><option value="all">全部稀有度</option><option value="starter">新手</option><option value="white">白色</option><option value="bronze">铜色</option><option value="silver">白银</option><option value="gold">金色</option><option value="rainbow">彩虹</option></select>
+    </div>
     <div id="collectionBody" class="collection-grid"></div>
     <p id="collectionStatus" class="field-hint" role="status"></p>
   </div>

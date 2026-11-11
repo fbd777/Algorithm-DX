@@ -243,6 +243,8 @@ function ratingSummary(value, data) {
   const equipped=id=>owned.find(item=>item.id===id);
   const titleItem=equipped(profile?.loadout?.titleId);
   const avatarItem=equipped(profile?.loadout?.avatarId);
+  const infoFrameItem=equipped(profile?.loadout?.infoFrameId);
+  const highestDan=profile?.highestDan;
   const solved=[...(data.recorded??[]),...(data.pending??[])];
   const uniqueSolved=new Map(solved.map(item=>[`${item.platform}:${item.problemId}`,item]));
   const latest=[...uniqueSolved.values()].sort((a,b)=>(b.solvedAt??0)-(a.solvedAt??0))[0];
@@ -267,12 +269,15 @@ function ratingSummary(value, data) {
     el('div',{class:'dx-showcase-header'},[
       avatar,
       el('div',{class:'dx-showcase-nameplate'},[
-        profile?.loadout?.infoFrameId==='info_frame:lxns-plate-11'?el('img',{class:'dx-showcase-nameplate-art',src:'/assets/collectibles/lxns/plate-11.png',alt:'','aria-hidden':'true'}):null,
+        infoFrameItem?.image?el('img',{class:'dx-showcase-nameplate-art',src:infoFrameItem.image,alt:'','aria-hidden':'true'}):null,
         el('div',{class:'dx-showcase-rating','data-rating-tone':color.tone},[
           el('span',{class:'dx-showcase-rating-label',text:'DX RATING'}),ratingDigits,
         ]),
-        el('div',{class:'dx-showcase-name',text:name}),
-        el('div',{class:'dx-showcase-title',text:titleItem?.name??'新手挑战者'}),
+        el('div',{class:'dx-showcase-name'},[
+          el('span',{text:name}),
+          highestDan?el('img',{class:'dx-showcase-dan-badge',src:highestDan.image,alt:`最高段位 ${highestDan.name}`,title:`最高段位：${highestDan.name}`}):null,
+        ]),
+        el('div',{class:'dx-showcase-title','data-rarity':titleItem?.rarity??'starter',text:titleItem?.name??'新手挑战者'}),
         el('span',{class:'dx-showcase-platform',text:platform==='mixed'?'CODEFORCES × ATCODER':(platformNames[platform]??platform).toUpperCase()}),
       ]),
     ]),
@@ -319,6 +324,8 @@ function renderCollection(){
   const body=$('collectionBody');clear(body);
   const profile=playerProfiles.get(state.userId);
   if(!profile?.owned){body.append(el('p',{class:'empty',text:'收藏品资料正在加载，请稍候。'}));return;}
+  const query=($('collectionSearch')?.value??'').trim().toLowerCase();
+  const kindFilter=$('collectionKindFilter')?.value??'all',rarityFilter=$('collectionRarityFilter')?.value??'all';
   const source=profile.loadout?.avatarSource??'collectible';
   const sourceSection=el('section',{class:'collection-group collection-avatar-sources'},[el('h4',{text:'头像来源'})]);
   const sourceList=el('div',{class:'avatar-source-list'});
@@ -329,10 +336,16 @@ function renderCollection(){
   const uploadInput=el('input',{type:'file',accept:'image/png,image/jpeg,image/webp',hidden:true,onchange:async event=>{try{const data=await resizedAvatar(event.target.files?.[0]);await chooseAvatar('custom',data);}catch(error){$('collectionStatus').textContent=error.message;}event.target.value='';}});
   sourceList.append(el('label',{class:`avatar-source-card${source==='custom'?' is-active':''}`},[uploadInput,
     profile.loadout?.customAvatar?el('img',{src:profile.loadout.customAvatar,alt:''}):el('span',{text:'+'}),el('strong',{text:'上传图片'})]));
-  sourceSection.append(sourceList);body.append(sourceSection);
+  sourceSection.append(sourceList);if((kindFilter==='all'||kindFilter==='avatar')&&!query&&rarityFilter==='all')body.append(sourceSection);
   const equippedIds=new Set(Object.values(profile.loadout??{}));
+  let matchedGroups=0;
   for(const [kind,label] of Object.entries(collectionKinds)){
-    const items=(profile.catalog??profile.owned).filter(item=>item.kind===kind);if(!items.length)continue;
+    if(kindFilter!=='all'&&kindFilter!==kind)continue;
+    const items=profile.owned.filter(item=>item.kind===kind&&
+      (rarityFilter==='all'||item.rarity===rarityFilter)&&
+      (!query||`${item.name} ${item.description} ${item.acquisition}`.toLowerCase().includes(query)));
+    if(!items.length)continue;
+    matchedGroups+=1;
     const section=el('section',{class:'collection-group'},[el('h4',{text:label})]);
     const list=el('div',{class:'collection-items'});
     for(const item of items){
@@ -344,6 +357,7 @@ function renderCollection(){
     }
     section.append(list);body.append(section);
   }
+  if(!matchedGroups)body.append(el('p',{class:'empty',text:'没有符合筛选条件的已获得收藏品。'}));
 }
 
 function renderSummary(data) {
@@ -352,6 +366,7 @@ function renderSummary(data) {
   clear($('dxSummary'));
   $('dxSummary').append(ratingSummary(board.rating, data));
 }
+document.addEventListener('algorithm-dx-collectible-equipped',event=>{if(event.detail?.profile)mergePlayerProfile({profile:event.detail.profile});});
 
 /**
  * 出题日期缺失时的提示。
@@ -1273,6 +1288,7 @@ $('saveB50InlineBtn').addEventListener('click',()=>$('saveB50Btn').click());
 $('collectionBtn').addEventListener('click',()=>{$('collectionModal').hidden=false;renderCollection();});
 $('collectionClose').addEventListener('click',()=>{$('collectionModal').hidden=true;});
 $('collectionModal').addEventListener('click',event=>{if(event.target===$('collectionModal'))$('collectionModal').hidden=true;});
+for(const id of ['collectionSearch','collectionKindFilter','collectionRarityFilter'])$(id).addEventListener(id==='collectionSearch'?'input':'change',renderCollection);
 
 $('pendingScope').addEventListener('change',()=>{pendingPage=0;if(state.data)renderPending(state.data);});
 $('pendingPrev').addEventListener('click',()=>{pendingPage=Math.max(0,pendingPage-1);renderPending(state.data);});

@@ -9,7 +9,13 @@ export function prepareDatabaseForStartup(path: string, log: (message: string) =
   const dbPath = resolve(path);
   const probe = new DatabaseSync(dbPath, { readOnly: true });
   let version: number;
-  try { version = Number(probe.prepare('PRAGMA user_version').get()!.user_version); }
+  try {
+    // Another launcher may already hold the schema write lock while upgrading.
+    // The read-only probe must wait too; otherwise it can fail before openDatabase's
+    // migration lock has a chance to serialize the two processes.
+    probe.exec('PRAGMA busy_timeout=5000');
+    version = Number(probe.prepare('PRAGMA user_version').get()!.user_version);
+  }
   finally { probe.close(); }
 
   if (version > SCHEMA_VERSION) {

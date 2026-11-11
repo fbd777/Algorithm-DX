@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase, Repository } from '../src/db/database.ts';
 import { submission } from '../src/fetchers/common.ts';
-import { collectibleProfile, equipCollectible, setProfileAvatar } from '../src/dx/collectibles.ts';
+import { collectibleNotifications, collectibleProfile, equipCollectible, markCollectibleNotified, setProfileAvatar } from '../src/dx/collectibles.ts';
 import { contestTracker } from '../src/server/tracker.ts';
 import { createDanSession, drawNextDanStage } from '../src/dx/dan.ts';
 
@@ -43,6 +43,26 @@ test('profile avatar supports bound platform identities and a compact custom ima
   const image='data:image/png;base64,iVBORw0KGgo=';
   const custom=setProfileAvatar(s.db,s.user,'custom',image);
   assert.equal(custom.loadout.avatarSource,'custom');assert.equal(custom.loadout.customAvatar,image);
+  s.db.close();
+});
+
+test('first dan clear unlocks the course plate and profile shows the highest cleared badge',()=>{
+  const s=fixture(),insert=s.db.prepare(`INSERT INTO dan_sessions
+    (id,user_id,tier,kind,stage_count,limit_seconds,min_rating,max_rating,status,started_at,finished_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?)`);
+  insert.run('dan-beginner',s.user,'beginner','challenge',4,1800,800,1100,'cleared',100,200);
+  insert.run('dan-expert',s.user,'expert','challenge',4,3600,2100,2600,'cleared',300,400);
+  const profile=collectibleProfile(s.db,s.user),ids=new Set(profile.owned.map(item=>item.id));
+  assert.ok(ids.has('achievement:dan-clear'));assert.ok(ids.has('info_frame:dan-gold'));
+  assert.deepEqual(profile.highestDan,{rank:22,name:'真皆伝',image:'/assets/maimai/course-rank/22.webp'});
+  s.db.close();
+});
+
+test('new collectibles remain queued until their site-wide notification is acknowledged',()=>{
+  const s=fixture(),items=collectibleNotifications(s.db,s.user);
+  assert.ok(items.some(item=>item.id==='title:newcomer'));
+  markCollectibleNotified(s.db,s.user,'title:newcomer');
+  assert.ok(!collectibleNotifications(s.db,s.user).some(item=>item.id==='title:newcomer'));
   s.db.close();
 });
 

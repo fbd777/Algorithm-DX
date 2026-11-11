@@ -9,7 +9,7 @@ export async function saveB50Image(data, userName, profile = null) {
     { title: '旧题 · BEST 35', label: 'B35', slots: data.board.old, count: data.board.oldCount, capacity: data.slots.old },
     { title: '新题 · BEST 15', label: 'B15', slots: data.board.current, count: data.board.currentCount, capacity: data.slots.current },
   ];
-  const height = 308 + groups.reduce((sum, group) => sum + 86 + Math.ceil(group.capacity / 5) * (cardHeight + gap), 0) + 80;
+  const height = 340 + groups.reduce((sum, group) => sum + 86 + Math.ceil(group.capacity / 5) * (cardHeight + gap), 0) + 80;
   const canvas = document.createElement('canvas');
   const scale = 1.5;
   canvas.width = width * scale; canvas.height = height * scale;
@@ -22,6 +22,15 @@ export async function saveB50Image(data, userName, profile = null) {
   else if(theme==='b50_theme:result-blue'){backdrop.addColorStop(0,'#071a32');backdrop.addColorStop(.55,'#104d82');backdrop.addColorStop(1,'#267f9f');}
   else {backdrop.addColorStop(0,'#0c121c');backdrop.addColorStop(.6,'#14233a');backdrop.addColorStop(1,'#241b35');}
   ctx.fillStyle=backdrop;ctx.fillRect(0,0,width,height);
+  const texturePath=theme==='b50_theme:sss'?'/assets/maimai/result-bg/result-bg-sss.png'
+    :theme==='b50_theme:result-blue'?'/assets/maimai/result-bg/result-bg-b.png':'/assets/collectibles/lxns/frame-11.png';
+  const texture=new Image();texture.src=texturePath;
+  try {
+    await texture.decode();const tileHeight=width*texture.naturalHeight/texture.naturalWidth;
+    ctx.save();ctx.globalAlpha=.25;
+    for(let y=0;y<height;y+=tileHeight)ctx.drawImage(texture,0,y,width,tileHeight);
+    ctx.restore();
+  } catch { /* The gradient remains a complete offline fallback. */ }
   const font = (size, weight) => `${weight} ${size}px "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", sans-serif`;
   const text = (value, x, y, size = 20, color = '#e6edf3', weight = 400, maxWidth, align = 'left') => {
     ctx.font = font(size, weight);
@@ -64,14 +73,18 @@ export async function saveB50Image(data, userName, profile = null) {
   const viewLabel=data.platform==='mixed'?'Codeforces × AtCoder 混合榜':data.platform==='atcoder'?'AtCoder':'Codeforces';
   text(`${userName} · ${data.year} 年度 · ${viewLabel}`, margin, 169, 24, '#a4b1c5', 400, 980);
   const titleItem=profile?.owned?.find(item=>item.id===profile?.loadout?.titleId);
-  if(titleItem){box(margin,180,Math.min(460,ctx.measureText(titleItem.name).width+64),38,titleItem.rarity==='silver'?'#cfd7df':titleItem.rarity==='gold'?'#d7a62d':'#f6f8fb','#ffffff99');text(titleItem.name,margin+18,206,17,'#26354b',800,420);}
+  if(titleItem){
+    const rarityFill={starter:'#d7f4f5',white:'#f6f8fb',bronze:'#a9673f',silver:'#cfd7df',gold:'#e5bd3e',rainbow:'#b86dcc'}[titleItem.rarity]??'#f6f8fb';
+    const rarityInk=['bronze','rainbow'].includes(titleItem.rarity)?'#fff':'#26354b';
+    box(margin,180,Math.min(460,ctx.measureText(titleItem.name).width+64),38,rarityFill,'#ffffff99');text(titleItem.name,margin+18,206,17,rarityInk,800,420);
+  }
   drawDxRatingFrame(ctx, data.board.rating, 1160, 74);
   const oldTotal = data.board.old.reduce((n, slot) => n + (slot.score?.rating ?? 0), 0);
   const newTotal = data.board.current.reduce((n, slot) => n + (slot.score?.rating ?? 0), 0);
-  box(margin, 205, width - margin * 2, 70, '#151f30');
-  text(`旧题 ${oldTotal.toFixed(1)}  +  新题 ${newTotal.toFixed(1)}`, margin + 24, 249, 24, '#cfe6ff', 600);
-  text(`已入榜 ${data.board.oldCount + data.board.currentCount} / 50`, 1240, 249, 22, '#a4b1c5');
-  let y = 308;
+  box(margin, 230, width - margin * 2, 70, '#151f30c9');
+  text(`旧题 ${oldTotal.toFixed(1)}  +  新题 ${newTotal.toFixed(1)}`, margin + 24, 274, 24, '#cfe6ff', 600);
+  text(`已入榜 ${data.board.oldCount + data.board.currentCount} / 50`, 1240, 274, 22, '#a4b1c5');
+  let y = 340;
   for (const group of groups) {
     text(group.title, margin, y + 30, 28, '#e6edf3', 700);
     text(`${group.count} / ${group.capacity}`, width - margin, y + 30, 22, '#a4b1c5', 400, 118, 'right');
@@ -81,7 +94,7 @@ export async function saveB50Image(data, userName, profile = null) {
       const slot = group.slots[i], x = margin + (i % 5) * (cardWidth + gap), cy = y + Math.floor(i / 5) * (cardHeight + gap);
       const entry = slot?.entry, score = slot?.score;
       if (!entry || !score) {
-        box(x, cy, cardWidth, cardHeight, '#101824', '#1e293b');
+        box(x, cy, cardWidth, cardHeight, '#101824b8', '#1e293b');
         text(`${group.label} #${String(i + 1).padStart(2, '0')}`, x + 18, cy + 29, 14, '#57677e', 600);
         text('待上榜', x + 18, cy + 119, 24, '#57677e');
         continue;
@@ -90,7 +103,7 @@ export async function saveB50Image(data, userName, profile = null) {
         : score.rank.startsWith('A') ? '#58a6ff' : score.rank.startsWith('B') ? '#3fb950' : '#8998af';
       const platformColor=entry.platform==='atcoder'?'#d65b69':'#3187d8';
       const gradient = ctx.createLinearGradient(x, cy, x + cardWidth, cy + cardHeight);
-      gradient.addColorStop(0, entry.platform==='atcoder'?'#2d1d29':'#19263a'); gradient.addColorStop(1, '#101827');
+      gradient.addColorStop(0, entry.platform==='atcoder'?'#2d1d29d9':'#19263ad9'); gradient.addColorStop(1, '#101827c9');
       box(x, cy, cardWidth, cardHeight, gradient,platformColor);
       ctx.fillStyle = platformColor; ctx.fillRect(x, cy + 14, 4, cardHeight - 28);
       const right = x + cardWidth - 18;

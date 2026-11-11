@@ -100,7 +100,7 @@ import {
   drawNextDanStage,
   type DanKind,
 } from '../dx/dan.ts';
-import { collectibleProfile, equipCollectible, setProfileAvatar, type AvatarSource } from '../dx/collectibles.ts';
+import { collectibleNotifications, collectibleProfile, equipCollectible, markCollectibleNotified, setProfileAvatar, type AvatarSource } from '../dx/collectibles.ts';
 import { CodeforcesSyncFetcher, cachedProblemRatings } from '../fetchers/codeforces-sync.ts';
 import { AtCoderFetcher, cachedAtCoderProblemRatings, cachedAtCoderProblemCatalog } from '../fetchers/atcoder.ts';
 import { Repository } from '../db/database.ts';
@@ -182,6 +182,8 @@ export const WRITE_ROUTES = new Set([
   '/api/dx/profile',
   '/api/dx/collectibles/equip',
   '/api/dx/avatar',
+  '/api/collectibles/notifications',
+  '/api/collectibles/notifications/seen',
   '/api/dan/start',
   '/api/dan/claim',
   '/api/dan/settle',
@@ -1076,6 +1078,15 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           try { return {status:200,body:{profile:setProfileAvatar(db,positiveInt(input,'userId'),text(input,'source',20) as AvatarSource,
             input.avatar===undefined?undefined:text(input,'avatar',360_000))}}; }
           catch(error) { throw new BadRequest(error instanceof Error?error.message:'无法保存头像'); }
+        }
+        case '/api/collectibles/notifications': {
+          const input=objectBody(body),db=ctx.openWrite(),userId=positiveInt(input,'userId');
+          return {status:200,body:{items:collectibleNotifications(db,userId,cachedProblemRatings(new Repository(db))??[])}};
+        }
+        case '/api/collectibles/notifications/seen': {
+          const input=objectBody(body),db=ctx.openWrite();
+          try { markCollectibleNotified(db,positiveInt(input,'userId'),text(input,'collectibleId',180));return {status:200,body:{ok:true}}; }
+          catch(error) { throw new BadRequest(error instanceof Error?error.message:'无法确认收藏品通知'); }
         }
         case '/api/dan/start': {
           const input = objectBody(body), userId = positiveInt(input, 'userId');
