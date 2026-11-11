@@ -117,7 +117,12 @@ export async function saveB50Image(data, userName, profile = null) {
       const rankAsset={'S':'gam-rank-s.png','S+':'gam-rank-sp.png','SS':'gam-rank-ss.png','SS+':'gam-rank-ssp.png','SSS':'gam-rank-sss.png','SSS+':'gam-rank-sssp.png'}[score.rank];
       if(rankAsset){
         const img=new Image();img.src=`/assets/maimai/${rankAsset}`;
-        try{await img.decode();ctx.drawImage(img,right-82,cy+108,82,38);}catch{text(score.rank,right,cy+140,25,tone,800,66,'right');}
+        try{
+          await img.decode();
+          // The source badges intentionally have different widths (S through SSS+).
+          // Keep their native dimensions and align only their right edge.
+          ctx.drawImage(img,right-img.naturalWidth,cy+105,img.naturalWidth,img.naturalHeight);
+        }catch{text(score.rank,right,cy+140,25,tone,800,66,'right');}
       }else text(score.rank, right, cy + 140, 25, tone, 800, 66, 'right');
       const difficulty=entry.platform==='atcoder'&&entry.nativeProblemRating!=null
         ? `AT ${entry.nativeProblemRating} → CF ${entry.problemRating ?? '—'}`:`难度 ${entry.problemRating ?? '—'}`;
