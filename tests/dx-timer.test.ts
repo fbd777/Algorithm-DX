@@ -64,6 +64,8 @@ test('timer accepts unseen problems, canonicalizes CF URLs, and start retries ca
     assert.equal(normalizeTimerProblem('https://codeforces.com/problemset/problem/2259/a'),'2259:A');
     assert.equal(normalizeTimerProblem('https://codeforces.com/gym/100001/problem/B1'),'100001:B1');
     assert.equal(normalizeTimerProblem('2259a'),'2259:A');
+    assert.equal(normalizeTimerProblem('https://atcoder.jp/contests/abc300/tasks/abc300_a','atcoder'),'abc300_a');
+    assert.equal(normalizeTimerProblem('ABC300_A','atcoder'),'abc300_a');
     assert.throws(()=>normalizeTimerProblem('https://evil.test/contest/2259/problem/A'));
     assert.throws(()=>normalizeTimerProblem('2259:A;DELETE'));
     const timer=s.start();assert.equal(s.start().id,timer.id);

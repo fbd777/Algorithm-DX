@@ -1,12 +1,28 @@
 import { BaseFetcher, FetchError, type ProbeResult } from './base.ts';
 import { HttpClient } from './http.ts';
 import { optionsOf, identifier, timestamp, statusOf, submission, unique } from './common.ts';
-import type { Submission, FetchOptions, FetchBatch } from '../domain.ts';
+import { Repository } from '../db/database.ts';
+import { ATCODER_CF_MAPPING_VERSION, atCoderDifficultyToCodeforces, displayedAtCoderDifficulty } from '../dx/atcoder-rating.ts';
+import type { Cache, Submission, FetchOptions, FetchBatch, ProblemMetadata, ProblemRating, ProblemRelease } from '../domain.ts';
+
+const PROBLEMS_URL='https://kenkoooo.com/atcoder/resources/problems.json';
+const MODELS_URL='https://kenkoooo.com/atcoder/resources/problem-models.json';
+const CONTESTS_URL='https://kenkoooo.com/atcoder/resources/contests.json';
+const CATALOG_TTL_SECONDS=6*3600;
+const CATALOG_CACHE_KEY=`atcoder:problem-catalog:${ATCODER_CF_MAPPING_VERSION}`;
+const CONTEST_CACHE_KEY='atcoder:contests:v1';
+
+export function cachedAtCoderProblemRatings(cache:Cache):ProblemRating[]|null{
+  const rows=cache.get<ProblemMetadata[]>(CATALOG_CACHE_KEY);
+  return rows?rows.filter(row=>row.rating!==null&&!row.experimental).map(row=>({contestId:'atcoder',index:row.problemId,
+    problemId:row.problemId,problemUrl:row.problemUrl,title:row.title,rating:row.rating!,nativeRating:row.nativeRating,tags:[]})):null;
+}
 
 export class AtCoderFetcher extends BaseFetcher {
   readonly platform='atcoder';
   http:HttpClient;
-  constructor(http:HttpClient){super();this.http=http;}
+  cache:Cache;
+  constructor(http:HttpClient,cache:Cache=new Repository(http.db)){super();this.http=http;this.cache=cache;}
   async fetch_recent_submissions(handle:string,limit=100):Promise<Submission[]> {return (await this.fetch_batch(handle,{limit})).submissions;}
   /**
    * 绑定前探测：只靠 `atcoder.jp/users/<id>` 的 HTTP 状态码。
@@ -23,6 +39,48 @@ export class AtCoderFetcher extends BaseFetcher {
     if(res.status===404)return {status:'missing',reason:'AtCoder 上没有这个用户'};
     if(res.status!==200)return {status:'unknown',reason:`这次没能探测（HTTP ${res.status}）`};
     return {status:'found',displayName:null};
+  }
+  override async fetch_problem_releases():Promise<ProblemRelease[]>{
+    const cached=this.cache.get<ProblemRelease[]>(CONTEST_CACHE_KEY);
+    if(cached)return cached;
+    const raw=await this.http.json(CONTESTS_URL,{},1100);
+    if(!Array.isArray(raw))throw new FetchError('Invalid AtCoder Problems contest list',false,'SCHEMA_CHANGED');
+    const rows:ProblemRelease[]=[];
+    for(const contest of raw){
+      if(typeof contest?.id!=='string'||!Number.isSafeInteger(contest?.start_epoch_second))continue;
+      rows.push({contestId:contest.id,name:typeof contest.title==='string'?contest.title:'',startTime:contest.start_epoch_second,
+        durationSeconds:Number.isSafeInteger(contest.duration_second)?contest.duration_second:null});
+    }
+    this.cache.set(CONTEST_CACHE_KEY,rows,CATALOG_TTL_SECONDS);
+    return rows;
+  }
+  override async fetch_problem_metadata():Promise<ProblemMetadata[]>{
+    const cached=this.cache.get<ProblemMetadata[]>(CATALOG_CACHE_KEY);
+    if(cached)return cached;
+    const [problems,models]=await Promise.all([
+      this.http.json(PROBLEMS_URL,{},1100),
+      this.http.json(MODELS_URL,{},1100),
+    ]);
+    if(!Array.isArray(problems)||models===null||typeof models!=='object'||Array.isArray(models))
+      throw new FetchError('Invalid AtCoder Problems metadata',false,'SCHEMA_CHANGED');
+    const rows:ProblemMetadata[]=[];
+    for(const problem of problems){
+      if(typeof problem?.id!=='string'||typeof problem?.name!=='string'||typeof problem?.contest_id!=='string')continue;
+      const model=(models as Record<string,any>)[problem.id];
+      const raw=typeof model?.difficulty==='number'&&Number.isFinite(model.difficulty)?model.difficulty:null;
+      const experimental=model?.is_experimental===true;
+      rows.push({problemId:problem.id,title:problem.name,
+        problemUrl:`https://atcoder.jp/contests/${encodeURIComponent(String(problem.contest_id??''))}/tasks/${encodeURIComponent(problem.id)}`,
+        rating:raw===null||experimental?null:atCoderDifficultyToCodeforces(raw),
+        nativeRating:raw===null?null:displayedAtCoderDifficulty(raw),experimental});
+    }
+    this.cache.set(CATALOG_CACHE_KEY,rows,CATALOG_TTL_SECONDS);
+    return rows;
+  }
+  async fetch_problem_ratings():Promise<ProblemRating[]>{
+    const rows=await this.fetch_problem_metadata();
+    return rows.filter(row=>row.rating!==null&&!row.experimental).map(row=>({contestId:'atcoder',index:row.problemId,
+      problemId:row.problemId,problemUrl:row.problemUrl,title:row.title,rating:row.rating!,nativeRating:row.nativeRating,tags:[]}));
   }
   async fetch_batch(handle:string,options:FetchOptions={}):Promise<FetchBatch>{
     const opts=optionsOf(options), backfill=opts.mode==='backfill';
@@ -53,6 +111,6 @@ export class AtCoderFetcher extends BaseFetcher {
     const all=unique(rows).sort((a,b)=>b.submitted_at-a.submitted_at);
     return {submissions:backfill?all:all.slice(0,opts.limit),source:'https://kenkoooo.com/atcoder',scope:backfill?'history':'window',acceptedOnly:false,
       complete:complete&&(backfill||all.length<=opts.limit),nextCursor:complete?null:String(cursor),
-      note:`AtCoder Problems 非官方镜像，可能延迟；题名暂用题目 ID。${backfill?'按时间分页回补。':'默认查询最近 30 天，可用 --since 指定起点。'}${!complete?'达到分页上限，尚未遍历到最新记录。':''}`};
+      note:`AtCoder Problems 非官方镜像，可能延迟；同步后会用题目目录补齐题名与难度。${backfill?'按时间分页回补。':'默认查询最近 30 天，可用 --since 指定起点。'}${!complete?'达到分页上限，尚未遍历到最新记录。':''}`};
   }
 }

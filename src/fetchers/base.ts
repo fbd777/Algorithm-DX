@@ -1,4 +1,4 @@
-import type { Submission, FetchOptions, FetchBatch, ProblemRelease, ProblemRating } from '../domain.ts';
+import type { Submission, FetchOptions, FetchBatch, ProblemMetadata, ProblemRelease, ProblemRating } from '../domain.ts';
 
 /**
  * 绑定前的探测结果 —— **三态，不是二态**。
@@ -39,6 +39,12 @@ export abstract class BaseFetcher {
    * 评级一到就自动进 DX 榜，不需要任何人再动它。
    */
   async fetch_problem_ratings(): Promise<ProblemRating[] | null> { return null; }
+  /**
+   * Platform problem metadata after conversion to the shared Codeforces scale.
+   * Unlike `fetch_problem_ratings`, this is keyed by the platform's opaque
+   * problem id and may also repair placeholder titles.
+   */
+  async fetch_problem_metadata(): Promise<ProblemMetadata[] | null> { return null; }
   /**
    * 绑定前探测：这个 handle 在平台上是否真实存在。
    *

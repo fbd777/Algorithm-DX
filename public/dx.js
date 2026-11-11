@@ -143,7 +143,9 @@ async function requestSync(accountId) {
 const pageParams = new URLSearchParams(location.search);
 let pageView = ['practice', 'history', 'recorded', 'board'].includes(pageParams.get('view')) ? pageParams.get('view') : 'board';
 // The server supplies the system calendar year; URLs cannot select a season.
-const state = { userId: null, year: null,
+const platformNames={mixed:'混合 B50',codeforces:'Codeforces',atcoder:'AtCoder'};
+const initialPlatform=['mixed','codeforces','atcoder'].includes(pageParams.get('platform'))?pageParams.get('platform'):'mixed';
+const state = { userId: null, year: null, platform:initialPlatform,
   data: null, meta: null, modalTarget: null };
 
 function updatePageNavigation() {
@@ -154,6 +156,7 @@ function updatePageNavigation() {
     const params = new URLSearchParams();
     if (view !== 'board') params.set('view', view);
     if (state.userId !== null) params.set('user', String(state.userId));
+    if (state.platform !== 'mixed') params.set('platform',state.platform);
     link.href = '/dx.html' + (params.size ? '?' + params : '');
     link.className = `btn ${view === pageView ? 'btn-primary' : 'btn-ghost'}`;
     if (view === pageView) link.setAttribute('aria-current', 'page');
@@ -188,10 +191,15 @@ function renderNextStep(data) {
   clear(node);
   const pending = data.counts.pendingRecent ?? 0;
   node.hidden = !pending && data.counts.solved > 0;
-  const title = pending ? `最近 ${data.reminderDays} 天有 ${pending} 道题可补录` : '从第一道 Codeforces 练习开始';
+  const platformName=platformNames[data.platform]??data.platform;
+  const title = pending ? `最近 ${data.reminderDays} 天有 ${pending} 道题可补录` : data.platform==='mixed'
+    ? '从第一道跨平台练习开始'
+    : `从第一道 ${platformName} 练习开始`;
   const description = pending ? '记得实际用时就补录；不记得可选择「不再提醒」。无需补齐历史题目。'
     : data.counts.solved ? '继续练习后同步新题，或记录一次重做。所有已填成绩都能查看上榜状态。'
-    : '先绑定 Codeforces 账号并同步 AC 记录，再回来填写练习用时。';
+    : data.platform==='mixed'
+    ? '先绑定 Codeforces 或 AtCoder 账号并同步 AC 记录，再回来填写练习用时。'
+    : `先绑定 ${platformName} 账号并同步 AC 记录，再回来填写练习用时。`;
   node.append(el('div', {}, [el('strong', { text: title }), el('p', { text: description })]),
     el('a', { class: 'btn btn-primary', href: !data.counts.solved ? '/' : $(pending ? 'practicePageLink' : 'recordedPageLink').href,
       text: !data.counts.solved ? '前往 AC 记录' : pending ? '查看近期练习' : '查看全部成绩' }));
@@ -207,7 +215,10 @@ function statCard(label, value, sub, tone) {
 
 const playerProfiles = new Map();
 function ratingSummary(value) {
-  const own = state.meta?.accounts?.find(a => a.user_id === state.userId && a.platform === 'codeforces' && !a.is_archived);
+  const platform=state.data?.platform??state.platform;
+  const activeAccounts=state.meta?.accounts?.filter(a=>a.user_id===state.userId&&!a.is_archived)??[];
+  const own = activeAccounts.find(a => a.platform === platform);
+  const cfOwn=activeAccounts.find(a=>a.platform==='codeforces');
   const name = own?.handle ?? state.meta?.users?.find(u => u.id === state.userId)?.name ?? '玩家';
   const color = cfRatingColor(value);
   const avatar = el('div', { class: 'dx-player-avatar', 'aria-label': `${name} 的头像` }, [el('span', { text: name.slice(0,1).toUpperCase() })]);
@@ -216,7 +227,7 @@ function ratingSummary(value) {
     const img = el('img', { src: profile.avatar, alt: '', referrerpolicy: 'no-referrer' });
     img.addEventListener('error', () => img.remove(), { once: true });
     avatar.append(img);
-  } else if (own && !playerProfiles.has(state.userId)) {
+  } else if ((platform==='codeforces'?own:platform==='mixed'?cfOwn:null) && !playerProfiles.has(state.userId)) {
     const user = state.userId;
     playerProfiles.set(user, null);
     postJson('/api/dx/profile', { userId: user }).then(data => {
@@ -226,9 +237,9 @@ function ratingSummary(value) {
   }
   const digits = el('strong', { text: num1(value) });
   const player = el('div', { class: 'dx-player-identity' }, [
-    el('span', { class: 'dx-player-platform', text: 'CODEFORCES' }),
+    el('span', { class: 'dx-player-platform', text: platform==='mixed'?'CF × AT':(platformNames[platform]??platform).toUpperCase() }),
     el(own ? 'a' : 'strong', { class: 'dx-player-name', text: name,
-      href: own ? `https://codeforces.com/profile/${encodeURIComponent(name)}` : null,
+      href: own ? (platform==='atcoder'?`https://atcoder.jp/users/${encodeURIComponent(name)}`:`https://codeforces.com/profile/${encodeURIComponent(name)}`) : null,
       target: own ? '_blank' : null, rel: 'noopener noreferrer' }),
   ]);
   return el('div', { class: 'dx-player-card' }, [avatar, player,
@@ -284,12 +295,13 @@ function slotCard(slot, partition) {
   const item = slot.entry, score = slot.score;
   const title = item.problemTitle || item.problemId;
   return el('article', {
-    class: 'dx-card dx-b50-card', 'data-rank': score.rank,
+    class: `dx-card dx-b50-card platform-${item.platform}`, 'data-rank': score.rank, 'data-platform':item.platform,
     'data-problem-id': item.problemId, tabindex: -1,
     'aria-label': `${partition} 第 ${slot.position} 名 · ${item.problemId} ${title}`,
   }, [
     el('div', { class: 'dx-b50-heading' }, [
       el('span', { text: `${partition} #${pad2(slot.position)}` }),
+      el('span',{class:'dx-platform-mark',text:item.platform==='atcoder'?'ATCODER':'CODEFORCES'}),
       el('span', { text: item.problemId }),
     ]),
     el('h3', { class: 'dx-b50-title', title }, [item.problemUrl
@@ -302,7 +314,8 @@ function slotCard(slot, partition) {
       el('span', { class: 'dx-b50-rank', text: score.rank }),
     ]),
     el('div', { class: 'dx-b50-meta' }, [
-      el('span', { text: `难度 ${item.problemRating ?? '—'}` }),
+      el('span', { text: item.platform === 'atcoder'&&item.nativeProblemRating!=null
+        ? `AtCoder ${item.nativeProblemRating} → CF 等效 ${item.problemRating ?? '—'}`:`难度 ${item.problemRating ?? '—'}` }),
       el('span', { text: fmtClock(item.recordedSeconds), title: '最佳用时', 'aria-label': `最佳用时 ${fmtClock(item.recordedSeconds)}` }),
     ]),
     el('details', { class: 'dx-b50-details' }, [
@@ -346,14 +359,15 @@ async function changeReminder(item, button) {
   button.disabled=true;
   try {
     const dismissed=item.reminderGroup!=='dismissed';
-    await postJson('/api/dx/reminder',{userId,problemId:item.problemId,dismissed});
+    await postJson('/api/dx/reminder',{userId,platform:item.platform??state.platform,problemId:item.problemId,dismissed});
     if(userId!==state.userId)return;
     $('pendingActionStatus').textContent=dismissed?`${item.problemId} 已设为不再提醒，AC 记录仍保留。`:`${item.problemId} 已恢复，可在近期或历史清单中查看。`;
     await load(true);
   } catch(error) {if(userId===state.userId)$('pendingActionStatus').textContent=error.message;button.disabled=false;}
 }
 function pendingRow(item) {
-  return el('div', { class: 'dx-pending-row dx-pending-entry' }, [
+  const prefix=(item.platform??state.platform)==='atcoder'?'AT':'CF';
+  return el('div', { class: `dx-pending-row dx-pending-entry platform-${item.platform??state.platform}` }, [
     el('span', { class: 'dx-pending-id', text: item.problemId }),
     el('span', { class: 'dx-pending-name', text: item.problemTitle || '' }),
     // 未评定的题也进清单：现在就能填，评级公布后自动计分进榜。
@@ -361,13 +375,14 @@ function pendingRow(item) {
       ? el('span', {
           class: 'badge',
           text: item.sourceProblemId?'原题未评级':item.problemUrl?.includes('/group/')?'待核对原题':'未评定',
-          title: item.sourceProblemId?'已确认原题，但 CF 未提供官方题目 Rating。可先记录用时。':item.problemUrl?.includes('/group/')?'请在账号管理的「原题配对与难度」核对来源。':'CF 尚无这道题的 Rating，可先填写用时。',
+          title: (item.platform??state.platform)==='atcoder'?'AtCoder Problems 暂无稳定难度估计，可先记录用时。':item.sourceProblemId?'已确认原题，但 CF 未提供官方题目 Rating。可先记录用时。':item.problemUrl?.includes('/group/')?'请在账号管理的「原题配对与难度」核对来源。':'CF 尚无这道题的 Rating，可先填写用时。',
         })
-      : el('span', { class: 'dx-pending-meta', text: `难度 ${item.problemRating}` }),
+      : el('span', { class: 'dx-pending-meta', text: (item.platform??state.platform)==='atcoder'&&item.nativeProblemRating!=null
+        ? `AtCoder ${item.nativeProblemRating} → CF 等效 ${item.problemRating}`:`难度 ${item.problemRating}` }),
     el('span', {
       class: 'dx-pending-meta',
       // 年份和 AC 时间固定在第二行，不随按钮数量换行。
-      text: `${item.releasedAt == null ? 'CF????' : 'CF' + new Date(item.releasedAt * 1000).getFullYear()} · AC ${fmtDateTime(item.solvedAt)}`,
+      text: `${item.releasedAt == null ? prefix+'????' : prefix + new Date(item.releasedAt * 1000).getFullYear()} · AC ${fmtDateTime(item.solvedAt)}`,
       title:
         item.releasedAt === null
           ? '尚未确认原题出题日期，暂按旧题处理'
@@ -465,28 +480,33 @@ function renderRecorded(data) {
 
 /** Actions shared by compact B50 cards and the full record library. */
 function scoreActions(item) {
-  return [
+  const actions = [];
+  if(state.platform!=='mixed')actions.push(
     el('button', { class: 'btn btn-mini', type: 'button', text: '再练一次', onclick: () => {
       if (timerController.running()) { $('timerRunning').scrollIntoView({ behavior: 'smooth' }); return; }
       $('timerProblem').value = item.problemId; $('timerKind').value = 'repeat';
       $('timerProblem').dispatchEvent(new Event('input'));
       $('timerForm').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('timerStart').focus();
     } }),
+  );
+  actions.push(
     el('button', { class: 'btn btn-ghost btn-mini', type: 'button', text: '手动记录', onclick: () => openModal(item, item.problemTitle || item.problemId) }),
-  ];
+  );
+  return actions;
 }
 
 /** Full score cards for browsing the record library. */
 function scoreCard(item, statusLabel) {
     const score=item.score;
-    return el('article', { class:'dx-library-card dx-card', 'data-rank':score?.rank ?? '', 'aria-label':`${item.problemId} ${item.problemTitle}` },[
-      el('div',{class:'dx-library-card-head'},[el('span',{class:'dx-rank',text:score?.rank ?? '待评定'}),el('span',{class:'badge',text:statusLabel})]),
+    return el('article', { class:`dx-library-card dx-card platform-${item.platform}`, 'data-rank':score?.rank ?? '', 'data-platform':item.platform,'aria-label':`${item.problemId} ${item.problemTitle}` },[
+      el('div',{class:'dx-library-card-head'},[el('span',{class:'dx-rank',text:score?.rank ?? '待评定'}),el('span',{class:'dx-platform-mark',text:item.platform==='atcoder'?'ATCODER':'CODEFORCES'}),el('span',{class:'badge',text:statusLabel})]),
       el('div',{class:'dx-library-title'},[el('span',{class:'dx-pending-id',text:item.problemId}),
         el('h3',{},[item.problemUrl?el('a',{href:item.problemUrl,target:'_blank',rel:'noreferrer',text:item.problemTitle || item.problemId}):el('span',{text:item.problemTitle || item.problemId})])]),
       el('div',{class:'dx-library-metrics'},[
         el('div',{},[el('span',{text:'完成度'}),el('strong',{text:score?score.achievementShown.toFixed(4)+'%':'—'})]),
         el('div',{},[el('span',{text:'单题 Rating'}),el('strong',{text:num1(score?.rating)})]),
-        el('div',{},[el('span',{text:'难度'}),el('strong',{text:item.problemRating ?? (item.sourceProblemId?'原题未评级':item.problemUrl?.includes('/group/')?'待核对原题':'待公布')})]),
+        el('div',{},[el('span',{text:item.platform==='atcoder'?'AtCoder → CF 等效':'难度'}),el('strong',{text:item.platform==='atcoder'&&item.nativeProblemRating!=null
+          ? `${item.nativeProblemRating} → ${item.problemRating ?? '待公布'}`:item.problemRating ?? (item.sourceProblemId?'原题未评级':item.problemUrl?.includes('/group/')?'待核对原题':'待公布')})]),
         el('div',{},[el('span',{text:'最佳用时'}),el('strong',{text:fmtClock(item.recordedSeconds)})]),
       ]),
       el('div',{class:'dx-library-card-foot'},[el('span',{text:`首次 AC ${fmtDate(item.solvedAt)}`}), ...scoreActions(item)]),
@@ -508,8 +528,11 @@ function renderEmpty(data) {
   if (hasAny) return;
   empty.hidden = false;
   if (!data.counts.solved) {
-    $('emptyTitle').textContent = '这个用户还没有 Codeforces 的 AC 记录';
-    $('emptyBody').textContent = '先到「账号管理」绑定 Codeforces 账号并同步，再回来填用时。';
+    const platformName=platformNames[data.platform]??data.platform;
+    $('emptyTitle').textContent = data.platform==='mixed'?'这个用户还没有 CF / AtCoder 的 AC 记录':`这个用户还没有 ${platformName} 的 AC 记录`;
+    $('emptyBody').textContent = data.platform==='mixed'
+      ? '先到「账号管理」绑定 Codeforces 或 AtCoder 账号并同步，再回来填用时。'
+      : `先到「账号管理」绑定 ${platformName} 账号并同步，再回来填用时。`;
   } else if (!data.counts.recorded) {
     $('emptyTitle').textContent = '从下一次计时练习开始积累成绩';
     $('emptyBody').textContent = '已有 AC 记录会保留，无需补齐过去的用时。准备好题目和 IDE 后，点击「开始计时」即可。';
@@ -937,10 +960,11 @@ async function load(preservePage = false) {
     $('emptyBody').textContent = '先到「做题动态」页的账号管理里建一个用户。';
     return;
   }
-  const params = { user: String(state.userId) };
+  const params = { user: String(state.userId), platform:state.platform };
   const data = await api('/api/dx', params);
   if (requestRevision !== loadRevision) return;
   state.data = data;
+  state.platform=data.platform;
   state.year = data.year;
   updatePageNavigation();
   if (pageView === 'board') {
@@ -957,6 +981,17 @@ async function load(preservePage = false) {
   }
   renderEmpty(data);
   $('placeholder').hidden = true;
+  $('dxTimer').hidden=state.platform==='mixed';
+  if(state.platform!=='mixed'){
+    document.querySelector('#timerForm .field-label').textContent=state.platform==='atcoder'?'AtCoder 题号或链接':'Codeforces 题号或链接';
+    $('timerProblem').placeholder=state.platform==='atcoder'?'abc300_a 或粘贴题目链接':'2259:A 或粘贴题目链接';
+  }
+  $('backtestBtn').hidden=state.platform!=='codeforces';
+  $('boardIntroText').textContent=state.platform==='mixed'
+    ? '把 Codeforces 官方难度与 AtCoder 的 CF 等效难度放进同一张 B50；两站题目共同竞争 B35 / B15，卡片保留清晰的平台标识。'
+    : state.platform==='atcoder'
+    ? '把 AtCoder 练习用时按 CF 等效难度换算为单题得分，取旧题前 35 道与新题前 15 道。难度来自 AtCoder Problems，当前映射为 Beta。'
+    : '把 Codeforces 练习用时换算为单题得分，取旧题前 35 道与新题前 15 道，组成你的 B50。';
   $('footInfo').textContent =
     `${data.year} 年 · 更新于 ${new Date().toLocaleTimeString('zh-CN')}`;
 }
@@ -985,13 +1020,13 @@ async function refresh() {
 /* ---------- 同步最新数据 ---------- */
 
 /*
- * 这一页的按钮只有一个：**同步最新数据**。它先让服务端去抓 CF 的最新提交，再重新读取本机数据。
+ * 这一页的按钮只有一个：**同步最新数据**。它先让服务端去抓当前视图对应账号的最新提交，再重新读取本机数据。
  *
  * 为什么不是「刷新」+ 单独的「同步」两个按钮：刷新只重读本机 SQLite，刚在 CF 上切掉的题
  * 根本不在库里，点了也看不到 —— 两个按钮区别不可见，只剩困惑。所以合成一件事：
  * 抓一次、读一次、把结果说出来。
  *
- * 只同步**当前用户绑定的 Codeforces 账号**，不碰洛谷等其他账号：这一页的口径就是 CF。
+ * 只同步当前用户在视图内的 Codeforces / AtCoder 账号，不碰其他用户或其他平台。
  */
 
 const SYNC_POLL_MS = 1200;
@@ -1012,11 +1047,11 @@ function setSyncNotice(text, bad = false) {
   node.textContent = text;
 }
 
-/** 当前用户在 DX 口径下唯一相关的账号：他绑定的那个 Codeforces。 */
-function cfAccountId() {
+/** 当前用户在所选 DX 视图下相关的有效账号。 */
+function dxAccountIds() {
   const accounts = state.meta?.accounts ?? [];
-  const own = accounts.find((a) => !a.is_archived && a.user_id === state.userId && a.platform === 'codeforces');
-  return own ? own.id : null;
+  return accounts.filter((a) => !a.is_archived && a.user_id === state.userId
+    && (state.platform==='mixed'?['codeforces','atcoder'].includes(a.platform):a.platform===state.platform)).map(a=>a.id);
 }
 
 /**
@@ -1028,14 +1063,15 @@ function cfAccountId() {
  */
 function describeSync(result, added, missing) {
   const at = new Date().toLocaleTimeString('zh-CN');
-  if (!result) return `${at} · CF 同步结束，但没拿到这一轮的结果`;
-  if (result.status === 'skipped') return `${at} · CF 同步被跳过（${result.message}）`;
-  if (result.status === 'failed') return `${at} · CF 同步失败（${result.message}）`;
+  const label=platformNames[state.platform]??state.platform;
+  if (!result) return `${at} · ${label} 同步结束，但没拿到这一轮的结果`;
+  if (result.status === 'skipped') return `${at} · ${label} 同步被跳过（${result.message}）`;
+  if (result.status === 'failed') return `${at} · ${label} 同步失败（${result.message}）`;
   const head = added.length
     ? `抓回 ${result.fetched} 条，近期可补录 ${added.length} 道：${added.slice(0, 3).join('、')}${added.length > 3 ? ' 等' : ''}`
     : `抓回 ${result.fetched} 条，同步完成`;
   const tail = missing > 0 ? `。${missing} 道题尚未公布难度，可以先记录可信用时` : '';
-  return `${at} · CF 同步：${head}${tail}`;
+  return `${at} · ${label} 同步：${head}${tail}`;
 }
 
 /** 轮询到本轮任务结束，返回这一轮的结果数组（不再假设「只有一个账号」）。 */
@@ -1056,35 +1092,43 @@ async function waitForSync(jobId) {
 
 async function syncLatest() {
   if (state.userId === null) return;
-  const accountId = cfAccountId();
-  if (accountId === null) {
-    setSyncNotice(`用户 #${state.userId} 没有绑定 Codeforces 账号。先到「做题动态」页的账号管理里绑定，再回来同步。`, true);
+  const accountIds = dxAccountIds();
+  const label=platformNames[state.platform]??state.platform;
+  if (!accountIds.length) {
+    const target=state.platform==='mixed'?'Codeforces 或 AtCoder':label;
+    setSyncNotice(`用户 #${state.userId} 没有绑定 ${target} 账号。先到「做题动态」页的账号管理里绑定，再回来同步。`, true);
     return;
   }
-  const beforePending = new Set((state.data?.pending ?? []).map((p) => p.problemId));
+  const beforePending = new Set((state.data?.pending ?? []).map((p) => `${p.platform}:${p.problemId}`));
   const beforeMissing = state.data?.counts?.missingRating ?? 0;
 
   setBusy(true);
-  setSyncNotice('正在从 Codeforces 拉取最新提交…');
+  setSyncNotice(`正在从 ${label} 拉取最新提交…`);
   try {
-    let attempt = await requestSync(accountId);
-    let results = await waitForSync(attempt.jobId);
-    let result = results.find((r) => r.accountId === accountId) ?? null;
-    let followedNote = '';
-    if (attempt.followed) {
-      if (result) {
-        followedNote = '另一轮同步正在跑（多半是你在「做题动态」页点的那次），跟着它跑完';
-      } else {
-        // 跟着跑完的那轮没覆盖这个 CF 账号（例如从账号管理发起的单账号回补），自己再抓一次。
-        setSyncNotice('刚才那轮同步没有覆盖你的 Codeforces 账号，正在单独再抓一次…');
-        attempt = await requestSync(accountId);
-        results = await waitForSync(attempt.jobId);
-        result = results.find((r) => r.accountId === accountId) ?? null;
+    const results=[];
+    let followed=false;
+    for(let index=0;index<accountIds.length;index++){
+      const accountId=accountIds[index];
+      if(accountIds.length>1)setSyncNotice(`正在同步 ${label} 账号 ${index+1} / ${accountIds.length}…`);
+      let attempt=await requestSync(accountId);
+      let batch=await waitForSync(attempt.jobId);
+      let result=batch.find(row=>row.accountId===accountId)??null;
+      if(attempt.followed){
+        followed=true;
+        if(!result){
+          setSyncNotice(`刚才那轮没有覆盖第 ${index+1} 个账号，正在单独补同步…`);
+          attempt=await requestSync(accountId);
+          batch=await waitForSync(attempt.jobId);
+          result=batch.find(row=>row.accountId===accountId)??null;
+        }
       }
+      if(result)results.push(result);
     }
+    const result=results[0]??null;
+    const followedNote=followed?'期间跟随了另一轮正在进行的同步':'';
 
     await load();
-    const added = (state.data?.pending ?? []).filter((p) => p.reminderGroup==='recent' && !beforePending.has(p.problemId)).map((p) => p.problemId);
+    const added = (state.data?.pending ?? []).filter((p) => p.reminderGroup==='recent' && !beforePending.has(`${p.platform}:${p.problemId}`)).map((p) => p.problemId);
     const missing = Math.max(0, (state.data?.counts?.missingRating ?? 0) - beforeMissing);
     const pendingCount = state.data?.counts?.pendingRecent ?? 0;
 
@@ -1100,8 +1144,11 @@ async function syncLatest() {
     const tail = pendingCount
       ? `近期有 ${pendingCount} 道题可选补录，${pageView === 'practice' ? '清单已在下方展开' : '可到「用时补录」查看'}`
       : '近期无需补录，历史未计时题不再提醒';
-    const receipt = [followedNote, describeSync(result, added, missing), tail].filter(Boolean).join('；') + '。';
-    setSyncNotice(receipt, result?.status === 'failed');
+    const mixedSummary=state.platform==='mixed'
+      ? `${new Date().toLocaleTimeString('zh-CN')} · 混合同步完成：${results.filter(row=>row.status==='success').length} / ${accountIds.length} 个账号成功${missing?`，${missing} 道题尚无稳定难度`:''}`
+      : describeSync(result,added,missing);
+    const receipt = [followedNote, mixedSummary, tail].filter(Boolean).join('；') + '。';
+    setSyncNotice(receipt, state.platform==='mixed'?results.length<accountIds.length||results.some(row=>row.status==='failed'):result?.status === 'failed');
   } catch (error) {
     setSyncNotice(`同步失败：${error.message}`, true);
   } finally {
@@ -1148,7 +1195,7 @@ $('recordsExport').addEventListener('click',()=>{
 });
 $('practiceBtn').addEventListener('click', () => {
   if (state.userId === null) return;
-  openModal({ problemId: '', problemRating: null, recordedSeconds: null }, '填写已同步题号');
+  openModal({ platform: state.platform==='mixed'?'codeforces':state.platform, problemId: '', problemRating: null, recordedSeconds: null }, '填写已同步题号');
 });
 $('practicePrev').addEventListener('click', () => { practiceOffset = Math.max(0, practiceOffset - 50); loadPractice().catch(e => alert(e.message)); });
 $('practiceNext').addEventListener('click', () => { practiceOffset += 50; loadPractice().catch(e => alert(e.message)); });
@@ -1184,6 +1231,13 @@ $('userSelect').addEventListener('change', (event) => {
   void timerController.refresh().catch(error=>{$('timerStatus').textContent=error.message;});
   refresh();
 });
+$('platformSelect').value=state.platform;
+$('platformSelect').addEventListener('change',(event)=>{
+  state.platform=event.target.value;state.year=null;state.data=null;
+  pendingPage=0;recordsPage=0;$('pendingActionStatus').textContent='';
+  const url=new URL(location.href);if(state.platform==='mixed')url.searchParams.delete('platform');else url.searchParams.set('platform',state.platform);history.replaceState(null,'',url);
+  refresh();
+});
 
 updatePageNavigation();
 async function focusResultOnBoard({ userId, problemId }) {
@@ -1206,7 +1260,7 @@ async function focusResultOnBoard({ userId, problemId }) {
     .find(node => node.dataset.problemId === problemId);
   if (card) await focusB50Card(card, () => state.userId === userId && pageView === 'board');
 }
-const timerController=initDxTimer({getUser:()=>state.userId,onComplete:()=>load(true),onResultClose:focusResultOnBoard});
+const timerController=initDxTimer({getUser:()=>state.userId,getPlatform:()=>state.platform,onComplete:()=>load(true),onResultClose:focusResultOnBoard});
 await loadMeta();
 await timerController.refresh().catch(error=>{$('timerStatus').textContent=error.message;});
 // ?resultPreview=1 用样例把结算弹窗直接弹出来：调这块 UI 时不用真做完一道题。

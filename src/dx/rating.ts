@@ -79,11 +79,11 @@ export const OLD_SLOTS = 35;
 /** 本年度新题格数（下 3×5）。 */
 export const NEW_SLOTS = 15;
 /**
- * 计榜平台。目前只有 Codeforces：它的题目 Rating 是官方给的数字，可以直接充当难度锚点
- * （对应 maimai 的「定数」那一层）。洛谷只提供等级码（0–4），要凑出锚点得先做一套人为
- * 映射，那是另一个决定，不在本轮。
+ * 默认计榜平台是 Codeforces。AtCoder 使用独立 B50，将 AtCoder Problems
+ * 估算难度映射成 CF 等效整数后复用同一套计分曲线。
  */
 export const DX_PLATFORM = 'codeforces';
+export const DX_PLATFORMS = ['codeforces','atcoder'] as const;
 
 /**
  * Rank 门槛，抄自文档第 26 行；顺序必须从高到低。
@@ -475,10 +475,12 @@ export function buildPending(entries: readonly DxEntry[], currentYearStart: numb
   for (const entry of entries) {
     if (entry.recordedSeconds !== null) continue;
     pending.push({
+      platform: entry.platform,
       problemId: entry.problemId,
       problemTitle: entry.problemTitle,
       problemUrl: entry.problemUrl,
       problemRating: entry.problemRating,
+      nativeProblemRating:entry.nativeProblemRating,
       releasedAt: entry.releasedAt,
       solvedAt: entry.solvedAt,
       isCurrent: entry.releasedAt !== null && entry.releasedAt >= currentYearStart,

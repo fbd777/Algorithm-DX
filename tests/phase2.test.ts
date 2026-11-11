@@ -12,12 +12,14 @@ import { BaseFetcher, FetchError } from '../src/fetchers/base.ts';
 import { CodeforcesSyncFetcher } from '../src/fetchers/codeforces-sync.ts';
 import { LeetCodeFetcher } from '../src/fetchers/leetcode.ts';
 import { AtCoderFetcher } from '../src/fetchers/atcoder.ts';
+import { atCoderDifficultyToCodeforces, displayedAtCoderDifficulty } from '../src/dx/atcoder-rating.ts';
 import { LuoguFetcher, parseLuogu, parseLuoguProfile, normalizeLuogu } from '../src/fetchers/luogu.ts';
 import { MatijiFetcher } from '../src/fetchers/matiji.ts';
 import { createFactory, credentialKey, resolveCredential } from '../src/fetchers/registry.ts';
 import { assertSafeEnvValue, redactSecrets, upsertEnvVar } from '../src/credentials.ts';
 import { submission } from '../src/fetchers/common.ts';
 import { SyncService } from '../src/sync/service.ts';
+import { listDxEntries } from '../src/server/queries.ts';
 import { watchSync } from '../src/sync/scheduler.ts';
 import type { FetchBatch, FetchOptions, Submission } from '../src/domain.ts';
 
@@ -125,6 +127,50 @@ test('AtCoder overlaps timestamp boundary and protects against stalled pages',as
     assert.deepEqual(seen,[0,20]);assert.equal(result.submissions.length,501);assert.equal(result.complete,true);
     const stuck=new AtCoderFetcher(new HttpClient(db,async()=>Response.json(Array.from({length:500},(_,i)=>raw(i,10))),fast));
     await assert.rejects(stuck.fetch_batch('tester',{mode:'backfill',cursor:'10'}),(e:FetchError)=>e.code==='PAGINATION_STALLED');
+  }finally{db.close();}
+});
+
+test('AtCoder difficulty uses the published low-rating correction and versioned CF scale',()=>{
+  assert.equal(displayedAtCoderDifficulty(400),400);
+  assert.equal(displayedAtCoderDifficulty(0),147);
+  assert.equal(atCoderDifficultyToCodeforces(400),1013);
+  assert.equal(atCoderDifficultyToCodeforces(800),1316);
+  assert.equal(atCoderDifficultyToCodeforces(1200),1619);
+  assert.equal(atCoderDifficultyToCodeforces(2000),2224);
+  assert.equal(atCoderDifficultyToCodeforces(-1000),800);
+});
+
+test('AtCoder sync repairs titles, maps stable difficulty and stores string contest dates',async()=>{
+  const db=openDatabase(':memory:');
+  try{
+    const repo=new Repository(db),user=repo.createUser('Me'),account=repo.addAccount(user,'atcoder','tester');
+    const http=new HttpClient(db,async(url)=>{
+      const value=String(url);
+      if(value.includes('/user/submissions'))return Response.json([{
+        id:1,epoch_second:1700000100,problem_id:'abc001_1',contest_id:'abc001',result:'AC',language:'C++',execution_time:2,
+      }]);
+      if(value.endsWith('/contests.json'))return Response.json([{
+        id:'abc001',start_epoch_second:1700000000,duration_second:7200,title:'ABC 001',
+      }]);
+      if(value.endsWith('/problems.json'))return Response.json([
+        {id:'abc001_1',contest_id:'abc001',problem_index:'A',name:'Visibility',title:'A. Visibility'},
+        {id:'abc001_2',contest_id:'abc001',problem_index:'B',name:'Wind Scale',title:'B. Wind Scale'},
+      ]);
+      if(value.endsWith('/problem-models.json'))return Response.json({
+        abc001_1:{difficulty:1200,is_experimental:false},
+        abc001_2:{difficulty:1600,is_experimental:true},
+      });
+      throw new Error(`unexpected URL ${value}`);
+    },fast);
+    const result=await new SyncService(db,()=>new AtCoderFetcher(http,repo),{}).sync(account);
+    assert.equal(result[0].status,'success');
+    assert.match(result[0].message,/题目元数据更新 1 条/);
+    const saved=db.prepare('SELECT problem_title,difficulty FROM submissions WHERE account_id=?').get(account)!;
+    assert.equal(saved.problem_title,'Visibility');
+    assert.equal(saved.difficulty,1619);
+    const entry=listDxEntries(db,user,'atcoder')[0];
+    assert.equal(entry.releasedAt,1700000000);
+    assert.equal(entry.problemRating,1619);
   }finally{db.close();}
 });
 

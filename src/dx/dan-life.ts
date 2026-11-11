@@ -10,7 +10,7 @@ export interface LifeResult {
 export function lifeRules(session: { rules_json: string | null }): LifeRules | null {
   return session.rules_json ? JSON.parse(session.rules_json) : null;
 }
-export function stageLife(db: DatabaseSync, session: { id: string; stage_count: number; rules_json: string | null },
+export function stageLife(db: DatabaseSync, session: { id: string; stage_count: number; rules_json: string | null; platform?:string },
   stage: { stage_index: number; timer_id: string | null; life_json: string | null }, now: number): LifeResult | null {
   const rules = lifeRules(session);
   if (!rules) return null;
@@ -28,8 +28,8 @@ export function stageLife(db: DatabaseSync, session: { id: string; stage_count: 
   if (!timer) return result;
   const end = Math.min(Number(timer.ended_at ?? now), now);
   const rows = db.prepare(`SELECT submission_id,status,submitted_at FROM submissions
-    WHERE account_id=? AND platform='codeforces' AND problem_id=? AND submitted_at>? AND submitted_at<=?
-    ORDER BY submitted_at, length(submission_id), submission_id`).all(timer.account_id!, timer.problem_id!, timer.started_at!, end);
+    WHERE account_id=? AND platform=? AND problem_id=? AND submitted_at>? AND submitted_at<=?
+    ORDER BY submitted_at, length(submission_id), submission_id`).all(timer.account_id!,session.platform??'codeforces', timer.problem_id!, timer.started_at!, end);
   result.pending = rows.some(row => row.status === 'PENDING');
   for (const row of rows) {
     if (['WA','TLE','MLE','RE'].includes(String(row.status))) {
@@ -44,7 +44,7 @@ export function stageLife(db: DatabaseSync, session: { id: string; stage_count: 
   }
   return result;
 }
-export function sessionLife(db: DatabaseSync, session: { id: string; stage_count: number; rules_json: string | null; status: string }, now: number) {
+export function sessionLife(db: DatabaseSync, session: { id: string; stage_count: number; rules_json: string | null; status: string; platform?:string }, now: number) {
   const rules = lifeRules(session);
   if (!rules) return null;
   const stage = db.prepare('SELECT * FROM dan_stages WHERE session_id=? ORDER BY stage_index DESC LIMIT 1').get(session.id) as

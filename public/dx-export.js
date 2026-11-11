@@ -56,7 +56,8 @@ export async function saveB50Image(data, userName) {
   };
   text('ALGORITHM DX', margin, 65, 22, '#90baff', 700);
   text('BEST 50', margin, 127, 46, '#e6edf3', 800);
-  text(`${userName} · ${data.year} 年度`, margin, 169, 24, '#a4b1c5', 400, 980);
+  const viewLabel=data.platform==='mixed'?'Codeforces × AtCoder 混合榜':data.platform==='atcoder'?'AtCoder':'Codeforces';
+  text(`${userName} · ${data.year} 年度 · ${viewLabel}`, margin, 169, 24, '#a4b1c5', 400, 980);
   drawDxRatingFrame(ctx, data.board.rating, 1160, 74);
   const oldTotal = data.board.old.reduce((n, slot) => n + (slot.score?.rating ?? 0), 0);
   const newTotal = data.board.current.reduce((n, slot) => n + (slot.score?.rating ?? 0), 0);
@@ -80,18 +81,23 @@ export async function saveB50Image(data, userName) {
       }
       const tone = score.rank.startsWith('SS') ? '#ffd166' : score.rank.startsWith('S') ? '#f0883e'
         : score.rank.startsWith('A') ? '#58a6ff' : score.rank.startsWith('B') ? '#3fb950' : '#8998af';
+      const platformColor=entry.platform==='atcoder'?'#d65b69':'#3187d8';
       const gradient = ctx.createLinearGradient(x, cy, x + cardWidth, cy + cardHeight);
-      gradient.addColorStop(0, '#1b2336'); gradient.addColorStop(1, '#101827');
-      box(x, cy, cardWidth, cardHeight, gradient);
-      ctx.fillStyle = tone; ctx.fillRect(x, cy + 16, 3, cardHeight - 32);
+      gradient.addColorStop(0, entry.platform==='atcoder'?'#2d1d29':'#19263a'); gradient.addColorStop(1, '#101827');
+      box(x, cy, cardWidth, cardHeight, gradient,platformColor);
+      ctx.fillStyle = platformColor; ctx.fillRect(x, cy + 14, 4, cardHeight - 28);
       const right = x + cardWidth - 18;
       text(`${group.label} #${String(i + 1).padStart(2, '0')}`, x + 18, cy + 29, 14, '#a4b1c5', 600);
-      text(entry.problemId, right, cy + 29, 14, '#8998af', 400, cardWidth - 130, 'right');
+      const source=entry.platform==='atcoder'?'ATCODER':'CODEFORCES';
+      text(source, x + 108, cy + 29, 11, platformColor, 800, 86);
+      text(entry.problemId, right, cy + 29, 14, '#8998af', 400, cardWidth - 205, 'right');
       title(entry.problemTitle || entry.problemId, x + 18, cy + 59, cardWidth - 36);
       text('完成度', x + 18, cy + 107, 13, '#8998af');
       text(score.achievementShown.toFixed(4) + '%', x + 18, cy + 140, 31, '#e6edf3', 800, cardWidth - 110);
       text(score.rank, right, cy + 140, 25, tone, 800, 66, 'right');
-      text(`难度 ${entry.problemRating ?? '—'}`, x + 18, cy + 166, 15, '#a4b1c5');
+      const difficulty=entry.platform==='atcoder'&&entry.nativeProblemRating!=null
+        ? `AT ${entry.nativeProblemRating} → CF ${entry.problemRating ?? '—'}`:`难度 ${entry.problemRating ?? '—'}`;
+      text(difficulty, x + 18, cy + 166, 15, '#a4b1c5',400,cardWidth-120);
       text(clock(entry.recordedSeconds), right, cy + 166, 15, '#a4b1c5', 600, 110, 'right');
       ctx.beginPath(); ctx.moveTo(x + 18, cy + 181); ctx.lineTo(right, cy + 181);
       ctx.strokeStyle = '#283247'; ctx.lineWidth = 1; ctx.stroke();
@@ -100,7 +106,7 @@ export async function saveB50Image(data, userName) {
     }
     y += Math.ceil(group.capacity / 5) * (cardHeight + gap);
   }
-  text('Codeforces 练习成绩 · 空位按 0 分计入 · DX Rating 为娱乐向换算', margin, height - 37, 18, '#8998af');
+  text(`${viewLabel} · 空位按 0 分计入 · DX Rating 为娱乐向换算`, margin, height - 37, 18, '#8998af');
   text(new Date().toLocaleDateString('zh-CN'), width - 190, height - 37, 18, '#8998af');
   const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('图片生成失败，请重试');

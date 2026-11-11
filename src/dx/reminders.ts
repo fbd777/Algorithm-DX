@@ -4,14 +4,14 @@ export const REMINDER_DAYS = 7;
 export function reminderGroup(solvedAt: number, dismissed: boolean, now = Math.floor(Date.now()/1000)) {
   return dismissed ? 'dismissed' : solvedAt >= now-REMINDER_DAYS*86400 ? 'recent' : 'historical';
 }
-export function dismissedProblems(db: DatabaseSync, userId: number): Set<string> {
+export function dismissedProblems(db: DatabaseSync, userId: number, platform='codeforces'): Set<string> {
   return new Set((db.prepare(`SELECT DISTINCT r.problem_id FROM dx_time_reminders r JOIN accounts a ON a.id=r.account_id
-    WHERE a.user_id=? AND a.platform='codeforces' AND a.is_archived=0`).all(userId) as {problem_id:string}[]).map(r=>r.problem_id));
+    WHERE a.user_id=? AND a.platform=? AND a.is_archived=0`).all(userId,platform) as {problem_id:string}[]).map(r=>r.problem_id));
 }
-export function setTimeReminder(db: DatabaseSync, userId: number, problemId: string, dismissed: boolean) {
+export function setTimeReminder(db: DatabaseSync, userId: number, problemId: string, dismissed: boolean, platform='codeforces') {
   if (typeof dismissed !== 'boolean') throw new Error('提醒设置无效');
   const accounts=db.prepare(`SELECT DISTINCT a.id FROM accounts a JOIN submissions s ON s.account_id=a.id
-    WHERE a.user_id=? AND a.platform='codeforces' AND a.is_archived=0 AND s.problem_id=? AND s.status='AC'`).all(userId,problemId);
+    WHERE a.user_id=? AND a.platform=? AND a.is_archived=0 AND s.problem_id=? AND s.status='AC'`).all(userId,platform,problemId);
   if(!accounts.length) throw new Error('当前用户没有这道题的 AC 记录');
   db.exec('SAVEPOINT dx_reminder');
   try {

@@ -36,7 +36,8 @@
 
   <div class="page-toolbar" role="group" aria-label="页面操作">
 <select id="userSelect" class="select" aria-label="选择用户"></select>
-      <button id="syncBtn" class="btn btn-ghost" type="button" title="从 Codeforces 拉取最新提交，再重新读取本机数据">同步最新数据</button>
+      <select id="platformSelect" class="select" aria-label="选择 DX 平台"><option value="mixed">混合 B50</option><option value="codeforces">Codeforces</option><option value="atcoder">AtCoder</option></select>
+      <button id="syncBtn" class="btn btn-ghost" type="button" title="从当前视图对应的平台拉取最新提交，再重新读取本机数据">同步最新数据</button>
       <button id="rankTableBtn" class="btn btn-ghost" type="button" title="各难度拿到 S ~ SSS+ 分别要压到多少时间">参考表</button>
       <button id="saveB50Btn" class="btn btn-ghost" type="button" disabled>保存 B50 图片</button>
       <span id="saveB50Status" class="field-hint" role="status"></span>
@@ -52,7 +53,7 @@
   </nav>
   <div class="notice notice-ac" id="syncNotice" hidden></div>
 
-  <section class="dx-timer" aria-labelledby="timerTitle">
+  <section class="dx-timer" id="dxTimer" aria-labelledby="timerTitle">
     <div class="dx-timer-heading"><div><span class="dx-eyebrow">FOCUS SESSION</span><h2 id="timerTitle">准备就绪，开始解题</h2></div><span class="badge">自动识别 AC · 自动保存</span></div>
     <form id="timerForm" class="dx-timer-form">
       <label class="field"><span class="field-label">Codeforces 题号或链接</span><input id="timerProblem" class="input" required maxlength="300" placeholder="2259:A 或粘贴题目链接"></label>
@@ -71,7 +72,7 @@
 
   <main id="boardPage">
 
-  <div class="dx-page-intro"><h2>B50 成绩总览</h2><p>把 Codeforces 练习用时换算为单题得分，取旧题前 35 道与新题前 15 道，组成你的 B50。</p></div>
+  <div class="dx-page-intro"><h2>B50 成绩总览</h2><p id="boardIntroText">把 Codeforces 练习用时换算为单题得分，取旧题前 35 道与新题前 15 道，组成你的 B50。</p></div>
 
   <div class="notice notice-warn" id="releaseNotice" hidden></div>
 
