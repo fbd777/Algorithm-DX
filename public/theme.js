@@ -122,3 +122,50 @@ if (topLink) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 }
+
+/* Site-wide collectible unlock toast. Unlock delivery is persisted by the server, so navigating
+ * between pages cannot duplicate or lose a reward before the player acknowledges it. */
+const collectiblePost = async (pathname, body) => {
+  const response = await fetch(pathname, { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body) });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+};
+
+const collectibleRarityNames={starter:'新手',white:'白色',bronze:'铜色',silver:'白银',gold:'金色',rainbow:'彩虹'};
+async function startCollectibleNotifications() {
+  try {
+    const metaResponse=await fetch('/api/meta');if(!metaResponse.ok)return;
+    const meta=await metaResponse.json(),user=meta.users?.find(item=>item.is_self);if(!user)return;
+    const data=await collectiblePost('/api/collectibles/notifications',{userId:user.id});
+    const queue=[...(data.items??[])];if(!queue.length)return;
+    const host=document.createElement('div');host.className='collectible-toast-host';host.setAttribute('aria-live','polite');document.body.append(host);
+    const next=()=>{
+      host.replaceChildren();const item=queue.shift();if(!item){host.remove();return;}
+      const toast=document.createElement('section');toast.className=`collectible-toast rarity-${item.rarity}`;
+      const art=document.createElement('div');art.className='collectible-toast-art';
+      if(item.image){const image=document.createElement('img');image.src=item.image;image.alt='';art.append(image);}else art.textContent=item.name.slice(0,1);
+      const copy=document.createElement('div');copy.className='collectible-toast-copy';
+      const eyebrow=document.createElement('span');eyebrow.textContent=`NEW COLLECTION · ${collectibleRarityNames[item.rarity]??item.rarity}`;
+      const title=document.createElement('strong');title.textContent=item.name;
+      const description=document.createElement('p');description.textContent=item.description;
+      const acquisition=document.createElement('small');acquisition.textContent=`获取方式：${item.acquisition}`;
+      copy.append(eyebrow,title,description,acquisition);
+      const actions=document.createElement('div');actions.className='collectible-toast-actions';
+      const accept=document.createElement('button');accept.type='button';accept.className='btn btn-ghost';accept.textContent='收下';
+      const acknowledge=async()=>{accept.disabled=true;await collectiblePost('/api/collectibles/notifications/seen',{userId:user.id,collectibleId:item.id});next();};
+      accept.addEventListener('click',()=>acknowledge().catch(()=>{accept.disabled=false;}));actions.append(accept);
+      if(item.kind!=='achievement'){
+        const equip=document.createElement('button');equip.type='button';equip.className='btn btn-primary';equip.textContent='立即装备';
+        equip.addEventListener('click',async()=>{equip.disabled=true;accept.disabled=true;try{
+          const equipped=await collectiblePost('/api/dx/collectibles/equip',{userId:user.id,collectibleId:item.id});
+          document.dispatchEvent(new CustomEvent('algorithm-dx-collectible-equipped',{detail:equipped}));
+          await collectiblePost('/api/collectibles/notifications/seen',{userId:user.id,collectibleId:item.id});next();
+        }catch{equip.disabled=false;accept.disabled=false;}});actions.append(equip);
+      }
+      toast.append(art,copy,actions);host.append(toast);
+    };
+    next();
+  } catch { /* Cosmetics must never block the current page. */ }
+}
+startCollectibleNotifications();

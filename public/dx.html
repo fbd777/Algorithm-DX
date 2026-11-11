@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Algorithm DX · Rating 总览</title>
+<title>Algorithm DX · 我的信息</title>
 <meta name="color-scheme" content="light dark">
 <script>/* 首屏前定好主题，避免先亮后暗 */(function(){try{var t=localStorage.getItem('mm-theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.mmTheme=t;document.documentElement.style.colorScheme=t;}catch(e){document.documentElement.dataset.mmTheme='light';}})();</script>
 <link rel="icon" type="image/svg+xml" href="/algorithm-dx-icon.svg">
@@ -21,8 +21,9 @@
   <nav class="nav" id="mmNav" aria-label="主导航">
     <a class="btn btn-ghost" href="/">AC 记录</a>
     <a class="btn btn-ghost" href="/circle.html">题友圈</a>
-    <a class="btn btn-primary" href="/dx.html" aria-current="page">DX Rating</a>
+    <a class="btn btn-primary" href="/dx.html" aria-current="page">我的信息</a>
     <a class="btn btn-ghost" href="/dan.html">随机练习</a>
+    <a class="btn btn-ghost" href="/tracker.html">Tracker</a>
     <a class="btn btn-ghost" href="/stats.html">练习数据</a>
     <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
     <a class="btn btn-ghost" href="/help.html">使用指南</a>
@@ -36,23 +37,25 @@
 
   <div class="page-toolbar" role="group" aria-label="页面操作">
 <select id="userSelect" class="select" aria-label="选择用户"></select>
-      <button id="syncBtn" class="btn btn-ghost" type="button" title="从 Codeforces 拉取最新提交，再重新读取本机数据">同步最新数据</button>
+      <select id="platformSelect" class="select" aria-label="选择 DX 平台"><option value="mixed">混合 B50</option><option value="codeforces">Codeforces</option><option value="atcoder">AtCoder</option></select>
+      <button id="syncBtn" class="btn btn-ghost" type="button" title="从当前视图对应的平台拉取最新提交，再重新读取本机数据">同步最新数据</button>
       <button id="rankTableBtn" class="btn btn-ghost" type="button" title="各难度拿到 S ~ SSS+ 分别要压到多少时间">参考表</button>
       <button id="saveB50Btn" class="btn btn-ghost" type="button" disabled>保存 B50 图片</button>
+      <button id="collectionBtn" class="btn btn-ghost" type="button">装扮设置</button>
       <span id="saveB50Status" class="field-hint" role="status"></span>
       <button id="practiceBtn" class="btn btn-primary" type="button">手动添加做题记录</button>
       <details class="dx-more"><summary class="btn btn-ghost">更多</summary><button id="mmMascotBtn" class="btn btn-ghost" type="button">结算角色设置</button><button id="backtestBtn" class="btn btn-ghost" type="button">本地回测 / 导出</button><a href="/help.html#validation">回测说明</a></details>
   </div>
 
   <nav class="dx-pages" aria-label="练习与成绩">
-    <a id="boardPageLink" class="btn btn-primary" href="/dx.html" aria-current="page">Rating 总览</a>
+    <a id="boardPageLink" class="btn btn-primary" href="/dx.html" aria-current="page">我的信息</a>
     <a id="practicePageLink" class="btn btn-ghost" href="/dx.html?view=practice">用时补录</a>
     <a id="historyPageLink" class="btn btn-ghost" href="/dx.html?view=history">练习历史</a>
     <a id="recordedPageLink" class="btn btn-ghost" href="/dx.html?view=recorded">全部成绩</a>
   </nav>
   <div class="notice notice-ac" id="syncNotice" hidden></div>
 
-  <section class="dx-timer" aria-labelledby="timerTitle">
+  <section class="dx-timer" id="dxTimer" aria-labelledby="timerTitle">
     <div class="dx-timer-heading"><div><span class="dx-eyebrow">FOCUS SESSION</span><h2 id="timerTitle">准备就绪，开始解题</h2></div><span class="badge">自动识别 AC · 自动保存</span></div>
     <form id="timerForm" class="dx-timer-form">
       <label class="field"><span class="field-label">Codeforces 题号或链接</span><input id="timerProblem" class="input" required maxlength="300" placeholder="2259:A 或粘贴题目链接"></label>
@@ -71,11 +74,10 @@
 
   <main id="boardPage">
 
-  <div class="dx-page-intro"><h2>B50 成绩总览</h2><p>把 Codeforces 练习用时换算为单题得分，取旧题前 35 道与新题前 15 道，组成你的 B50。</p></div>
+  <section class="dx-summary" id="dxSummary" aria-label="总览"></section>
+  <div class="dx-page-intro dx-b50-intro"><div><span class="dx-eyebrow">BEST 50 COLLECTION</span><h2>B50 成绩</h2><p id="boardIntroText">把 Codeforces 与 AtCoder 的练习成绩放进同一张 B50；旧题取 35 道，新题取 15 道。</p></div><button id="saveB50InlineBtn" class="btn btn-primary" type="button">导出 B50 图片</button></div>
 
   <div class="notice notice-warn" id="releaseNotice" hidden></div>
-
-  <section class="dx-summary" id="dxSummary" aria-label="总览"></section>
   <section class="dx-next" id="dxNext" aria-label="下一步" hidden></section>
   <section class="section" id="oldSection">
     <div class="section-head">
@@ -276,6 +278,19 @@
       <button id="backtestDownload" class="btn btn-primary" type="button" disabled>下载汇总 JSON</button>
       <button id="backtestClose" class="btn btn-ghost" type="button">关闭</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="collectionModal" hidden>
+  <div class="modal-card modal-card-wide collection-modal-card" role="dialog" aria-modal="true" aria-labelledby="collectionTitle">
+    <div class="collection-modal-head"><div><h3 id="collectionTitle">成就与收藏品</h3><p class="modal-sub">完成练习、挑战和整场比赛来解锁；装备会同步应用到个人卡片和 B50 导出图。</p></div><button id="collectionClose" class="btn btn-ghost" type="button">关闭</button></div>
+    <div class="collection-filters" id="collectionFilters">
+      <input id="collectionSearch" class="input" type="search" maxlength="100" placeholder="搜索名称、说明或获取方式">
+      <select id="collectionKindFilter" class="select" aria-label="收藏品类别"><option value="all">全部类别</option><option value="achievement">成就</option><option value="title">称号</option><option value="avatar">预设头像</option><option value="avatar_frame">头像框</option><option value="profile_background">背景板</option><option value="info_frame">姓名框</option><option value="b50_theme">B50 背景</option></select>
+      <select id="collectionRarityFilter" class="select" aria-label="收藏品稀有度"><option value="all">全部稀有度</option><option value="starter">新手</option><option value="white">白色</option><option value="bronze">铜色</option><option value="silver">白银</option><option value="gold">金色</option><option value="rainbow">彩虹</option></select>
+    </div>
+    <div id="collectionBody" class="collection-grid"></div>
+    <p id="collectionStatus" class="field-hint" role="status"></p>
   </div>
 </div>
 

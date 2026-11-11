@@ -158,6 +158,8 @@ export class SyncService {
       // 抓回来的那种）在同一次同步里就有机会补上评级，不用等下一轮。
       // 失败与出题日期同样处理：不算同步失败，说明拼进记录即可。
       let ratingNote=await this.refreshProblemRatings(fetcher,account);
+      const metadataNote=await this.refreshProblemMetadata(fetcher,account);
+      ratingNote=[ratingNote,metadataNote].filter(Boolean).join('｜');
       if(fetcher instanceof CodeforcesSyncFetcher){try{const note=await refreshGroupRatings(this.db,account.id,fetcher.http,{read:fetcher instanceof CodeforcesGroupWebFetcher?fetcher.read:undefined,signal:options.signal,force:options.force});ratingNote=[ratingNote,note].filter(Boolean).join('｜');}catch(error){options.signal?.throwIfAborted();ratingNote+='｜Group 原题难度未更新（'+redactSecrets(error instanceof Error?error.message:'读取失败')+'）';}}
       assertLock();
       if(ratingNote)this.db.prepare('UPDATE sync_runs SET message=message||? WHERE id=?').run(`｜${ratingNote}`,runId);
@@ -242,6 +244,29 @@ export class SyncService {
       return updated?`题目评级补齐 ${updated} 条`:'';
     }catch(error){
       return `题目评级未更新（${redactSecrets(error instanceof Error?error.message:'抓取失败')}）`;
+    }
+  }
+  /** Repair platform placeholder titles and store versioned CF-scale difficulty. */
+  private async refreshProblemMetadata(fetcher:BaseFetcher,account:Account):Promise<string>{
+    try{
+      const rows=await fetcher.fetch_problem_metadata();
+      if(rows===null)return '';
+      if(!rows.length)return '题目元数据：这次没取到题目清单';
+      let updated=0;
+      const statement=this.db.prepare(`UPDATE submissions
+        SET problem_title=?, difficulty=?
+        WHERE platform=? AND problem_id=?
+          AND (problem_title<>? OR difficulty IS NOT ?)`);
+      this.db.exec('SAVEPOINT refresh_problem_metadata');
+      try{
+        for(const row of rows){
+          updated+=Number(statement.run(row.title,row.rating,account.platform,row.problemId,row.title,row.rating).changes);
+        }
+        this.db.exec('RELEASE refresh_problem_metadata');
+      }catch(error){this.db.exec('ROLLBACK TO refresh_problem_metadata; RELEASE refresh_problem_metadata');throw error;}
+      return updated?`题目元数据更新 ${updated} 条`:'';
+    }catch(error){
+      return `题目元数据未更新（${redactSecrets(error instanceof Error?error.message:'抓取失败')}）`;
     }
   }
 }

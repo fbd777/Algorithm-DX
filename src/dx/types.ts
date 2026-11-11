@@ -49,6 +49,8 @@ export interface DxEntry {
    * 缺失时无法计分。
    */
   problemRating: number | null;
+  /** AtCoder Problems displayed difficulty before conversion. */
+  nativeProblemRating?: number | null;
   /** 该题最早的 AC 时间（epoch 秒）。只用于排序与显示，**不参与分板**。 */
   solvedAt: number;
   /**
@@ -93,6 +95,7 @@ export interface DxSlot {
 
 /** 「待填写用时」清单里的一行。 */
 export interface DxPending {
+  platform: string;
   problemId: string;
   problemTitle: string;
   problemUrl: string | null;
@@ -101,6 +104,8 @@ export interface DxPending {
    * 这种题**现在就能填用时**，但评级公布前不进榜 —— 公布后由同步回填，自动计分。
    */
   problemRating: number | null;
+  /** AtCoder Problems displayed difficulty before conversion. */
+  nativeProblemRating?: number | null;
   /** 出题日期（epoch 秒）。上面那行的分类依据，界面上直接显示它。 */
   releasedAt: number | null;
   /** 该题最早一次 AC 的时间（epoch 秒）。清单按它倒序。 */

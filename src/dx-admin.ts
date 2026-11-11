@@ -11,7 +11,7 @@
  * 错误一律带 `code`：命令行打印英文 message，面板按 code 翻中文（见 server/api.ts）。
  */
 import type { DatabaseSync } from 'node:sqlite';
-import { DX_PLATFORM } from './dx/rating.ts';
+import { DX_PLATFORMS } from './dx/rating.ts';
 import { clearPracticeBest, recordPractice } from './dx/practice.ts';
 
 export type DxTimeErrorCode = 'USER_NOT_FOUND' | 'PLATFORM_UNSUPPORTED' | 'PROBLEM_NOT_SOLVED' | 'TIME_INVALID';
@@ -64,8 +64,8 @@ function assertSeconds(seconds: number): void {
 
 /** 写入 / 覆盖一道题的完成用时。返回是否新建。 */
 export function setProblemTime(db: DatabaseSync, input: DxTimeInput): { seconds: number; created: boolean } {
-  if (input.platform !== DX_PLATFORM) {
-    throw new DxTimeError('PLATFORM_UNSUPPORTED', `dx rating currently only covers ${DX_PLATFORM}`);
+  if (!(DX_PLATFORMS as readonly string[]).includes(input.platform)) {
+    throw new DxTimeError('PLATFORM_UNSUPPORTED', `dx rating currently only covers ${DX_PLATFORMS.join(', ')}`);
   }
   assertUser(db, input.userId);
   assertSeconds(input.seconds);

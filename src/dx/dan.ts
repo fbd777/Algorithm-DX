@@ -130,6 +130,12 @@ export const DAN_CUSTOM_TIER: DanTier = {
   draw: 'rating', perStageLimit: true,
 };
 
+/** User-picked single problem. It keeps the same per-problem time rule as custom draws. */
+export const DAN_SELECTED_TIER: DanTier = {
+  key: 'selected', name: '指定题目', minRating: 1, maxRating: 5000, limitSeconds: 3600,
+  draw: 'rating', perStageLimit: true,
+};
+
 /** 自定义抽题允许的难度范围与标签数（越界在 API 层拒绝，这里只放口径）。 */
 export const DAN_CUSTOM_MIN_RATING = 800;
 export const DAN_CUSTOM_MAX_RATING = 3500;
@@ -145,6 +151,7 @@ export type DanKind = 'challenge' | 'single' | 'daily';
 export function danTier(key: string): DanTier | null {
   if (key === DAILY_TIER.key) return DAILY_TIER;
   if (key === DAN_CUSTOM_TIER.key) return DAN_CUSTOM_TIER;
+  if (key === DAN_SELECTED_TIER.key) return DAN_SELECTED_TIER;
   return DAN_TIERS.find((tier) => tier.key === key)
     ?? DAN_RANDOM_TIERS.find((tier) => tier.key === key) ?? null;
 }
@@ -196,10 +203,12 @@ export function danStageCount(kind: DanKind): number {
  * 排除集与 `startTimer` 都匹配得上，这里统一按大写产出，并在比对时也归一。
  */
 export function danProblemId(problem: ProblemRating): string {
+  if(problem.problemId)return problem.problemId;
   return `${problem.contestId}:${problem.index.toUpperCase()}`;
 }
 
-export function danProblemUrl(problemId: string): string {
+export function danProblemUrl(problemId: string, platform='codeforces'): string {
+  if(platform==='atcoder')return `https://atcoder.jp/contests/${encodeURIComponent(problemId.replace(/_[^_]+$/,''))}/tasks/${encodeURIComponent(problemId)}`;
   const colon = problemId.indexOf(':');
   const contest = Number(problemId.slice(0, colon));
   const index = problemId.slice(colon + 1);
@@ -244,7 +253,7 @@ function groupDanCandidates(pool: readonly ProblemRating[], options: DanPoolOpti
     if (!Number.isSafeInteger(problem.rating)) continue;
     if (problem.rating < options.minRating || problem.rating > options.maxRating) continue;
     const id = danProblemId(problem);
-    if (options.exclude.has(id)) continue;
+    if (options.exclude.has(id.toUpperCase())) continue;
     // 标签条件是「含任一」。老缓存（v1）里没有 tags 字段 —— 那是「没有标签信息」，
     // 不是「这道题没有标签」，带标签条件时一律不抽，而不是把整池当无标签放行。
     if (wantTags && !(problem.tags ?? []).some((tag) => options.tags!.has(tag))) continue;
@@ -318,6 +327,7 @@ export class DanError extends Error {
 
 export interface DanSessionRow {
   id: string; user_id: number; tier: string; kind: DanKind;
+  platform: 'codeforces'|'atcoder';
   stage_count: number; limit_seconds: number; min_rating: number; max_rating: number;
   status: 'active' | 'cleared' | 'failed' | 'abandoned';
   started_at: number; finished_at: number | null;
@@ -325,12 +335,14 @@ export interface DanSessionRow {
   /** 自定义抽题的标签条件（JSON 数组）。NULL = 没有标签条件（迁移 020 之前的行也是）。 */
   tags_json: string | null;
   rules_json: string | null;
+  selected_problem_id: string | null;
 }
 
 export interface DanStageRow {
   id: number; session_id: string; stage_index: number;
   life_json: string | null;
   problem_id: string; difficulty: number; drawn_at: number;
+  problem_url: string|null; problem_title:string|null; native_difficulty:number|null;
   claimed_at: number | null; timer_id: string | null;
   outcome: 'cleared' | 'timeout' | 'interrupted' | null;
   seconds: number | null; score_json: string | null;
@@ -371,12 +383,12 @@ export function activeDanSession(db: DatabaseSync, userId: number): DanSessionRo
  * 另外把**正在计时的题**也排除：计时可以不经提交直接对题号开始，
  * 于是不看这一处的话，段位有可能抽到你手上正在做的那道。
  */
-export function danExcludedProblems(db: DatabaseSync, userId: number, sessionId?: string): Set<string> {
+export function danExcludedProblems(db: DatabaseSync, userId: number, sessionId?: string, platform='codeforces'): Set<string> {
   const rows = db.prepare(`SELECT DISTINCT s.problem_id FROM submissions s JOIN accounts a ON a.id=s.account_id
-    WHERE a.user_id=? AND s.platform='codeforces'`).all(userId) as { problem_id: string }[];
+    WHERE a.user_id=? AND s.platform=?`).all(userId,platform) as { problem_id: string }[];
   const exclude = new Set(rows.map((row) => String(row.problem_id).toUpperCase()));
-  const timers = db.prepare('SELECT DISTINCT problem_id FROM practice_timers WHERE user_id=?')
-    .all(userId) as { problem_id: string }[];
+  const timers = db.prepare(`SELECT DISTINCT t.problem_id FROM practice_timers t JOIN accounts a ON a.id=t.account_id
+    WHERE t.user_id=? AND a.platform=?`).all(userId,platform) as { problem_id: string }[];
   for (const row of timers) exclude.add(String(row.problem_id).toUpperCase());
   if (sessionId) {
     const drawn = db.prepare('SELECT problem_id FROM dan_stages WHERE session_id=?').all(sessionId) as { problem_id: string }[];
@@ -392,7 +404,7 @@ export const DAILY_BAND_RADIUS = 200;
 export interface DailyBand {
   minRating: number;
   maxRating: number;
-  /** 中心取整到 100 之后的值。null = 没有水平数据，退回全段。 */
+  /** 推荐带中心。CF 默认按 100 稳定；AtCoder 保留 CF 等效整数。 */
   center: number | null;
   /** 榜算出的等效 Rating（未取整）。null = 没有任何可计分的成绩。 */
   equivalentRating: number | null;
@@ -405,16 +417,18 @@ export interface DailyBand {
  * 收敛到 [800, 800]（水平还不到 800 就从最简单的抽），特别高时收敛到 [2600, 2600]
  * （2600 以上是 T97 外推段，档位刻意不往上走，每日一题跟着同一口径）。
  *
- * 中心**取整到 100**：题目 rating 本来就是 100 的倍数，取整不丢信息；更重要的是
+ * CF 中心默认**取整到 100**：CF 题目 rating 本来就是 100 的倍数；AtCoder 调用方传
+ * `roundingStep=1`，保留换算后的整数，不强制压成 100 档。CF 取整更重要的是
  * 这让带子对 DX Rating 的小幅漂移不敏感 —— 一次同步把分数从 1543 推到 1549，
  * 今天的题不会跟着换；跨过 1550 这道坎（取整到 1600）才会挪一次
  * （见 docs/dan.md「每日一题按水平定带」）。
  */
-export function dailyBand(equivalentRating: number | null): DailyBand {
+export function dailyBand(equivalentRating: number | null,roundingStep=100): DailyBand {
   if (equivalentRating === null || !Number.isFinite(equivalentRating)) {
     return { minRating: DAILY_TIER.minRating, maxRating: DAILY_TIER.maxRating, center: null, equivalentRating: null };
   }
-  const center = Math.round(equivalentRating / 100) * 100;
+  const step=Number.isSafeInteger(roundingStep)&&roundingStep>0?roundingStep:1;
+  const center = Math.round(equivalentRating / step) * step;
   return {
     minRating: Math.min(Math.max(center - DAILY_BAND_RADIUS, DAILY_TIER.minRating), DAILY_TIER.maxRating),
     maxRating: Math.max(Math.min(center + DAILY_BAND_RADIUS, DAILY_TIER.maxRating), DAILY_TIER.minRating),
@@ -430,12 +444,13 @@ export function dailyProblem(
   pool: readonly ProblemRating[],
   dateKey: string,
   band?: { minRating: number; maxRating: number },
+  platform='codeforces',
 ): ProblemRating | null {
   const range = band ?? DAILY_TIER;
   return dailyDanCandidate(
     pool,
-    { minRating: range.minRating, maxRating: range.maxRating, exclude: danExcludedProblems(db, userId) },
-    `daily:${dateKey}:${userId}`,
+    { minRating: range.minRating, maxRating: range.maxRating, exclude: danExcludedProblems(db, userId,undefined,platform) },
+    platform==='codeforces'?`daily:${dateKey}:${userId}`:`daily:${platform}:${dateKey}:${userId}`,
   );
 }
 
@@ -464,28 +479,31 @@ function validateCustomInput(input: { minRating?: number; maxRating?: number; ta
 export function createDanSession(
   db: DatabaseSync,
   input: { id: string; userId: number; kind: DanKind; tierKey: string; now: number;
-    minRating?: number; maxRating?: number; tags?: readonly string[] },
+    platform?:'codeforces'|'atcoder'; minRating?: number; maxRating?: number; tags?: readonly string[];
+    selectedProblemId?:string },
 ): DanSessionRow {
   const custom = input.tierKey === DAN_CUSTOM_TIER.key;
+  const selected = input.tierKey === DAN_SELECTED_TIER.key;
   if (custom && input.kind !== 'single') throw new DanError('CUSTOM_INVALID', '自定义条件只用于单题抽题');
+  if (selected && (input.kind !== 'single'||!input.selectedProblemId)) throw new DanError('CUSTOM_INVALID', '指定题目只用于单题练习');
   const customRange = custom ? validateCustomInput(input) : null;
   const tier = input.kind === 'daily' ? DAILY_TIER
-    : custom ? DAN_CUSTOM_TIER : selectableDanTier(input.tierKey);
+    : custom ? DAN_CUSTOM_TIER : selected ? DAN_SELECTED_TIER : selectableDanTier(input.tierKey);
   if (!tier) throw new DanError('TIER_UNKNOWN', '不认识的档位');
   return transaction(db, () => {
     if (activeDanSession(db, input.userId)) {
       throw new DanError('SESSION_ACTIVE', '已经有一轮认定没结束，先完成或放弃它');
     }
     db.prepare(`INSERT INTO dan_sessions
-      (id,user_id,tier,kind,stage_count,limit_seconds,min_rating,max_rating,status,started_at,tags_json,rules_json)
-      VALUES(?,?,?,?,?,?,?,?,'active',?,?,?)`)
+      (id,user_id,tier,kind,stage_count,limit_seconds,min_rating,max_rating,status,started_at,tags_json,rules_json,platform,selected_problem_id)
+      VALUES(?,?,?,?,?,?,?,?,'active',?,?,?,?,?)`)
       .run(input.id, input.userId, tier.key, input.kind, danStageCount(input.kind),
         tier.limitSeconds,
         customRange ? customRange.minRating : input.kind === 'daily' ? (input.minRating ?? tier.minRating) : tier.minRating,
         customRange ? customRange.maxRating : input.kind === 'daily' ? (input.maxRating ?? tier.maxRating) : tier.maxRating,
         input.now,
         customRange && customRange.tags.length ? JSON.stringify(customRange.tags) : null,
-        input.kind === 'challenge' ? JSON.stringify(DAN_LIFE_RULES) : null);
+        input.kind === 'challenge' ? JSON.stringify(DAN_LIFE_RULES) : null,input.platform??'codeforces',input.selectedProblemId??null);
     return sessionRow(db, input.id)!;
   });
 }
@@ -513,22 +531,27 @@ export function drawNextDanStage(
     const options: DanPoolOptions = {
       minRating: session.min_rating,
       maxRating: session.max_rating,
-      exclude: danExcludedProblems(db, session.user_id, session.id),
+      exclude: danExcludedProblems(db, session.user_id, session.id,session.platform),
       draw: tier?.draw ?? 'rating',
       tags: tagList.length ? new Set(tagList) : undefined,
     };
     // 每日一题必须**可复现**（同一天刷新不能换题），所以走哈希而不是随机数；
     // 其余模式走 crypto 随机数，服务端不可预测（口径 A）。
-    const candidate = session.kind === 'daily'
-      ? dailyDanCandidate(input.pool, options, `daily:${input.dateKey}:${session.user_id}`)
+    const candidate = session.selected_problem_id
+      ? input.pool.find(problem=>danProblemId(problem).toUpperCase()===session.selected_problem_id!.toUpperCase()
+        && !options.exclude.has(danProblemId(problem).toUpperCase()))??null
+      : session.kind === 'daily'
+      ? dailyDanCandidate(input.pool, options, session.platform==='codeforces'
+        ? `daily:${input.dateKey}:${session.user_id}`:`daily:${session.platform}:${input.dateKey}:${session.user_id}`)
       : drawDanCandidate(input.pool, options, input.randomInt);
     if (!candidate) throw new DanError('POOL_EMPTY', '这个区间里已经没有你没做过的题了');
     // 限时随题走（随机段位），抽到的那一刻就定下来 —— 与 difficulty 一样是快照，
     // 之后调档位区间不会把这一轮的规则重新解释一遍。
     const limit = danStageLimit(tier, candidate.rating, session.limit_seconds);
-    const info = db.prepare(`INSERT INTO dan_stages(session_id,stage_index,problem_id,difficulty,drawn_at,limit_seconds)
-      VALUES(?,?,?,?,?,?)`)
-      .run(session.id, stages.length + 1, danProblemId(candidate), candidate.rating, input.now, limit);
+    const info = db.prepare(`INSERT INTO dan_stages(session_id,stage_index,problem_id,difficulty,drawn_at,limit_seconds,problem_url,problem_title,native_difficulty)
+      VALUES(?,?,?,?,?,?,?,?,?)`)
+      .run(session.id, stages.length + 1, danProblemId(candidate), candidate.rating, input.now, limit,
+        candidate.problemUrl??null,candidate.title??null,candidate.nativeRating??null);
     return db.prepare('SELECT * FROM dan_stages WHERE id=?').get(info.lastInsertRowid) as unknown as DanStageRow;
   });
 }
@@ -611,9 +634,9 @@ function settleDanSession(db: DatabaseSync, session: DanSessionRow, now: number,
       // A local poll cannot prove there was no timely AC. Only the account's
       // successful submission check may time out a stage; pending verdicts wait.
       if (checkedAccountId !== timer.account_id) continue;
-      if (db.prepare(`SELECT 1 FROM submissions WHERE account_id=? AND platform='codeforces'
+      if (db.prepare(`SELECT 1 FROM submissions WHERE account_id=? AND platform=?
         AND problem_id=? AND status='PENDING' AND submitted_at>? AND submitted_at<=?`)
-        .get(timer.account_id, stage.problem_id, timer.started_at, deadline)) continue;
+        .get(timer.account_id,session.platform, stage.problem_id, timer.started_at, deadline)) continue;
       // 超时取消：段位限时是 dan 这一层的规则，语句与 cancelTimer（timer.ts）一致。
       db.prepare("UPDATE practice_timers SET status='cancelled',ended_at=? WHERE id=? AND status='running'")
         .run(deadline, stage.timer_id);
@@ -658,6 +681,7 @@ function finishDanSession(db: DatabaseSync, session: DanSessionRow, status: 'cle
       index: stage.stage_index,
       problemId: stage.problem_id,
       difficulty: stage.difficulty,
+      nativeDifficulty:stage.native_difficulty,
       outcome: stage.outcome,
       seconds: stage.seconds,
       // 逐题限时进结算快照：随机段位每题限时不同，历史记录要能按当时的规则解释。
@@ -672,7 +696,7 @@ function finishDanSession(db: DatabaseSync, session: DanSessionRow, status: 'cle
     ? Math.round(scores.reduce((sum, row) => sum + (typeof row.rating === 'number' ? row.rating : 0), 0) * 10) / 10
     : null;
   const settlement = {
-    tier: session.tier, kind: session.kind, status,
+    tier: session.tier, kind: session.kind, platform:session.platform, status,
     stageCount: session.stage_count, limitSeconds: session.limit_seconds,
     minRating: session.min_rating, maxRating: session.max_rating,
     // 自定义抽题的标签条件进快照：历史记录要能按当时的条件解释。
@@ -708,6 +732,7 @@ export interface DanStageView {
   index: number;
   /** 抽到的题目难度。**这是「开始做题」之前唯一允许下发的信息**（口径 A）。 */
   difficulty: number;
+  nativeDifficulty:number|null;
   /** 这一道的限时（秒）。随机段位逐题不同，按当题难度定。 */
   limitSeconds: number;
   claimed: boolean;
@@ -736,6 +761,7 @@ export interface DanStageView {
 export interface DanSessionView {
   life: ReturnType<typeof sessionLife>;
   id: string;
+  platform:'codeforces'|'atcoder';
   tier: string;
   tierName: string;
   kind: DanKind;
@@ -763,6 +789,7 @@ export function danSessionView(db: DatabaseSync, session: DanSessionRow, now = M
   const tier = danTier(session.tier);
   return {
     id: session.id,
+    platform:session.platform,
     life: sessionLife(db, session, now),
     tier: session.tier,
     tierName: tier?.name ?? session.tier,
@@ -795,13 +822,13 @@ function danStageView(db: DatabaseSync, stage: DanStageRow, session: DanSessionR
     : undefined;
   const problem = revealed
     ? db.prepare(`SELECT MAX(problem_title) AS title FROM submissions
-        WHERE platform='codeforces' AND problem_id=?`).get(stage.problem_id) as unknown as { title: string | null } | undefined
+        WHERE platform=? AND problem_id=?`).get(session.platform,stage.problem_id) as unknown as { title: string | null } | undefined
     : undefined;
   const verdicts: Record<string, number> = {};
   if (timer?.ended_at !== null && timer?.ended_at !== undefined) {
     const rows = db.prepare(`SELECT status,COUNT(*) AS count FROM submissions
-      WHERE account_id=? AND platform='codeforces' AND problem_id=? AND submitted_at>? AND submitted_at<=?
-      GROUP BY status`).all(timer.account_id, stage.problem_id, timer.started_at, timer.ended_at) as unknown as
+      WHERE account_id=? AND platform=? AND problem_id=? AND submitted_at>? AND submitted_at<=?
+      GROUP BY status`).all(timer.account_id,session.platform, stage.problem_id, timer.started_at, timer.ended_at) as unknown as
       { status: string; count: number }[];
     for (const row of rows) verdicts[String(row.status)] = Number(row.count);
   }
@@ -814,6 +841,7 @@ function danStageView(db: DatabaseSync, stage: DanStageRow, session: DanSessionR
     life: stageLife(db, session, stage, now),
     startedAt: stage.claimed_at,
     difficulty: stage.difficulty,
+    nativeDifficulty:stage.native_difficulty,
     limitSeconds: danStageLimitOf(stage, session),
     claimed: revealed,
     outcome: stage.outcome,
@@ -822,9 +850,9 @@ function danStageView(db: DatabaseSync, stage: DanStageRow, session: DanSessionR
     rank: typeof score?.rank === 'string' ? score.rank : null,
     rating: typeof score?.rating === 'number' ? score.rating : null,
     problemId: revealed ? stage.problem_id : null,
-    problemUrl: revealed ? danProblemUrl(stage.problem_id) : null,
+    problemUrl: revealed ? (stage.problem_url??danProblemUrl(stage.problem_id,session.platform)) : null,
     deadlineAt: lifeRules(session) || stage.claimed_at === null ? null : stage.claimed_at + danStageLimitOf(stage, session),
-    title: revealed ? (problem?.title ?? null) : null,
+    title: revealed ? (stage.problem_title??problem?.title ?? null) : null,
     verdicts,
     waCount: verdicts.WA ?? 0,
     comparison: timer?.settlement_json ? JSON.parse(timer.settlement_json) as Record<string, unknown> : null,
@@ -832,8 +860,8 @@ function danStageView(db: DatabaseSync, stage: DanStageRow, session: DanSessionR
   };
 }
 
-export function danHistory(db: DatabaseSync, userId: number, limit = 20): DanSessionView[] {
+export function danHistory(db: DatabaseSync, userId: number, limit = 20,platform?:string): DanSessionView[] {
   const rows = db.prepare(`SELECT * FROM dan_sessions WHERE user_id=? AND status!='active'
-    ORDER BY started_at DESC LIMIT ?`).all(userId, limit) as unknown as DanSessionRow[];
+    ${platform?'AND platform=?':''} ORDER BY started_at DESC LIMIT ?`).all(...(platform?[userId,platform,limit]:[userId,limit])) as unknown as DanSessionRow[];
   return rows.map((row) => danSessionView(db, row));
 }

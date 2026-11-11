@@ -725,6 +725,28 @@ test('每日一题的 session 抽到的就是当天的确定性结果', () => {
   } finally { s.db.close(); }
 });
 
+test('AtCoder 抽题、计时与结算写入独立 B50',()=>{
+  const db=openDatabase(':memory:'),repo=new Repository(db);
+  try{
+    const user=repo.createUser('我',true),account=repo.addAccount(user,'atcoder','at-user'),now=1_000_000;
+    createDanSession(db,{id:'at1',userId:user,platform:'atcoder',kind:'single',tierKey:'intermediate',now});
+    const candidate={contestId:'abc300',index:'abc300_a',problemId:'abc300_a',
+      problemUrl:'https://atcoder.jp/contests/abc300/tasks/abc300_a',title:'N-choice question',rating:1316,nativeRating:800};
+    const drawn=drawNextDanStage(db,{sessionId:'at1',pool:[candidate],now,dateKey:'2026-10-09'})!;
+    assert.equal(drawn.problem_id,'abc300_a');assert.equal(drawn.native_difficulty,800);
+    const timer=startTimer(db,{userId:user,platform:'atcoder',problemId:drawn.problem_id,practiceKind:'unknown',requestId:'atcoder-dan-timer'},now);
+    claimDanStage(db,{sessionId:'at1',timerId:timer.id,now});
+    repo.saveSubmissions(account,[submission('atcoder',{submission_id:'at-sub-1',problem_id:'abc300_a',problem_title:'N-choice question',
+      problem_url:candidate.problemUrl,status:'AC',difficulty:1316,submitted_at:now+600})]);
+    reconcileTimers(db,account,now+600);
+    const run=danHistory(db,user,20,'atcoder')[0];
+    assert.equal(run.platform,'atcoder');assert.equal(run.status,'cleared');assert.equal(run.stages[0].nativeDifficulty,800);
+    assert.equal(run.stages[0].problemUrl,candidate.problemUrl);
+    assert.equal(listDxEntries(db,user,'atcoder')[0].recordedSeconds,600);
+    assert.equal(listDxEntries(db,user,'codeforces').length,0);
+  }finally{db.close();}
+});
+
 test('不认识的档位直接报错，不会抽到区间外的题', () => {
   const s = setup();
   try {
@@ -1119,6 +1141,18 @@ test('CF 玩家资料使用缓存，并与当前账号绑定', async () => {
     assert.equal(result.status, 200);
     assert.equal((result.body as { profile: { handle: string } }).profile.handle, 'fixture');
     assert.ok(WRITE_ROUTES.has('/api/dx/profile'));
+  } finally { s.db.close(); }
+});
+
+test('AtCoder 头像读取公开个人页并限制在官方图片域名', async (t) => {
+  const s=setup();
+  try {
+    s.repo.addAccount(s.user,'atcoder','fixture_atcoder');
+    s.repo.set('cf:profile:v2:fixture',{handle:'fixture',avatar:null},3600);
+    t.mock.method(HttpClient.prototype,'text',async()=>"<img class='avatar' src='//img.atcoder.jp/icons/custom.png' width='128'>");
+    const result=await handleApi({db:s.db,dbPath:':memory:',platforms:['codeforces','atcoder'],envFile:'unused',
+      openWrite:()=>s.db,syncJobs:{} as never},{method:'POST',pathname:'/api/dx/profile',params:new URLSearchParams(),body:{userId:s.user}});
+    assert.equal((result.body as {profile:{atcoderAvatar:string}}).profile.atcoderAvatar,'https://img.atcoder.jp/icons/custom.png');
   } finally { s.db.close(); }
 });
 

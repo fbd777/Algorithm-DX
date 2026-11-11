@@ -660,6 +660,7 @@ function parseJsonOrNull(value: unknown): unknown {
 /* ---------- DX Rating ---------- */
 
 export interface DxEntryRow {
+  platform: string;
   canonicalProblemId: string;
   sourceProblemId: string | null;
   sourceProblemUrl: string | null;
@@ -698,6 +699,7 @@ export function listDxEntries(db: DatabaseSync, userId: number, platform: string
   const rows = db
     .prepare(
       `SELECT s.problem_id,
+              MAX(s.platform) AS platform,
               MAX(CASE WHEN s.platform='codeforces' AND s.problem_url LIKE 'https://codeforces.com/group/%' AND gs.method IN ('content','user_confirmed') THEN gs.source_problem_id ELSE s.problem_id END) AS canonical_problem_id,
               MAX(CASE WHEN s.problem_url LIKE 'https://codeforces.com/group/%' AND gs.method IN ('content','user_confirmed') THEN gs.source_problem_id END) AS source_problem_id,
               MAX(CASE WHEN s.problem_url LIKE 'https://codeforces.com/group/%' AND gs.method IN ('content','user_confirmed') THEN gs.source_url END) AS source_url,
@@ -714,7 +716,15 @@ export function listDxEntries(db: DatabaseSync, userId: number, platform: string
        LEFT JOIN cf_group_rating_sources gs ON s.platform='codeforces' AND gs.problem_id=s.problem_id
        LEFT JOIN contests c
               ON c.platform = s.platform
-             AND c.contest_id = CAST(substr(s.problem_id, 1, instr(s.problem_id, ':') - 1) AS INTEGER)
+             AND c.contest_id = CASE
+               WHEN s.platform='atcoder' AND s.problem_url LIKE 'https://atcoder.jp/contests/%/tasks/%'
+                 THEN substr(
+                   substr(s.problem_url,length('https://atcoder.jp/contests/')+1),
+                   1,
+                   instr(substr(s.problem_url,length('https://atcoder.jp/contests/')+1),'/')-1
+                 )
+               ELSE CAST(substr(s.problem_id, 1, instr(s.problem_id, ':') - 1) AS INTEGER)
+             END
        LEFT JOIN problem_times pt
               ON pt.user_id = a.user_id AND pt.platform = s.platform AND pt.problem_id = s.problem_id
        WHERE a.is_archived = 0 AND a.user_id = ? AND s.platform = ? AND s.status = 'AC'
@@ -723,6 +733,7 @@ export function listDxEntries(db: DatabaseSync, userId: number, platform: string
     )
     .all(userId, platform) as Record<string, unknown>[];
   return rows.map((row) => ({
+    platform: String(row.platform),
     problemId: String(row.problem_id),
     canonicalProblemId: String(row.canonical_problem_id ?? row.problem_id),
     sourceProblemId: row.source_problem_id == null ? null : String(row.source_problem_id),

@@ -134,7 +134,7 @@ Schema 以 `PRAGMA user_version` 标记，当前版本由 `src/db/database.ts` �
 | `GET /api/problem` | 单题全部提交与判题时间线，用于按需展开「尝试 N 次」 |
 | `GET /api/sync/status` | 后台同步任务的当前进度与结果 |
 | `GET /api/dx` | DX Rating 榜：曲线元信息、旧题 35 格 + 当前系统年度新题 15 格（按**出题日期**分，年度读取服务端本地日历，忽略旧 `year` 参数）、待填写清单（含未评定的题，`problemRating` 为 null）、缺出题日期的题数 |
-| `POST /api/dx/time` · `POST /api/dx/time/clear` | 填写 / 清除某道题的完成用时（只接受已 AC 的 Codeforces 题） |
+| `POST /api/dx/time` · `POST /api/dx/time/clear` | 填写 / 清除某道题的完成用时（接受已 AC 的 Codeforces / AtCoder 题） |
 | `GET /api/dan` | 抽题面板与记录页：档位表、题库缓存是否就绪、每日一题的**难度**、进行中的一轮、历史记录。只读，冷缓存时返回 `poolReady: false` |
 | `POST /api/dan/start` | 开一轮随机抽题 / 挑战 / 每日一题；已有一轮没结束时回 **409 `SESSION_ACTIVE`** |
 | `POST /api/dan/claim` | 起计时并**唯一一次**下发题号与链接；幂等，重复点击返回同一道题。未 claim 的题只含难度，见 [dan.md](dan.md#口径-a开始做题之前链接不下发) |
@@ -178,7 +178,7 @@ Schema 以 `PRAGMA user_version` 标记，当前版本由 `src/db/database.ts` �
 
 旧数据库在下次启动 Dashboard 时自动备份并升级到当前版本。更新程序时保留原 `.env`、`data/` 和自定义数据库路径；也可手动备份后运行 `npm run db:init`。
 
-**同步与页面操作。** 页面打开时可能自动同步，也可手动点击「同步最新数据」。首页同步面向已绑定账号，DX 页面手动同步针对当前用户的 Codeforces 账号；完成后重新读取本地数据并显示结果。历史回补可从账号管理以及题友个人空间中的账号入口发起。筛选、计时、参考表和图片导出等操作各有入口，不等同于同步。
+**同步与页面操作。** 页面打开时可能自动同步，也可手动点击「同步最新数据」。首页同步面向已绑定账号，DX 页面按当前选择同步 Codeforces 或 AtCoder 账号；完成后重新读取本地数据并显示结果。
 
 **CF 题的卡片上有「最快用时」。** 口径：比赛窗口（开赛 → 开赛 + 时长）内**最早一次 AC** 距开赛的时长，取**当前范围内**（仅我 / 我和关注的人）最快的那个人，卡片上带名字。赛后再做（practice / virtual）的 AC 不算 —— 没有时长数据的比赛也不算，宁可空着不猜。时长来自 `contest.list` 的 `durationSeconds`（`contests` 表 v8 列）。
 
