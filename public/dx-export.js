@@ -93,18 +93,17 @@ export async function saveB50Image(data, userName, profile = null) {
   else {ctx.fillStyle='#293959';ctx.beginPath();ctx.roundRect(plateX+14,plateY+13,88,88,7);ctx.fill();text(userName.slice(0,1).toUpperCase(),plateX+58,plateY+70,38,'#fff',800,undefined,'center');}
   const tone=cfRatingColor(data.board.rating).tone,ratingColors={gray:['#aeb7bf','#626d76'],green:['#67c779','#237441'],cyan:['#41c7d4','#137384'],blue:['#588cde','#254b9c'],violet:['#9b67d4','#5b3290'],orange:['#e59b45','#984c19'],red:['#df5870','#8e263e']};
   const [ratingMain,ratingDeep]=ratingColors[tone]??ratingColors.gray;
-  const ratingGradient=ctx.createLinearGradient(contentX,plateY+9,contentX,plateY+31);ratingGradient.addColorStop(0,'#a8e8aa');ratingGradient.addColorStop(1,ratingMain);
-  ctx.fillStyle=ratingGradient;ctx.strokeStyle=ratingDeep;ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(contentX,plateY+9,198,23,5);ctx.fill();ctx.stroke();
-  text('DX RATING',contentX+9,plateY+25,9,'#fff',900);
-  ctx.fillStyle='#13234e';ctx.beginPath();ctx.roundRect(contentX+121,plateY+11,73,19,3);ctx.fill();text(Number(data.board.rating).toFixed(1),contentX+188,plateY+26,16,'#fff6bd',800,68,'right');
-  ctx.fillStyle='#fffffff0';ctx.beginPath();ctx.roundRect(contentX,plateY+37,contentW,26,4);ctx.fill();
-  let badgeWidth=0;if(danImage){badgeWidth=52;const badgeHeight=22;ctx.drawImage(danImage,contentX+contentW-badgeWidth-3,plateY+39,badgeWidth,badgeHeight);}
-  text(userName,contentX+13,plateY+57,20,'#253050',900,contentW-badgeWidth-22);
+  const ratingGradient=ctx.createLinearGradient(contentX,plateY+17,contentX,plateY+39);ratingGradient.addColorStop(0,'#a8e8aa');ratingGradient.addColorStop(1,ratingMain);
+  ctx.fillStyle=ratingGradient;ctx.strokeStyle=ratingDeep;ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(contentX,plateY+17,198,23,5);ctx.fill();ctx.stroke();
+  text('DX RATING',contentX+9,plateY+33,9,'#fff',900);
+  ctx.fillStyle='#13234e';ctx.beginPath();ctx.roundRect(contentX+121,plateY+19,73,19,3);ctx.fill();text(Number(data.board.rating).toFixed(1),contentX+188,plateY+34,16,'#fff6bd',800,68,'right');
+  ctx.fillStyle='#fffffff0';ctx.beginPath();ctx.roundRect(contentX,plateY+45,contentW,26,4);ctx.fill();
+  let badgeWidth=0;if(danImage){badgeWidth=52;const badgeHeight=22;ctx.drawImage(danImage,contentX+contentW-badgeWidth-3,plateY+47,badgeWidth,badgeHeight);}
+  text(userName,contentX+13,plateY+65,20,'#253050',900,contentW-badgeWidth-22);
   const rarityFill={starter:'#d7f4f5',white:'#f6f8fb',bronze:'#a9673f',silver:'#cfd7df',gold:'#e5bd3e',rainbow:'#b86dcc'}[titleItem?.rarity]??'#f6f8fb';
   const rarityInk=['bronze','rainbow'].includes(titleItem?.rarity)?'#fff':'#26354b';
-  ctx.fillStyle=rarityFill;ctx.beginPath();ctx.roundRect(contentX,plateY+67,contentW,22,4);ctx.fill();
-  text(titleItem?.name??'新手挑战者',contentX+contentW/2,plateY+83,12,rarityInk,800,contentW-18,'center');
-  text(data.platform==='mixed'?'CODEFORCES × ATCODER':data.platform.toUpperCase(),plateX+plateW-14,plateY+108,9,'#493d63',900,250,'right');
+  ctx.fillStyle=rarityFill;ctx.beginPath();ctx.roundRect(contentX,plateY+75,contentW,22,4);ctx.fill();
+  text(titleItem?.name??'新手挑战者',contentX+contentW/2,plateY+91,12,rarityInk,800,contentW-18,'center');
   text('ALGORITHM DX', 820, 54, 20, '#90baff', 700);
   text('BEST 50', 820, 104, 42, '#e6edf3', 800);
   const viewLabel=data.platform==='mixed'?'Codeforces × AtCoder 混合榜':data.platform==='atcoder'?'AtCoder':'Codeforces';

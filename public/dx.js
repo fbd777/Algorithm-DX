@@ -287,7 +287,6 @@ function ratingSummary(value, data) {
           highestDan?el('img',{class:'dx-showcase-dan-badge',src:highestDan.image,alt:`最高段位 ${highestDan.name}`,title:`最高段位：${highestDan.name}`}):null,
         ]),
         titleBar,
-        el('span',{class:'dx-showcase-platform',text:platform==='mixed'?'CODEFORCES × ATCODER':(platformNames[platform]??platform).toUpperCase()}),
       ]),
     ]),
     el('div',{class:'dx-showcase-body'},[
