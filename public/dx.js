@@ -268,7 +268,7 @@ function ratingSummary(value, data) {
     'data-info-frame':profile?.loadout?.infoFrameId??'info_frame:newcomer' }, [
     el('div',{class:'dx-showcase-header'},[
       avatar,
-      el('div',{class:'dx-showcase-nameplate'},[
+      el('div',{class:`dx-showcase-nameplate${infoFrameItem?.image?' has-art':''}`},[
         infoFrameItem?.image?el('img',{class:'dx-showcase-nameplate-art',src:infoFrameItem.image,alt:'','aria-hidden':'true'}):null,
         el('div',{class:'dx-showcase-rating','data-rating-tone':color.tone},[
           el('span',{class:'dx-showcase-rating-label',text:'DX RATING'}),ratingDigits,

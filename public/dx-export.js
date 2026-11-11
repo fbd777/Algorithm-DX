@@ -113,7 +113,7 @@ export async function saveB50Image(data, userName, profile = null) {
       text(entry.problemId, right, cy + 29, 14, '#8998af', 400, cardWidth - 205, 'right');
       title(entry.problemTitle || entry.problemId, x + 18, cy + 59, cardWidth - 36);
       text('完成度', x + 18, cy + 107, 13, '#8998af');
-      text(score.achievementShown.toFixed(4) + '%', x + 18, cy + 140, 31, '#e6edf3', 800, cardWidth - 110);
+      text(score.achievementShown.toFixed(4) + '%', x + 18, cy + 140, 25, '#e6edf3', 800, cardWidth - 130);
       const rankAsset={'S':'gam-rank-s.png','S+':'gam-rank-sp.png','SS':'gam-rank-ss.png','SS+':'gam-rank-ssp.png','SSS':'gam-rank-sss.png','SSS+':'gam-rank-sssp.png'}[score.rank];
       if(rankAsset){
         const img=new Image();img.src=`/assets/maimai/${rankAsset}`;
