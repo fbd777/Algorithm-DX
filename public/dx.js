@@ -157,7 +157,7 @@ const state = { userId: null, year: null, platform:initialPlatform,
   data: null, meta: null, modalTarget: null };
 
 function updatePageNavigation() {
-  const labels = { practice: '用时补录', history: '练习历史', recorded: '全部成绩', board: 'Rating 总览' };
+  const labels = { practice: '用时补录', history: '练习历史', recorded: '全部成绩', board: '我的信息' };
   document.title = `Algorithm DX · ${labels[pageView]}`;
   for (const view of ['practice', 'history', 'recorded', 'board']) {
     const link = $(`${view}PageLink`);
@@ -181,7 +181,7 @@ function updatePageNavigation() {
   setPracticeView(pageView === 'history');
   $('rankTableBtn').hidden = practiceView;
   $('scoringNote').hidden = pageView !== 'board';
-  $('saveB50Btn').hidden = pageView !== 'board';
+  $('saveB50Btn').hidden = true;
   $('saveB50Status').hidden = pageView !== 'board';
 }
 
@@ -247,12 +247,19 @@ function ratingSummary(value) {
   const owned=profile?.owned??[];
   const equipped=id=>owned.find(item=>item.id===id);
   const titleItem=equipped(profile?.loadout?.titleId);
+  const loadoutItems=[
+    ['头像框',equipped(profile?.loadout?.avatarFrameId)],
+    ['背景板',equipped(profile?.loadout?.profileBackgroundId)],
+    ['信息框',equipped(profile?.loadout?.infoFrameId)],
+    ['B50 背景',equipped(profile?.loadout?.b50ThemeId)],
+  ];
   const player = el('div', { class: 'dx-player-identity' }, [
     el('span', { class: 'dx-player-platform', text: platform==='mixed'?'CF × AT':(platformNames[platform]??platform).toUpperCase() }),
     el(own ? 'a' : 'strong', { class: 'dx-player-name', text: name,
       href: own ? (platform==='atcoder'?`https://atcoder.jp/users/${encodeURIComponent(name)}`:`https://codeforces.com/profile/${encodeURIComponent(name)}`) : null,
       target: own ? '_blank' : null, rel: 'noopener noreferrer' }),
     titleItem?el('span',{class:`dx-player-title rarity-${titleItem.rarity}`,text:titleItem.name,title:titleItem.description}):null,
+    el('div',{class:'dx-player-loadout'},loadoutItems.map(([label,item])=>el('span',{title:item?.description??'',text:`${label} · ${item?.name??'新手装扮'}`}))),
   ]);
   return el('div', { class: 'dx-player-card',
     'data-avatar-frame':profile?.loadout?.avatarFrameId??'avatar_frame:newcomer',
@@ -264,6 +271,7 @@ function ratingSummary(value) {
         el('div', { class: 'dx-result-total-score' }, [digits]),
       ]),
     ]),
+    el('button',{class:'btn btn-ghost dx-player-dressup',type:'button',text:'更换装扮',onclick:()=>$('collectionBtn').click()}),
   ]);
 }
 
@@ -1199,8 +1207,11 @@ $('syncBtn').addEventListener('click', syncLatest);
 $('saveB50Btn').addEventListener('click', async () => {
   if (!state.data) return;
   const button = $('saveB50Btn');
+  const inlineButton=$('saveB50InlineBtn');
   button.disabled = true;
+  inlineButton.disabled=true;
   button.textContent = '正在生成…';
+  inlineButton.textContent='正在生成…';
   $('saveB50Status').textContent = '';
   const data = state.data;
   const name = state.meta?.users.find(user => user.id === state.userId)?.name || '玩家';
@@ -1211,9 +1222,12 @@ $('saveB50Btn').addEventListener('click', async () => {
     $('saveB50Status').textContent = `保存失败：${error.message}`;
   } finally {
     button.disabled = false;
+    inlineButton.disabled=false;
     button.textContent = '保存 B50 图片';
+    inlineButton.textContent='导出 B50 图片';
   }
 });
+$('saveB50InlineBtn').addEventListener('click',()=>$('saveB50Btn').click());
 
 $('collectionBtn').addEventListener('click',()=>{$('collectionModal').hidden=false;renderCollection();});
 $('collectionClose').addEventListener('click',()=>{$('collectionModal').hidden=true;});

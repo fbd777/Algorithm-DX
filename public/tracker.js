@@ -1,5 +1,6 @@
 const $=id=>document.getElementById(id),el=(tag,props={},children=[])=>{const node=document.createElement(tag);for(const [key,value] of Object.entries(props)){if(key==='class')node.className=value;else if(key==='text')node.textContent=value;else if(key.startsWith('on'))node.addEventListener(key.slice(2),value);else if(value!==null&&value!==undefined)node.setAttribute(key,String(value));}for(const child of [].concat(children))if(child)node.append(child);return node;};
-const state={user:null,platform:new URLSearchParams(location.search).get('platform')==='atcoder'?'atcoder':'codeforces',offset:0,limit:80,total:0};
+const initialParams=new URLSearchParams(location.search),initialOffset=Number(initialParams.get('offset'));
+const state={user:null,platform:initialParams.get('platform')==='atcoder'?'atcoder':'codeforces',offset:Number.isSafeInteger(initialOffset)&&initialOffset>0?initialOffset:0,limit:80,total:0};
 async function api(path,params={}){const query=new URLSearchParams(params),res=await fetch(`${path}?${query}`);const body=await res.json().catch(()=>null);if(!res.ok)throw new Error(body?.error??`HTTP ${res.status}`);return body;}
 function stat(label,value,sub){return el('article',{class:'tracker-stat'},[el('span',{text:label}),el('strong',{text:value}),el('small',{text:sub})]);}
 function render(data){
