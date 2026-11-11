@@ -1,9 +1,0 @@
-#!/bin/sh
-set -eu
-
-message_file=$1
-coauthor='Co-authored-by: swan416ya <3447049424@qq.com>'
-
-if ! grep -Eiq '^Co-authored-by:[[:space:]]*swan416ya <3447049424@qq\.com>[[:space:]]*$' "$message_file"; then
-  printf '\n%s\n' "$coauthor" >> "$message_file"
-fi
