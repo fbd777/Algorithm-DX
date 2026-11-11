@@ -222,12 +222,12 @@ function statCard(label, value, sub, tone) {
 }
 
 const playerProfiles = new Map();
-function ratingSummary(value) {
+function ratingSummary(value, data) {
   const platform=state.data?.platform??state.platform;
   const activeAccounts=state.meta?.accounts?.filter(a=>a.user_id===state.userId&&!a.is_archived)??[];
   const own = activeAccounts.find(a => a.platform === platform);
   const cfOwn=activeAccounts.find(a=>a.platform==='codeforces');
-  const name = own?.handle ?? state.meta?.users?.find(u => u.id === state.userId)?.name ?? '玩家';
+  const name = own?.handle ?? cfOwn?.handle ?? state.meta?.users?.find(u => u.id === state.userId)?.name ?? '玩家';
   const color = cfRatingColor(value);
   const avatar = el('div', { class: 'dx-player-avatar', 'aria-label': `${name} 的头像` }, [el('span', { text: name.slice(0,1).toUpperCase() })]);
   const profile = playerProfiles.get(state.userId);
@@ -243,35 +243,48 @@ function ratingSummary(value) {
       if (state.userId === user && state.data) renderSummary(state.data);
     }).catch(() => {});
   }
-  const digits = el('strong', { text: num1(value) });
   const owned=profile?.owned??[];
   const equipped=id=>owned.find(item=>item.id===id);
   const titleItem=equipped(profile?.loadout?.titleId);
-  const loadoutItems=[
-    ['头像框',equipped(profile?.loadout?.avatarFrameId)],
-    ['背景板',equipped(profile?.loadout?.profileBackgroundId)],
-    ['信息框',equipped(profile?.loadout?.infoFrameId)],
-    ['B50 背景',equipped(profile?.loadout?.b50ThemeId)],
-  ];
-  const player = el('div', { class: 'dx-player-identity' }, [
-    el('span', { class: 'dx-player-platform', text: platform==='mixed'?'CF × AT':(platformNames[platform]??platform).toUpperCase() }),
-    el(own ? 'a' : 'strong', { class: 'dx-player-name', text: name,
-      href: own ? (platform==='atcoder'?`https://atcoder.jp/users/${encodeURIComponent(name)}`:`https://codeforces.com/profile/${encodeURIComponent(name)}`) : null,
-      target: own ? '_blank' : null, rel: 'noopener noreferrer' }),
-    titleItem?el('span',{class:`dx-player-title rarity-${titleItem.rarity}`,text:titleItem.name,title:titleItem.description}):null,
-    el('div',{class:'dx-player-loadout'},loadoutItems.map(([label,item])=>el('span',{title:item?.description??'',text:`${label} · ${item?.name??'新手装扮'}`}))),
-  ]);
+  const solved=[...(data.recorded??[]),...(data.pending??[])];
+  const uniqueSolved=new Map(solved.map(item=>[`${item.platform}:${item.problemId}`,item]));
+  const latest=[...uniqueSolved.values()].sort((a,b)=>(b.solvedAt??0)-(a.solvedAt??0))[0];
+  const latestPlatform=latest?.platform==='atcoder'?'ATCODER':'CODEFORCES';
+  const latestTitle=latest?.problemTitle||latest?.problemId||'同步后显示最近过题';
+  const latestRating=latest?.problemRating==null?'—':String(latest.problemRating);
+  const ratingDigits=el('strong',{class:'dx-showcase-rating-value','aria-label':`DX Rating ${num1(value)}`});
+  for(const character of num1(value).padStart(6,' '))ratingDigits.append(el('span',{class:character==='.'?'dx-rating-point':'dx-rating-digit','data-empty':character===' ',text:character===' '?'\u00a0':character,'aria-hidden':'true'}));
   return el('div', { class: 'dx-player-card',
     'data-avatar-frame':profile?.loadout?.avatarFrameId??'avatar_frame:newcomer',
     'data-profile-background':profile?.loadout?.profileBackgroundId??'profile_background:newcomer',
-    'data-info-frame':profile?.loadout?.infoFrameId??'info_frame:newcomer' }, [avatar, player,
-    el('div', { class: 'dx-result-bottom dx-player-rating' }, [
-      el('div', { class: 'dx-result-total', 'data-rating-tone': color.tone }, [
-        el('div', { class: 'dx-result-total-label' }, [el('b', { text: 'DX' }), el('span', { text: 'RATING' })]),
-        el('div', { class: 'dx-result-total-score' }, [digits]),
+    'data-info-frame':profile?.loadout?.infoFrameId??'info_frame:newcomer' }, [
+    el('img',{class:'dx-showcase-character',src:'/assets/mm-parts/navichara-01-p1-02.png',alt:'','aria-hidden':'true'}),
+    el('div',{class:'dx-showcase-header'},[
+      avatar,
+      el('div',{class:'dx-showcase-nameplate'},[
+        el('div',{class:'dx-showcase-rating','data-rating-tone':color.tone},[
+          el('span',{class:'dx-showcase-rating-label',text:'DX RATING'}),ratingDigits,
+        ]),
+        el('div',{class:'dx-showcase-name',text:name}),
+        el('div',{class:'dx-showcase-title',text:titleItem?.name??'新手挑战者'}),
+        el('span',{class:'dx-showcase-platform',text:platform==='mixed'?'CODEFORCES × ATCODER':(platformNames[platform]??platform).toUpperCase()}),
       ]),
     ]),
-    el('button',{class:'btn btn-ghost dx-player-dressup',type:'button',text:'更换装扮',onclick:()=>$('collectionBtn').click()}),
+    el('div',{class:'dx-showcase-body'},[
+      el('div',{class:'dx-showcase-solved'},[
+        el('span',{text:'TOTAL SOLVED'}),
+        el('strong',{text:String(data.counts.solved)}),
+        el('small',{text:`B50 已记录 ${data.counts.recorded} 题`}),
+      ]),
+      el('div',{class:'dx-showcase-track'},[
+        el('img',{src:'/assets/mm-result/UI_RSL_MBase_MST.png',alt:'','aria-hidden':'true'}),
+        el('span',{class:'dx-showcase-track-kind',text:`LAST CLEAR · ${latestPlatform}`}),
+        el('span',{class:'dx-showcase-track-id',text:(latest?.problemId??'—').replace(/[:\s]/g,'')}),
+        el('strong',{class:'dx-showcase-track-title',text:latestTitle}),
+        el('span',{class:'dx-showcase-track-level',text:latestRating}),
+        el('span',{class:'dx-showcase-track-date',text:latest?.solvedAt?`AC ${fmtDate(latest.solvedAt)}`:'NO CLEAR DATA'}),
+      ]),
+    ]),
   ]);
 }
 
@@ -297,19 +310,10 @@ function renderCollection(){
 }
 
 function renderSummary(data) {
-  const { board, counts, slots } = data;
+  const { board } = data;
   document.body.dataset.b50Theme=playerProfiles.get(state.userId)?.loadout?.b50ThemeId??'b50_theme:newcomer';
   clear($('dxSummary'));
-  const oldSum = board.old.reduce((n, s) => n + (s.score?.rating ?? 0), 0);
-  const newSum = board.current.reduce((n, s) => n + (s.score?.rating ?? 0), 0);
-  $('dxSummary').append(
-    ratingSummary(board.rating, `旧题 ${num1(oldSum)} + 新题 ${num1(newSum)}`),
-    el('div', { class: 'dx-board-stats' }, [
-      statCard('旧题 Best 35', `${board.oldCount} / ${slots.old}`, `出题日期早于 ${data.year}-01-01 的题`),
-      statCard('新题 Best 15', `${board.currentCount} / ${slots.current}`, `${data.year} 年发布的题目`),
-      statCard('已记录成绩', `${counts.recorded} 题`, '含未进入 B50 的成绩'),
-    ]),
-  );
+  $('dxSummary').append(ratingSummary(board.rating, data));
 }
 
 /**
