@@ -1,4 +1,4 @@
-import { drawDxRatingFrame } from './dx-rating-frame.js';
+import { cfRatingColor } from './cf-rating-colors.js';
 
 /** Render server-provided B50 scores locally, independent of viewport and scroll position. */
 export async function saveB50Image(data, userName, profile = null) {
@@ -68,17 +68,47 @@ export async function saveB50Image(data, userName, profile = null) {
     const s = Math.round(seconds), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
     return `${h ? h + ':' + String(m).padStart(2, '0') : m}:${String(s % 60).padStart(2, '0')}`;
   };
-  text('ALGORITHM DX', margin, 65, 22, '#90baff', 700);
-  text('BEST 50', margin, 127, 46, '#e6edf3', 800);
+  const loadImage=async source=>{
+    if(!source)return null;
+    const image=new Image();if(/^https:/i.test(source))image.crossOrigin='anonymous';image.src=source;
+    try{await image.decode();return image;}catch{return null;}
+  };
+  const drawImageCover=(image,x,y,w,h,radius=8)=>{
+    const scale=Math.max(w/image.naturalWidth,h/image.naturalHeight),dw=image.naturalWidth*scale,dh=image.naturalHeight*scale;
+    ctx.save();ctx.beginPath();ctx.roundRect(x,y,w,h,radius);ctx.clip();ctx.drawImage(image,x+(w-dw)/2,y+(h-dh)/2,dw,dh);ctx.restore();
+  };
+  const owned=profile?.owned??[],equipped=id=>owned.find(item=>item.id===id);
+  const titleItem=equipped(profile?.loadout?.titleId),infoFrameItem=equipped(profile?.loadout?.infoFrameId),avatarItem=equipped(profile?.loadout?.avatarId);
+  const avatarSource=profile?.loadout?.avatarSource??'collectible';
+  const selectedAvatar=avatarSource==='custom'?profile?.loadout?.customAvatar
+    :avatarSource==='codeforces'?profile?.cfAvatar:avatarSource==='atcoder'?profile?.atcoderAvatar:avatarItem?.image;
+  const [plateImage,selectedAvatarImage,fallbackAvatarImage,danImage]=await Promise.all([
+    loadImage(infoFrameItem?.image),loadImage(selectedAvatar),loadImage(avatarItem?.image),loadImage(profile?.highestDan?.image),
+  ]);
+  const plateX=margin,plateY=34,plateW=720,plateH=116,contentX=plateX+122,contentW=295;
+  if(plateImage)ctx.drawImage(plateImage,plateX,plateY,plateW,plateH);
+  else {const fallback=ctx.createLinearGradient(plateX,plateY,plateX+plateW,plateY);fallback.addColorStop(0,'#fff');fallback.addColorStop(.62,'#ffb5ec');fallback.addColorStop(1,'#9b78ef');ctx.fillStyle=fallback;ctx.beginPath();ctx.roundRect(plateX,plateY,plateW,plateH,12);ctx.fill();}
+  const avatarImage=selectedAvatarImage??fallbackAvatarImage;
+  if(avatarImage)drawImageCover(avatarImage,plateX+14,plateY+13,88,88,7);
+  else {ctx.fillStyle='#293959';ctx.beginPath();ctx.roundRect(plateX+14,plateY+13,88,88,7);ctx.fill();text(userName.slice(0,1).toUpperCase(),plateX+58,plateY+70,38,'#fff',800,undefined,'center');}
+  const tone=cfRatingColor(data.board.rating).tone,ratingColors={gray:['#aeb7bf','#626d76'],green:['#67c779','#237441'],cyan:['#41c7d4','#137384'],blue:['#588cde','#254b9c'],violet:['#9b67d4','#5b3290'],orange:['#e59b45','#984c19'],red:['#df5870','#8e263e']};
+  const [ratingMain,ratingDeep]=ratingColors[tone]??ratingColors.gray;
+  const ratingGradient=ctx.createLinearGradient(contentX,plateY+9,contentX,plateY+31);ratingGradient.addColorStop(0,'#a8e8aa');ratingGradient.addColorStop(1,ratingMain);
+  ctx.fillStyle=ratingGradient;ctx.strokeStyle=ratingDeep;ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(contentX,plateY+9,198,23,5);ctx.fill();ctx.stroke();
+  text('DX RATING',contentX+9,plateY+25,9,'#fff',900);
+  ctx.fillStyle='#13234e';ctx.beginPath();ctx.roundRect(contentX+121,plateY+11,73,19,3);ctx.fill();text(Number(data.board.rating).toFixed(1),contentX+188,plateY+26,16,'#fff6bd',800,68,'right');
+  ctx.fillStyle='#fffffff0';ctx.beginPath();ctx.roundRect(contentX,plateY+37,contentW,26,4);ctx.fill();
+  let badgeWidth=0;if(danImage){badgeWidth=52;const badgeHeight=22;ctx.drawImage(danImage,contentX+contentW-badgeWidth-3,plateY+39,badgeWidth,badgeHeight);}
+  text(userName,contentX+13,plateY+57,20,'#253050',900,contentW-badgeWidth-22);
+  const rarityFill={starter:'#d7f4f5',white:'#f6f8fb',bronze:'#a9673f',silver:'#cfd7df',gold:'#e5bd3e',rainbow:'#b86dcc'}[titleItem?.rarity]??'#f6f8fb';
+  const rarityInk=['bronze','rainbow'].includes(titleItem?.rarity)?'#fff':'#26354b';
+  ctx.fillStyle=rarityFill;ctx.beginPath();ctx.roundRect(contentX,plateY+67,contentW,22,4);ctx.fill();
+  text(titleItem?.name??'新手挑战者',contentX+contentW/2,plateY+83,12,rarityInk,800,contentW-18,'center');
+  text(data.platform==='mixed'?'CODEFORCES × ATCODER':data.platform.toUpperCase(),plateX+plateW-14,plateY+108,9,'#493d63',900,250,'right');
+  text('ALGORITHM DX', 820, 54, 20, '#90baff', 700);
+  text('BEST 50', 820, 104, 42, '#e6edf3', 800);
   const viewLabel=data.platform==='mixed'?'Codeforces × AtCoder 混合榜':data.platform==='atcoder'?'AtCoder':'Codeforces';
-  text(`${userName} · ${data.year} 年度 · ${viewLabel}`, margin, 169, 24, '#a4b1c5', 400, 980);
-  const titleItem=profile?.owned?.find(item=>item.id===profile?.loadout?.titleId);
-  if(titleItem){
-    const rarityFill={starter:'#d7f4f5',white:'#f6f8fb',bronze:'#a9673f',silver:'#cfd7df',gold:'#e5bd3e',rainbow:'#b86dcc'}[titleItem.rarity]??'#f6f8fb';
-    const rarityInk=['bronze','rainbow'].includes(titleItem.rarity)?'#fff':'#26354b';
-    box(margin,180,Math.min(460,ctx.measureText(titleItem.name).width+64),38,rarityFill,'#ffffff99');text(titleItem.name,margin+18,206,17,rarityInk,800,420);
-  }
-  drawDxRatingFrame(ctx, data.board.rating, 1160, 74);
+  text(`${data.year} 年度 · ${viewLabel}`, 820, 139, 22, '#a4b1c5', 400, 720);
   const oldTotal = data.board.old.reduce((n, slot) => n + (slot.score?.rating ?? 0), 0);
   const newTotal = data.board.current.reduce((n, slot) => n + (slot.score?.rating ?? 0), 0);
   box(margin, 230, width - margin * 2, 70, '#151f30c9');

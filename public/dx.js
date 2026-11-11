@@ -262,6 +262,15 @@ function ratingSummary(value, data) {
   }
   const ratingDigits=el('strong',{class:'dx-showcase-rating-value','aria-label':`DX Rating ${num1(value)}`});
   for(const character of num1(value).padStart(6,' '))ratingDigits.append(el('span',{class:character==='.'?'dx-rating-point':'dx-rating-digit','data-empty':character===' ',text:character===' '?'\u00a0':character,'aria-hidden':'true'}));
+  const titleName=titleItem?.name??'新手挑战者';
+  const titleLabel=el('span',{class:'dx-showcase-title-label',text:titleName});
+  const titleTrack=el('span',{class:'dx-showcase-title-track'},[titleLabel]);
+  const titleBar=el('div',{class:'dx-showcase-title','data-rarity':titleItem?.rarity??'starter'},[titleTrack]);
+  requestAnimationFrame(()=>{
+    if(titleLabel.scrollWidth<=titleBar.clientWidth-16)return;
+    titleTrack.append(el('span',{class:'dx-showcase-title-label','aria-hidden':'true',text:titleName}));
+    titleBar.classList.add('is-scrolling');
+  });
   return el('div', { class: 'dx-player-card',
     'data-avatar-frame':profile?.loadout?.avatarFrameId??'avatar_frame:newcomer',
     'data-profile-background':profile?.loadout?.profileBackgroundId??'profile_background:newcomer',
@@ -277,9 +286,7 @@ function ratingSummary(value, data) {
           el('span',{text:name}),
           highestDan?el('img',{class:'dx-showcase-dan-badge',src:highestDan.image,alt:`最高段位 ${highestDan.name}`,title:`最高段位：${highestDan.name}`}):null,
         ]),
-        el('div',{class:'dx-showcase-title','data-rarity':titleItem?.rarity??'starter'},[
-          el('span',{text:titleItem?.name??'新手挑战者'}),
-        ]),
+        titleBar,
         el('span',{class:'dx-showcase-platform',text:platform==='mixed'?'CODEFORCES × ATCODER':(platformNames[platform]??platform).toUpperCase()}),
       ]),
     ]),
