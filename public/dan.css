@@ -57,6 +57,11 @@
 
 /* ---------- 自定义抽题（难度范围 + 标签） ---------- */
 .dan-custom { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-soft); }
+.dan-selected { display:grid; gap:9px; margin-top:14px; padding:14px; border:1px solid var(--border-soft); border-radius:14px; background:color-mix(in srgb,var(--panel-2) 92%,var(--accent) 8%); }
+.dan-selected h4,.dan-selected p { margin:0; }
+.dan-selected-action { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:9px; }
+.dan-selected-action input { min-width:0; padding:10px 12px; border:1px solid var(--border); border-radius:10px; color:var(--text); background:var(--panel); font:600 14px var(--mono); }
+.dan-selected-action input:focus { outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent); border-color:var(--accent); }
 .dan-custom-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .dan-custom-head h4 { margin: 0; font-size: .85rem; }
 .dan-custom-range { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

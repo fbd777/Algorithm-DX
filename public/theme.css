@@ -1492,6 +1492,34 @@ body.mm-theme .dan-life-events span { color:var(--warn); background:var(--warn-s
 
 body.mm-theme #dxSummary { margin-bottom:var(--mm-gap); padding:28px 32px; background:var(--panel); border:1px solid var(--border-soft); border-radius:var(--mm-card-radius); box-shadow:var(--mm-card-shadow); }
 body.mm-theme #dxSummary .dx-player-card { border:0; padding:0; background:none; }
+.dx-player-card { position:relative; isolation:isolate; overflow:hidden; border-radius:20px; }
+.dx-player-card::before { content:''; position:absolute; z-index:-2; inset:-24px; background:linear-gradient(120deg,#eaf8ff 0 42%,#fff0fb 70%,#fff8cf); }
+.dx-player-card::after { content:''; position:absolute; z-index:-1; inset:0; opacity:.14; background:url('/vendor/maimai/img/prism/bg/bg_pattern.png') center/430px repeat; }
+.dx-player-card[data-profile-background="profile_background:result-blue"]::before { background:linear-gradient(135deg,#122f58,#2778b9 46%,#8de5ff); }
+.dx-player-card[data-profile-background="profile_background:result-blue"] { color:#fff; }
+.dx-player-avatar { position:relative; flex:none; }
+.dx-player-card[data-avatar-frame="avatar_frame:bronze"] .dx-player-avatar { box-shadow:0 0 0 4px #f6c38b,0 0 0 7px #8b542b,0 8px 20px #4c2d2855; }
+.dx-player-card[data-info-frame="info_frame:dan-gold"] { box-shadow:inset 0 0 0 3px #fff1a5, inset 0 0 0 7px #d89b25,0 14px 30px #6a491f33; }
+.dx-player-card[data-info-frame="info_frame:dan-gold"]::after { background-image:url('/assets/maimai/gam-rank-sss.png'),url('/vendor/maimai/img/prism/bg/bg_pattern.png'); background-repeat:no-repeat,repeat; background-position:right 22px top 18px,center; background-size:110px auto,430px; opacity:.22; }
+.dx-player-title { display:inline-flex; width:max-content; max-width:100%; padding:4px 12px; border:1px solid #c8d2df; border-radius:5px; overflow:hidden; color:#26354b; background:#fff; box-shadow:inset 0 1px #fff,0 2px 5px #14233c22; font-size:11px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+.dx-player-title.rarity-silver { border-color:#8b98aa; background:linear-gradient(#fff,#cfd7df); }
+.dx-player-title.rarity-gold { border-color:#be8a1e; background:linear-gradient(#fff6b7,#e5b644); }
+
+.collection-modal-card { width:min(980px,100%); }
+.collection-modal-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+.collection-grid,.collection-group { display:grid; gap:14px; }
+.collection-group h4 { margin:10px 0 0; padding-bottom:8px; border-bottom:2px solid var(--border-soft); }
+.collection-items { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.collection-item { display:grid; grid-template-columns:58px minmax(0,1fr) auto; align-items:center; gap:12px; min-width:0; padding:12px; border:1px solid var(--border-soft); border-left:5px solid #aeb9c7; border-radius:13px; background:var(--panel-2); }
+.collection-item.rarity-bronze { border-left-color:#ad6b39; }.collection-item.rarity-silver { border-left-color:#8697aa; }.collection-item.rarity-gold { border-left-color:#e0aa25; }.collection-item.rarity-rainbow { border-left-color:#d56cc5; }
+.collection-item.is-locked { opacity:.62; filter:saturate(.45); }.collection-item.is-locked .collection-item-art { background:linear-gradient(145deg,#8f9aaa,#606b7b); }
+.collection-item-art { display:grid; place-items:center; width:56px; height:56px; border-radius:16px; color:#fff; background:linear-gradient(145deg,#62bdf1,#8066c6); box-shadow:inset 0 2px #ffffff88,0 5px 12px #2434552c; font-size:24px; font-weight:900; }
+.collection-item-copy { min-width:0; }.collection-item-copy strong { display:inline; }.collection-rarity { margin-left:7px; color:var(--muted); font:700 9px var(--mono); }.collection-item-copy p { margin:4px 0; font-size:12px; }.collection-item-copy small { color:var(--muted); }
+@media(max-width:720px){.collection-items{grid-template-columns:1fr}.collection-item{grid-template-columns:48px minmax(0,1fr)}.collection-item-art{width:46px;height:46px}.collection-item>.btn{grid-column:1/-1}}
+
+body[data-b50-theme="b50_theme:result-blue"] #oldSection,body[data-b50-theme="b50_theme:result-blue"] #newSection { background:linear-gradient(145deg,#0d2d55,#195b96 52%,#4cb8db); }
+body[data-b50-theme="b50_theme:sss"] #oldSection,body[data-b50-theme="b50_theme:sss"] #newSection { background:linear-gradient(135deg,#36224b,#7d4778 48%,#f1ba4b); }
+body[data-b50-theme="b50_theme:sss"] #oldSection::after,body[data-b50-theme="b50_theme:sss"] #newSection::after { content:''; position:absolute; right:20px; top:16px; width:130px; height:70px; opacity:.18; background:url('/assets/maimai/gam-rank-sss.png') center/contain no-repeat; }
 
 /* B50 board: arcade track plates with an explicit source-platform identity. */
 body.mm-theme #oldSection,body.mm-theme #newSection {
@@ -1552,6 +1580,8 @@ body.mm-theme .dx-b50-title { margin:0; min-height:40px; font-size:14px; font-we
 .dx-b50-achievement { white-space:nowrap; color:color-mix(in srgb,var(--platform-accent) 68%,var(--text)); font:900 clamp(19px,14cqi,24px)/1.3 var(--sans); font-variant-numeric:tabular-nums; letter-spacing:-.9px; text-shadow:0 1px #fff8; }
 .dx-b50-achievement small { font-size:12px; margin-left:2px; letter-spacing:0; }
 .dx-b50-rank { flex-shrink:0; color:var(--b50-rank-ink); font:800 clamp(13px,9.5cqi,16px) var(--sans); letter-spacing:-.5px; }
+.dx-b50-rank-art { display:grid; place-items:center; width:50px; height:26px; overflow:hidden; }
+.dx-b50-rank-art img { display:block; width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 2px 2px #26354b38); }
 .dx-b50-meta { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:11px; font-variant-numeric:tabular-nums; }
 .dx-b50-meta > span + span::before { content:'·'; margin-right:8px; }
 .dx-b50-details { margin-top:2px; border-top:1px solid var(--border-soft); }

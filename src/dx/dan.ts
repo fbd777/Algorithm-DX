@@ -130,6 +130,12 @@ export const DAN_CUSTOM_TIER: DanTier = {
   draw: 'rating', perStageLimit: true,
 };
 
+/** User-picked single problem. It keeps the same per-problem time rule as custom draws. */
+export const DAN_SELECTED_TIER: DanTier = {
+  key: 'selected', name: '指定题目', minRating: 1, maxRating: 5000, limitSeconds: 3600,
+  draw: 'rating', perStageLimit: true,
+};
+
 /** 自定义抽题允许的难度范围与标签数（越界在 API 层拒绝，这里只放口径）。 */
 export const DAN_CUSTOM_MIN_RATING = 800;
 export const DAN_CUSTOM_MAX_RATING = 3500;
@@ -145,6 +151,7 @@ export type DanKind = 'challenge' | 'single' | 'daily';
 export function danTier(key: string): DanTier | null {
   if (key === DAILY_TIER.key) return DAILY_TIER;
   if (key === DAN_CUSTOM_TIER.key) return DAN_CUSTOM_TIER;
+  if (key === DAN_SELECTED_TIER.key) return DAN_SELECTED_TIER;
   return DAN_TIERS.find((tier) => tier.key === key)
     ?? DAN_RANDOM_TIERS.find((tier) => tier.key === key) ?? null;
 }
@@ -328,6 +335,7 @@ export interface DanSessionRow {
   /** 自定义抽题的标签条件（JSON 数组）。NULL = 没有标签条件（迁移 020 之前的行也是）。 */
   tags_json: string | null;
   rules_json: string | null;
+  selected_problem_id: string | null;
 }
 
 export interface DanStageRow {
@@ -471,28 +479,31 @@ function validateCustomInput(input: { minRating?: number; maxRating?: number; ta
 export function createDanSession(
   db: DatabaseSync,
   input: { id: string; userId: number; kind: DanKind; tierKey: string; now: number;
-    platform?:'codeforces'|'atcoder'; minRating?: number; maxRating?: number; tags?: readonly string[] },
+    platform?:'codeforces'|'atcoder'; minRating?: number; maxRating?: number; tags?: readonly string[];
+    selectedProblemId?:string },
 ): DanSessionRow {
   const custom = input.tierKey === DAN_CUSTOM_TIER.key;
+  const selected = input.tierKey === DAN_SELECTED_TIER.key;
   if (custom && input.kind !== 'single') throw new DanError('CUSTOM_INVALID', '自定义条件只用于单题抽题');
+  if (selected && (input.kind !== 'single'||!input.selectedProblemId)) throw new DanError('CUSTOM_INVALID', '指定题目只用于单题练习');
   const customRange = custom ? validateCustomInput(input) : null;
   const tier = input.kind === 'daily' ? DAILY_TIER
-    : custom ? DAN_CUSTOM_TIER : selectableDanTier(input.tierKey);
+    : custom ? DAN_CUSTOM_TIER : selected ? DAN_SELECTED_TIER : selectableDanTier(input.tierKey);
   if (!tier) throw new DanError('TIER_UNKNOWN', '不认识的档位');
   return transaction(db, () => {
     if (activeDanSession(db, input.userId)) {
       throw new DanError('SESSION_ACTIVE', '已经有一轮认定没结束，先完成或放弃它');
     }
     db.prepare(`INSERT INTO dan_sessions
-      (id,user_id,tier,kind,stage_count,limit_seconds,min_rating,max_rating,status,started_at,tags_json,rules_json,platform)
-      VALUES(?,?,?,?,?,?,?,?,'active',?,?,?,?)`)
+      (id,user_id,tier,kind,stage_count,limit_seconds,min_rating,max_rating,status,started_at,tags_json,rules_json,platform,selected_problem_id)
+      VALUES(?,?,?,?,?,?,?,?,'active',?,?,?,?,?)`)
       .run(input.id, input.userId, tier.key, input.kind, danStageCount(input.kind),
         tier.limitSeconds,
         customRange ? customRange.minRating : input.kind === 'daily' ? (input.minRating ?? tier.minRating) : tier.minRating,
         customRange ? customRange.maxRating : input.kind === 'daily' ? (input.maxRating ?? tier.maxRating) : tier.maxRating,
         input.now,
         customRange && customRange.tags.length ? JSON.stringify(customRange.tags) : null,
-        input.kind === 'challenge' ? JSON.stringify(DAN_LIFE_RULES) : null,input.platform??'codeforces');
+        input.kind === 'challenge' ? JSON.stringify(DAN_LIFE_RULES) : null,input.platform??'codeforces',input.selectedProblemId??null);
     return sessionRow(db, input.id)!;
   });
 }
@@ -526,7 +537,10 @@ export function drawNextDanStage(
     };
     // 每日一题必须**可复现**（同一天刷新不能换题），所以走哈希而不是随机数；
     // 其余模式走 crypto 随机数，服务端不可预测（口径 A）。
-    const candidate = session.kind === 'daily'
+    const candidate = session.selected_problem_id
+      ? input.pool.find(problem=>danProblemId(problem).toUpperCase()===session.selected_problem_id!.toUpperCase()
+        && !options.exclude.has(danProblemId(problem).toUpperCase()))??null
+      : session.kind === 'daily'
       ? dailyDanCandidate(input.pool, options, session.platform==='codeforces'
         ? `daily:${input.dateKey}:${session.user_id}`:`daily:${session.platform}:${input.dateKey}:${session.user_id}`)
       : drawDanCandidate(input.pool, options, input.randomInt);

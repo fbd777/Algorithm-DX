@@ -18,6 +18,10 @@ export function cachedAtCoderProblemRatings(cache:Cache):ProblemRating[]|null{
     problemId:row.problemId,problemUrl:row.problemUrl,title:row.title,rating:row.rating!,nativeRating:row.nativeRating,tags:[]})):null;
 }
 
+export function cachedAtCoderProblemCatalog(cache:Cache):ProblemMetadata[]|null{
+  return cache.get<ProblemMetadata[]>(CATALOG_CACHE_KEY)??null;
+}
+
 export class AtCoderFetcher extends BaseFetcher {
   readonly platform='atcoder';
   http:HttpClient;
@@ -69,7 +73,7 @@ export class AtCoderFetcher extends BaseFetcher {
       const model=(models as Record<string,any>)[problem.id];
       const raw=typeof model?.difficulty==='number'&&Number.isFinite(model.difficulty)?model.difficulty:null;
       const experimental=model?.is_experimental===true;
-      rows.push({problemId:problem.id,title:problem.name,
+      rows.push({problemId:problem.id,contestId:problem.contest_id,title:problem.name,
         problemUrl:`https://atcoder.jp/contests/${encodeURIComponent(String(problem.contest_id??''))}/tasks/${encodeURIComponent(problem.id)}`,
         rating:raw===null||experimental?null:atCoderDifficultyToCodeforces(raw),
         nativeRating:raw===null?null:displayedAtCoderDifficulty(raw),experimental});

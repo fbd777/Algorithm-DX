@@ -1199,6 +1199,18 @@ function tick(node) {
 }
 
 $('dailyStart').addEventListener('click', () => startRun('daily'));
+$('selectedStart').addEventListener('click', async()=>{
+  const problemId=$('selectedProblem').value.trim();
+  if(!problemId){setMessage('请先输入题号或题目链接。',true);return;}
+  if(busy)return;
+  const tab=reserveProblemTab();busy=true;setMessage('正在校验题目并开始计时…');render();
+  try{
+    const started=await post('/api/dan/start',{userId,platform,kind:'single',tier:'selected',problemId,tz});
+    await openClaimedStage(started.session,tab);setMessage('题目已打开并开始计时。');
+  }catch(error){if(tab&&!tab.closed)tab.close();setMessage(error.message,true);await refresh();}
+  finally{busy=false;render();}
+});
+$('selectedProblem').addEventListener('keydown',event=>{if(event.key==='Enter')$('selectedStart').click();});
 $('customStart').addEventListener('click', () => {
   const min = Number($('customMin').value), max = Number($('customMax').value);
   // 本地先拦一道明显的错（非数字、区间反了），省一次网络往返；真正的口径校验在服务端。

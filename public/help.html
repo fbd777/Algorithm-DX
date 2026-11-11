@@ -17,6 +17,7 @@
     <a class="btn btn-ghost" href="/circle.html">题友圈</a>
     <a class="btn btn-ghost" href="/dx.html">DX Rating</a>
     <a class="btn btn-ghost" href="/dan.html">随机练习</a>
+    <a class="btn btn-ghost" href="/tracker.html">比赛 Tracker</a>
     <a class="btn btn-ghost" href="/stats.html">练习数据</a>
     <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
     <a class="btn btn-primary" href="/help.html" aria-current="page">使用指南</a>
@@ -128,7 +129,7 @@
 <h2>5. 不知道做哪道题？试试随机练习</h2>
 <ol>
   <li>先绑定 CF 账号并同步一次，减少抽到做过的题。抽题会排除本机已保存的提交和计时记录中出现过的题，包括归档账号的记录。</li>
-  <li>打开<a href="/dan.html">「随机练习」</a>。只练一道时，选「每日一题」、难度档位，或设置难度范围和标签后点击「按条件抽一道」。</li>
+  <li>打开<a href="/dan.html">「随机练习」</a>。只练一道时，可以随机抽题；也可以输入 CF / AtCoder 题号，校验没做过后直接打开并开始计时。</li>
   <li>抽到题后，先看到难度；点击「开始做题」才会揭晓题目、打开 CF 并开始计时。原页面会继续显示用时。如果浏览器没有打开新标签页，点击「回到 Codeforces」。</li>
   <li>使用绑定的账号提交，通过后等待结算。成绩会保存到「练习历史」，满足计分条件的成绩可参与 B50。</li>
 </ol>
@@ -145,8 +146,14 @@
 <p>「随机挑战」也使用这套四题规则，难度覆盖 800–2600。<strong>小随机</strong>让各个难度被抽中的机会相同；<strong>大随机</strong>让每道题被抽中的机会相同，因此题量多的难度更常出现。更新前已经创建的轮次仍沿用创建时的规则。</p>
 </section>
 
+<section id="tracker">
+<h2>6. 比赛 Tracker 与成就装扮</h2>
+<p><a href="/tracker.html">比赛 Tracker</a>按比赛一行、题目一格展示 Codeforces 与 AtCoder 进度。绿色表示 AC，黄色表示尝试过但尚未通过，星标表示该题第一次提交就是 AC；整行点亮后会计入比赛称号进度。</p>
+<p>在 DX Rating 页点击「成就与装扮」，可以查看已获得的成就、称号、头像框、背景板、信息框和 B50 导出背景。白色比赛称号要求全题 AC；银色比赛称号要求全题第一次提交均为 AC。比赛奖励只会在历史回补完整、题单可确认时发放。</p>
+</section>
+
 <section id="faq">
-<h2>6. 常见问题</h2>
+<h2>7. 常见问题</h2>
 <details><summary>账号保存了，为什么看不到做题记录？</summary>
 <p>先在「已绑定账号」确认平台和账号 ID 正确，再看同步是否完成。提示「待配置」时补充 Cookie；提示失败时按具体原因处理。只有近期记录时，尝试「回补历史」，并查看<a href="#sync">平台支持范围</a>。首页「AC 记录」只显示已通过的题，失败提交可在练习数据中查看。</p>
 </details>

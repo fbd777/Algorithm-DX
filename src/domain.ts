@@ -67,6 +67,8 @@ export interface ProblemRelease {
 /** Platform problem metadata normalized for the DX difficulty scale. */
 export interface ProblemMetadata {
   problemId: string;
+  /** Owning contest when the source provides it (used by the progress tracker). */
+  contestId?: string;
   title: string;
   problemUrl?: string;
   /** Codeforces-scale difficulty. null means the source estimate is unusable. */

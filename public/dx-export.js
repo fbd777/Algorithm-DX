@@ -1,7 +1,7 @@
 import { drawDxRatingFrame } from './dx-rating-frame.js';
 
 /** Render server-provided B50 scores locally, independent of viewport and scroll position. */
-export async function saveB50Image(data, userName) {
+export async function saveB50Image(data, userName, profile = null) {
   await document.fonts.ready;
   const width = 1600, margin = 48, gap = 16, cardWidth = (width - margin * 2 - gap * 4) / 5;
   const cardHeight = 216;
@@ -16,7 +16,12 @@ export async function saveB50Image(data, userName) {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('浏览器无法生成图片，请换用支持图片导出的浏览器');
   ctx.scale(scale, scale);
-  ctx.fillStyle = '#0c121c'; ctx.fillRect(0, 0, width, height);
+  const theme=profile?.loadout?.b50ThemeId??'b50_theme:newcomer';
+  const backdrop=ctx.createLinearGradient(0,0,width,height);
+  if(theme==='b50_theme:sss'){backdrop.addColorStop(0,'#21172e');backdrop.addColorStop(.55,'#633b67');backdrop.addColorStop(1,'#b2762e');}
+  else if(theme==='b50_theme:result-blue'){backdrop.addColorStop(0,'#071a32');backdrop.addColorStop(.55,'#104d82');backdrop.addColorStop(1,'#267f9f');}
+  else {backdrop.addColorStop(0,'#0c121c');backdrop.addColorStop(.6,'#14233a');backdrop.addColorStop(1,'#241b35');}
+  ctx.fillStyle=backdrop;ctx.fillRect(0,0,width,height);
   const font = (size, weight) => `${weight} ${size}px "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", sans-serif`;
   const text = (value, x, y, size = 20, color = '#e6edf3', weight = 400, maxWidth, align = 'left') => {
     ctx.font = font(size, weight);
@@ -58,6 +63,8 @@ export async function saveB50Image(data, userName) {
   text('BEST 50', margin, 127, 46, '#e6edf3', 800);
   const viewLabel=data.platform==='mixed'?'Codeforces × AtCoder 混合榜':data.platform==='atcoder'?'AtCoder':'Codeforces';
   text(`${userName} · ${data.year} 年度 · ${viewLabel}`, margin, 169, 24, '#a4b1c5', 400, 980);
+  const titleItem=profile?.owned?.find(item=>item.id===profile?.loadout?.titleId);
+  if(titleItem){box(margin,180,Math.min(460,ctx.measureText(titleItem.name).width+64),38,titleItem.rarity==='silver'?'#cfd7df':titleItem.rarity==='gold'?'#d7a62d':'#f6f8fb','#ffffff99');text(titleItem.name,margin+18,206,17,'#26354b',800,420);}
   drawDxRatingFrame(ctx, data.board.rating, 1160, 74);
   const oldTotal = data.board.old.reduce((n, slot) => n + (slot.score?.rating ?? 0), 0);
   const newTotal = data.board.current.reduce((n, slot) => n + (slot.score?.rating ?? 0), 0);
@@ -94,7 +101,11 @@ export async function saveB50Image(data, userName) {
       title(entry.problemTitle || entry.problemId, x + 18, cy + 59, cardWidth - 36);
       text('完成度', x + 18, cy + 107, 13, '#8998af');
       text(score.achievementShown.toFixed(4) + '%', x + 18, cy + 140, 31, '#e6edf3', 800, cardWidth - 110);
-      text(score.rank, right, cy + 140, 25, tone, 800, 66, 'right');
+      const rankAsset={'S':'gam-rank-s.png','S+':'gam-rank-sp.png','SS':'gam-rank-ss.png','SS+':'gam-rank-ssp.png','SSS':'gam-rank-sss.png','SSS+':'gam-rank-sssp.png'}[score.rank];
+      if(rankAsset){
+        const img=new Image();img.src=`/assets/maimai/${rankAsset}`;
+        try{await img.decode();ctx.drawImage(img,right-82,cy+108,82,38);}catch{text(score.rank,right,cy+140,25,tone,800,66,'right');}
+      }else text(score.rank, right, cy + 140, 25, tone, 800, 66, 'right');
       const difficulty=entry.platform==='atcoder'&&entry.nativeProblemRating!=null
         ? `AT ${entry.nativeProblemRating} → CF ${entry.problemRating ?? '—'}`:`难度 ${entry.problemRating ?? '—'}`;
       text(difficulty, x + 18, cy + 166, 15, '#a4b1c5',400,cardWidth-120);
@@ -106,7 +117,8 @@ export async function saveB50Image(data, userName) {
     }
     y += Math.ceil(group.capacity / 5) * (cardHeight + gap);
   }
-  text(`${viewLabel} · 空位按 0 分计入 · DX Rating 为娱乐向换算`, margin, height - 37, 18, '#8998af');
+  const themeName=profile?.owned?.find(item=>item.id===theme)?.name??'Prism 新手舞台';
+  text(`${viewLabel} · ${themeName} · 空位按 0 分计入 · DX Rating 为娱乐向换算`, margin, height - 37, 18, '#aebdd2');
   text(new Date().toLocaleDateString('zh-CN'), width - 190, height - 37, 18, '#8998af');
   const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('图片生成失败，请重试');

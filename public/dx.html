@@ -23,6 +23,7 @@
     <a class="btn btn-ghost" href="/circle.html">题友圈</a>
     <a class="btn btn-primary" href="/dx.html" aria-current="page">DX Rating</a>
     <a class="btn btn-ghost" href="/dan.html">随机练习</a>
+    <a class="btn btn-ghost" href="/tracker.html">比赛 Tracker</a>
     <a class="btn btn-ghost" href="/stats.html">练习数据</a>
     <a class="btn btn-ghost" href="/?admin=1">账号管理</a>
     <a class="btn btn-ghost" href="/help.html">使用指南</a>
@@ -40,6 +41,7 @@
       <button id="syncBtn" class="btn btn-ghost" type="button" title="从当前视图对应的平台拉取最新提交，再重新读取本机数据">同步最新数据</button>
       <button id="rankTableBtn" class="btn btn-ghost" type="button" title="各难度拿到 S ~ SSS+ 分别要压到多少时间">参考表</button>
       <button id="saveB50Btn" class="btn btn-ghost" type="button" disabled>保存 B50 图片</button>
+      <button id="collectionBtn" class="btn btn-ghost" type="button">成就与装扮</button>
       <span id="saveB50Status" class="field-hint" role="status"></span>
       <button id="practiceBtn" class="btn btn-primary" type="button">手动添加做题记录</button>
       <details class="dx-more"><summary class="btn btn-ghost">更多</summary><button id="mmMascotBtn" class="btn btn-ghost" type="button">结算角色设置</button><button id="backtestBtn" class="btn btn-ghost" type="button">本地回测 / 导出</button><a href="/help.html#validation">回测说明</a></details>
@@ -277,6 +279,14 @@
       <button id="backtestDownload" class="btn btn-primary" type="button" disabled>下载汇总 JSON</button>
       <button id="backtestClose" class="btn btn-ghost" type="button">关闭</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="collectionModal" hidden>
+  <div class="modal-card modal-card-wide collection-modal-card" role="dialog" aria-modal="true" aria-labelledby="collectionTitle">
+    <div class="collection-modal-head"><div><h3 id="collectionTitle">成就与收藏品</h3><p class="modal-sub">完成练习、挑战和整场比赛来解锁；装备会同步应用到个人卡片和 B50 导出图。</p></div><button id="collectionClose" class="btn btn-ghost" type="button">关闭</button></div>
+    <div id="collectionBody" class="collection-grid"></div>
+    <p id="collectionStatus" class="field-hint" role="status"></p>
   </div>
 </div>
 

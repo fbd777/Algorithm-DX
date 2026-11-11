@@ -73,10 +73,11 @@ import {
 import type { SyncJobRunner, SyncJobState } from './sync-job.ts';
 import { listPractice, recordPractice, editPractice, voidPractice, type PracticeInput } from '../dx/practice.ts';
 import { localBacktestReport } from '../dx/backtest.ts';
-import { startTimer, timerState, cancelTimer, reconcileTimers } from '../dx/timer.ts';
+import { startTimer, timerState, cancelTimer, reconcileTimers, normalizeTimerProblem } from '../dx/timer.ts';
 import {
   DAILY_TIER,
   DAN_CUSTOM_TIER,
+  DAN_SELECTED_TIER,
   DAN_RANDOM_TIERS,
   DAN_STAGES,
   DAN_TIERS,
@@ -89,6 +90,8 @@ import {
   currentDanStage,
   danDateKey,
   danHistory,
+  danExcludedProblems,
+  danProblemId,
   danProblemUrl,
   danSessionView,
   danStageLimitOf,
@@ -97,11 +100,13 @@ import {
   drawNextDanStage,
   type DanKind,
 } from '../dx/dan.ts';
+import { collectibleProfile, equipCollectible } from '../dx/collectibles.ts';
 import { CodeforcesSyncFetcher, cachedProblemRatings } from '../fetchers/codeforces-sync.ts';
-import { AtCoderFetcher, cachedAtCoderProblemRatings } from '../fetchers/atcoder.ts';
+import { AtCoderFetcher, cachedAtCoderProblemRatings, cachedAtCoderProblemCatalog } from '../fetchers/atcoder.ts';
 import { Repository } from '../db/database.ts';
 import type { ProblemRating } from '../domain.ts';
 import { dismissedProblems, reminderGroup, REMINDER_DAYS, setTimeReminder } from '../dx/reminders.ts';
+import { contestTracker } from './tracker.ts';
 
 export interface ApiContext {
   db: DatabaseSync;
@@ -175,6 +180,7 @@ export const WRITE_ROUTES = new Set([
   '/api/dx/attempts/void',
   '/api/dx/attempts/edit',
   '/api/dx/profile',
+  '/api/dx/collectibles/equip',
   '/api/dan/start',
   '/api/dan/claim',
   '/api/dan/settle',
@@ -838,6 +844,13 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
         }
         case '/api/meta':
           return meta(ctx, params);
+        case '/api/tracker': {
+          const user=parseIntOrNull(params.get('user'),1,Number.MAX_SAFE_INTEGER,'user');if(user===null)throw new BadRequest('缺少 user 参数');
+          const platform=dxPlatform(params.get('platform')) as 'codeforces'|'atcoder';
+          const repo=new Repository(ctx.db);
+          const catalog=platform==='atcoder'?cachedAtCoderProblemCatalog(repo):cachedProblemRatings(repo);
+          return {status:200,body:{ready:Boolean(catalog),...contestTracker(ctx.db,user,platform,catalog??[],{q:params.get('q')??'',offset:clampInt(params.get('offset'),0,0,1000000,'offset'),limit:clampInt(params.get('limit'),80,1,200,'limit')})}};
+        }
         case '/api/stats':
           return stats(ctx, params);
         case '/api/dx/rules':
@@ -1017,21 +1030,30 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
         }
         case '/api/dx/profile': {
           const userId = positiveInt(objectBody(body), 'userId'), db = ctx.openWrite();
+          const collection=collectibleProfile(db,userId,cachedProblemRatings(new Repository(db))??[]);
           const account = db.prepare("SELECT handle FROM accounts WHERE user_id=? AND platform='codeforces' AND is_archived=0").get(userId);
-          if (!account) return { status: 200, body: { profile: null } };
+          if (!account) return { status: 200, body: { profile: { handle:null,avatar:null,...collection } } };
           const repo = new Repository(db), key = `cf:profile:v2:${String(account.handle).toLowerCase()}`;
           const cached = repo.get(key);
-          if (cached) return { status: 200, body: { profile: cached } };
-          const data = await new HttpClient(db).json(`https://codeforces.com/api/user.info?handles=${encodeURIComponent(String(account.handle))}`);
-          if (data?.status !== 'OK' || !data.result?.[0]) throw new BadRequest('暂时无法加载 Codeforces 头像');
-          const raw = data.result[0];
+          if (cached) return { status: 200, body: { profile: { ...(cached as object),...collection } } };
+          let raw:Record<string,unknown>|null=null;
+          try {
+            const data = await new HttpClient(db).json(`https://codeforces.com/api/user.info?handles=${encodeURIComponent(String(account.handle))}`);
+            if(data?.status==='OK'&&data.result?.[0])raw=data.result[0];
+          } catch { /* Cosmetics and the local identity remain usable while CF profile is unavailable. */ }
           let avatar: string | null = null;
-          try { const url = new URL(raw.avatar, 'https://codeforces.com');
+          try { if(typeof raw?.avatar!=='string'||!raw.avatar)throw new Error('No avatar'); const url = new URL(raw.avatar, 'https://codeforces.com');
             if (url.protocol === 'https:' && (url.hostname === 'codeforces.org' || url.hostname.endsWith('.codeforces.org') || url.hostname === 'codeforces.com')) avatar = url.href;
           } catch { /* Keep the handle visible if the avatar is unavailable. */ }
-          const profile = { handle: String(account.handle), avatar };
-          repo.set(key, profile, 21600);
-          return { status: 200, body: { profile } };
+          const identity = { handle: String(account.handle), avatar };
+          repo.set(key, identity, 21600);
+          return { status: 200, body: { profile:{...identity,...collection} } };
+        }
+        case '/api/dx/collectibles/equip': {
+          const input=objectBody(body),db=ctx.openWrite();
+          try {
+            return {status:200,body:{profile:equipCollectible(db,positiveInt(input,'userId'),text(input,'collectibleId',180))}};
+          } catch(error) { throw new BadRequest(error instanceof Error?error.message:'无法装备这件收藏品'); }
         }
         case '/api/dan/start': {
           const input = objectBody(body), userId = positiveInt(input, 'userId');
@@ -1044,6 +1066,7 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
           // 范围与标签个数的形状校验在 createDanSession 里（DanError → 400）。
           let pool: ProblemRating[] | null = null;
           let custom: { minRating: number; maxRating: number; tags: string[] } | undefined;
+          let selectedProblemId:string|undefined;
           if (tierKey === DAN_CUSTOM_TIER.key) {
             pool = await danPool(db,platform);
             const requested = Array.isArray(input.tags) ? input.tags.filter((t): t is string => typeof t === 'string') : [];
@@ -1052,13 +1075,20 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
             if (unknown.length) throw new BadRequest(`题库里没有这些标签：${unknown.join('、')}`);
             custom = { minRating: Number(input.minRating), maxRating: Number(input.maxRating), tags: requested };
           }
+          if(tierKey===DAN_SELECTED_TIER.key){
+            pool=await danPool(db,platform);
+            try{selectedProblemId=normalizeTimerProblem(text(input,'problemId',300),platform);}catch(error){throw new BadRequest(error instanceof Error?error.message:'题号格式不正确');}
+            const chosen=pool.find(problem=>danProblemId(problem).toUpperCase()===selectedProblemId!.toUpperCase());
+            if(!chosen)throw new BadRequest('题库里没有这道已评定题目，请检查题号或先同步题库');
+            if(danExcludedProblems(db,userId,undefined,platform).has(selectedProblemId.toUpperCase()))throw new BadRequest('这道题已有提交记录或计时记录，请选择一道没做过的题');
+          }
           const sessionId = newDanSessionId();
           // Fetch before opening a transaction; creation and drawing must commit together.
           pool ??= await danPool(db,platform);
           const band = kind === 'daily' ? dailyBand(danEquivalentRating(db, userId,platform),platform==='atcoder'?1:100) : {};
           db.exec('SAVEPOINT dan_start');
           try {
-            const session = createDanSession(db, { id: sessionId, userId, platform,kind, tierKey, now, ...band, ...custom });
+            const session = createDanSession(db, { id: sessionId, userId, platform,kind, tierKey, now, ...band, ...custom,selectedProblemId });
             const drawn = drawNextDanStage(db, { sessionId, pool, now, dateKey: danDateKey(now, tzFromBody(input)) });
             const view = danSessionView(db, session);
             db.exec('RELEASE dan_start');

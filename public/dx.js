@@ -69,6 +69,14 @@ function fmtDateTime(seconds) {
 }
 
 const num1 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(1));
+const rankAssets={S:'gam-rank-s.png','S+':'gam-rank-sp.png',SS:'gam-rank-ss.png','SS+':'gam-rank-ssp.png',SSS:'gam-rank-sss.png','SSS+':'gam-rank-sssp.png'};
+function rankMark(rank){
+  const asset=rankAssets[rank];
+  if(!asset)return el('span',{class:'dx-b50-rank',text:rank});
+  const wrap=el('span',{class:'dx-b50-rank dx-b50-rank-art','aria-label':rank});
+  const img=el('img',{src:`/assets/maimai/${asset}`,alt:''});
+  img.addEventListener('error',()=>wrap.replaceChildren(document.createTextNode(rank)),{once:true});wrap.append(img);return wrap;
+}
 
 /** 秒 → 时/分/秒三格，用于回填输入框。 */
 function splitClock(seconds) {
@@ -227,7 +235,7 @@ function ratingSummary(value) {
     const img = el('img', { src: profile.avatar, alt: '', referrerpolicy: 'no-referrer' });
     img.addEventListener('error', () => img.remove(), { once: true });
     avatar.append(img);
-  } else if ((platform==='codeforces'?own:platform==='mixed'?cfOwn:null) && !playerProfiles.has(state.userId)) {
+  } else if (!playerProfiles.has(state.userId)) {
     const user = state.userId;
     playerProfiles.set(user, null);
     postJson('/api/dx/profile', { userId: user }).then(data => {
@@ -236,13 +244,20 @@ function ratingSummary(value) {
     }).catch(() => {});
   }
   const digits = el('strong', { text: num1(value) });
+  const owned=profile?.owned??[];
+  const equipped=id=>owned.find(item=>item.id===id);
+  const titleItem=equipped(profile?.loadout?.titleId);
   const player = el('div', { class: 'dx-player-identity' }, [
     el('span', { class: 'dx-player-platform', text: platform==='mixed'?'CF × AT':(platformNames[platform]??platform).toUpperCase() }),
     el(own ? 'a' : 'strong', { class: 'dx-player-name', text: name,
       href: own ? (platform==='atcoder'?`https://atcoder.jp/users/${encodeURIComponent(name)}`:`https://codeforces.com/profile/${encodeURIComponent(name)}`) : null,
       target: own ? '_blank' : null, rel: 'noopener noreferrer' }),
+    titleItem?el('span',{class:`dx-player-title rarity-${titleItem.rarity}`,text:titleItem.name,title:titleItem.description}):null,
   ]);
-  return el('div', { class: 'dx-player-card' }, [avatar, player,
+  return el('div', { class: 'dx-player-card',
+    'data-avatar-frame':profile?.loadout?.avatarFrameId??'avatar_frame:newcomer',
+    'data-profile-background':profile?.loadout?.profileBackgroundId??'profile_background:newcomer',
+    'data-info-frame':profile?.loadout?.infoFrameId??'info_frame:newcomer' }, [avatar, player,
     el('div', { class: 'dx-result-bottom dx-player-rating' }, [
       el('div', { class: 'dx-result-total', 'data-rating-tone': color.tone }, [
         el('div', { class: 'dx-result-total-label' }, [el('b', { text: 'DX' }), el('span', { text: 'RATING' })]),
@@ -252,8 +267,30 @@ function ratingSummary(value) {
   ]);
 }
 
+const collectionKinds={achievement:'成就',title:'称号',avatar_frame:'头像框',profile_background:'背景板',info_frame:'信息框',b50_theme:'B50 背景'};
+function renderCollection(){
+  const body=$('collectionBody');clear(body);
+  const profile=playerProfiles.get(state.userId);
+  if(!profile?.owned){body.append(el('p',{class:'empty',text:'收藏品资料正在加载，请稍候。'}));return;}
+  const equippedIds=new Set(Object.values(profile.loadout??{}));
+  for(const [kind,label] of Object.entries(collectionKinds)){
+    const items=(profile.catalog??profile.owned).filter(item=>item.kind===kind);if(!items.length)continue;
+    const section=el('section',{class:'collection-group'},[el('h4',{text:label})]);
+    const list=el('div',{class:'collection-items'});
+    for(const item of items){
+      const equipped=equippedIds.has(item.id);
+      const unlocked=item.unlocked!==false;
+      const button=kind==='achievement'?null:el('button',{class:`btn ${equipped?'btn-primary':'btn-ghost'}`,type:'button',text:equipped?'使用中':unlocked?'装备':'未获得',disabled:equipped||!unlocked,
+        onclick:async()=>{button.disabled=true;$('collectionStatus').textContent='正在保存装扮…';try{const data=await postJson('/api/dx/collectibles/equip',{userId:state.userId,collectibleId:item.id});const current=playerProfiles.get(state.userId)??{};playerProfiles.set(state.userId,{...current,...data.profile});renderCollection();renderSummary(state.data);$('collectionStatus').textContent=`已装备：${item.name}`;}catch(error){button.disabled=false;$('collectionStatus').textContent=error.message;}}});
+      list.append(el('article',{class:`collection-item rarity-${item.rarity}${unlocked?'':' is-locked'}`},[el('div',{class:'collection-item-art','data-kind':kind},[el('span',{text:unlocked?item.name.slice(0,1):'?'})]),el('div',{class:'collection-item-copy'},[el('strong',{text:item.name}),el('span',{class:'collection-rarity',text:item.rarity.toUpperCase()}),el('p',{text:item.description}),el('small',{text:`获取：${item.acquisition}`})]),button]));
+    }
+    section.append(list);body.append(section);
+  }
+}
+
 function renderSummary(data) {
   const { board, counts, slots } = data;
+  document.body.dataset.b50Theme=playerProfiles.get(state.userId)?.loadout?.b50ThemeId??'b50_theme:newcomer';
   clear($('dxSummary'));
   const oldSum = board.old.reduce((n, s) => n + (s.score?.rating ?? 0), 0);
   const newSum = board.current.reduce((n, s) => n + (s.score?.rating ?? 0), 0);
@@ -311,7 +348,7 @@ function slotCard(slot, partition) {
       el('strong', { class: 'dx-b50-achievement', 'aria-label': `完成度 ${score.achievementShown.toFixed(4)}%` }, [
         document.createTextNode(score.achievementShown.toFixed(4)), el('small', { text: '%' }),
       ]),
-      el('span', { class: 'dx-b50-rank', text: score.rank }),
+      rankMark(score.rank),
     ]),
     el('div', { class: 'dx-b50-meta' }, [
       el('span', { text: item.platform === 'atcoder'&&item.nativeProblemRating!=null
@@ -1168,7 +1205,7 @@ $('saveB50Btn').addEventListener('click', async () => {
   const data = state.data;
   const name = state.meta?.users.find(user => user.id === state.userId)?.name || '玩家';
   try {
-    await saveB50Image(data, name);
+    await saveB50Image(data, name, playerProfiles.get(state.userId));
     $('saveB50Status').textContent = '图片已生成，请查看浏览器下载。';
   } catch (error) {
     $('saveB50Status').textContent = `保存失败：${error.message}`;
@@ -1177,6 +1214,10 @@ $('saveB50Btn').addEventListener('click', async () => {
     button.textContent = '保存 B50 图片';
   }
 });
+
+$('collectionBtn').addEventListener('click',()=>{$('collectionModal').hidden=false;renderCollection();});
+$('collectionClose').addEventListener('click',()=>{$('collectionModal').hidden=true;});
+$('collectionModal').addEventListener('click',event=>{if(event.target===$('collectionModal'))$('collectionModal').hidden=true;});
 
 $('pendingScope').addEventListener('change',()=>{pendingPage=0;if(state.data)renderPending(state.data);});
 $('pendingPrev').addEventListener('click',()=>{pendingPage=Math.max(0,pendingPage-1);renderPending(state.data);});
