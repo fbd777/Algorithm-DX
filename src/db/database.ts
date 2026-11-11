@@ -29,6 +29,7 @@ const MIGRATIONS: readonly { appliesWhenAtMost: number; file: string; rebuildsRe
   { appliesWhenAtMost: 21, file: './migrations/022-long-practice.sql', rebuildsReferencedTable: true },
   { appliesWhenAtMost: 22, file: './migrations/023-atcoder-dan.sql' },
   { appliesWhenAtMost: 23, file: './migrations/024-collectibles.sql' },
+  { appliesWhenAtMost: 24, file: './migrations/025-profile-avatars.sql', rebuildsReferencedTable: true },
 ];
 export const SCHEMA_VERSION = MIGRATIONS.length;
 

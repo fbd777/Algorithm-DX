@@ -231,11 +231,7 @@ function ratingSummary(value, data) {
   const color = cfRatingColor(value);
   const avatar = el('div', { class: 'dx-player-avatar', 'aria-label': `${name} 的头像` }, [el('span', { text: name.slice(0,1).toUpperCase() })]);
   const profile = playerProfiles.get(state.userId);
-  if (profile?.avatar) {
-    const img = el('img', { src: profile.avatar, alt: '', referrerpolicy: 'no-referrer' });
-    img.addEventListener('error', () => img.remove(), { once: true });
-    avatar.append(img);
-  } else if (!playerProfiles.has(state.userId)) {
+  if (!playerProfiles.has(state.userId)) {
     const user = state.userId;
     playerProfiles.set(user, null);
     postJson('/api/dx/profile', { userId: user }).then(data => {
@@ -246,22 +242,32 @@ function ratingSummary(value, data) {
   const owned=profile?.owned??[];
   const equipped=id=>owned.find(item=>item.id===id);
   const titleItem=equipped(profile?.loadout?.titleId);
+  const avatarItem=equipped(profile?.loadout?.avatarId);
   const solved=[...(data.recorded??[]),...(data.pending??[])];
   const uniqueSolved=new Map(solved.map(item=>[`${item.platform}:${item.problemId}`,item]));
   const latest=[...uniqueSolved.values()].sort((a,b)=>(b.solvedAt??0)-(a.solvedAt??0))[0];
   const latestPlatform=latest?.platform==='atcoder'?'ATCODER':'CODEFORCES';
   const latestTitle=latest?.problemTitle||latest?.problemId||'同步后显示最近过题';
   const latestRating=latest?.problemRating==null?'—':String(latest.problemRating);
+  const cfSolved=[...uniqueSolved.values()].filter(item=>item.platform==='codeforces').length;
+  const atSolved=[...uniqueSolved.values()].filter(item=>item.platform==='atcoder').length;
+  const avatarSource=profile?.loadout?.avatarSource??'collectible';
+  const avatarUrl=avatarSource==='custom'?profile?.loadout?.customAvatar
+    :avatarSource==='codeforces'?profile?.cfAvatar
+      :avatarSource==='atcoder'?profile?.atcoderAvatar:avatarItem?.image;
+  if(avatarUrl){
+    const img=el('img',{src:avatarUrl,alt:'',referrerpolicy:'no-referrer'});img.addEventListener('error',()=>img.remove(),{once:true});avatar.append(img);
+  }
   const ratingDigits=el('strong',{class:'dx-showcase-rating-value','aria-label':`DX Rating ${num1(value)}`});
   for(const character of num1(value).padStart(6,' '))ratingDigits.append(el('span',{class:character==='.'?'dx-rating-point':'dx-rating-digit','data-empty':character===' ',text:character===' '?'\u00a0':character,'aria-hidden':'true'}));
   return el('div', { class: 'dx-player-card',
     'data-avatar-frame':profile?.loadout?.avatarFrameId??'avatar_frame:newcomer',
     'data-profile-background':profile?.loadout?.profileBackgroundId??'profile_background:newcomer',
     'data-info-frame':profile?.loadout?.infoFrameId??'info_frame:newcomer' }, [
-    el('img',{class:'dx-showcase-character',src:'/assets/mm-parts/navichara-01-p1-02.png',alt:'','aria-hidden':'true'}),
     el('div',{class:'dx-showcase-header'},[
       avatar,
       el('div',{class:'dx-showcase-nameplate'},[
+        profile?.loadout?.infoFrameId==='info_frame:lxns-plate-11'?el('img',{class:'dx-showcase-nameplate-art',src:'/assets/collectibles/lxns/plate-11.png',alt:'','aria-hidden':'true'}):null,
         el('div',{class:'dx-showcase-rating','data-rating-tone':color.tone},[
           el('span',{class:'dx-showcase-rating-label',text:'DX RATING'}),ratingDigits,
         ]),
@@ -276,23 +282,54 @@ function ratingSummary(value, data) {
         el('strong',{text:String(data.counts.solved)}),
         el('small',{text:`B50 已记录 ${data.counts.recorded} 题`}),
       ]),
-      el('div',{class:'dx-showcase-track'},[
-        el('img',{src:'/assets/mm-result/UI_RSL_MBase_MST.png',alt:'','aria-hidden':'true'}),
-        el('span',{class:'dx-showcase-track-kind',text:`LAST CLEAR · ${latestPlatform}`}),
-        el('span',{class:'dx-showcase-track-id',text:(latest?.problemId??'—').replace(/[:\s]/g,'')}),
-        el('strong',{class:'dx-showcase-track-title',text:latestTitle}),
-        el('span',{class:'dx-showcase-track-level',text:latestRating}),
-        el('span',{class:'dx-showcase-track-date',text:latest?.solvedAt?`AC ${fmtDate(latest.solvedAt)}`:'NO CLEAR DATA'}),
+      el('div',{class:'dx-showcase-general'},[
+        el('div',{class:'dx-showcase-recent'},[
+          el('span',{class:'dx-showcase-general-label',text:'RECENT CLEAR'}),
+          el('strong',{text:latestTitle}),
+          el('div',{class:'dx-showcase-recent-meta'},[
+            el('span',{text:latestPlatform}),el('span',{text:latest?.problemId??'—'}),
+            el('span',{text:`RATING ${latestRating}`}),el('span',{text:latest?.solvedAt?fmtDate(latest.solvedAt):'暂无过题'}),
+          ]),
+        ]),
+        el('div',{class:'dx-showcase-mini-stats'},[
+          el('div',{},[el('span',{text:'CODEFORCES'}),el('strong',{text:String(cfSolved)})]),
+          el('div',{},[el('span',{text:'ATCODER'}),el('strong',{text:String(atSolved)})]),
+          el('div',{},[el('span',{text:'B50 RECORDS'}),el('strong',{text:String(data.counts.recorded)})]),
+        ]),
       ]),
     ]),
   ]);
 }
 
-const collectionKinds={achievement:'成就',title:'称号',avatar_frame:'头像框',profile_background:'背景板',info_frame:'信息框',b50_theme:'B50 背景'};
+const collectionKinds={achievement:'成就',title:'称号',avatar:'预设头像',avatar_frame:'头像框',profile_background:'背景板',info_frame:'姓名框',b50_theme:'B50 背景'};
+function mergePlayerProfile(data){const current=playerProfiles.get(state.userId)??{};playerProfiles.set(state.userId,{...current,...data.profile});renderCollection();renderSummary(state.data);}
+async function chooseAvatar(source,avatar){
+  $('collectionStatus').textContent='正在保存头像…';
+  try{const data=await postJson('/api/dx/avatar',{userId:state.userId,source,...(avatar?{avatar}:{})});mergePlayerProfile(data);$('collectionStatus').textContent='头像已更新。';}
+  catch(error){$('collectionStatus').textContent=error.message;}
+}
+function resizedAvatar(file){return new Promise((resolve,reject)=>{
+  if(!file?.type?.startsWith('image/')){reject(new Error('请选择图片文件'));return;}
+  if(file.size>8*1024*1024){reject(new Error('原图不能超过 8 MB'));return;}
+  const img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{try{const size=Math.min(img.naturalWidth,img.naturalHeight),canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;const ctx=canvas.getContext('2d');if(!ctx)throw new Error('浏览器不支持图片处理');ctx.drawImage(img,(img.naturalWidth-size)/2,(img.naturalHeight-size)/2,size,size,0,0,256,256);const data=canvas.toDataURL('image/webp',.88);URL.revokeObjectURL(url);resolve(data);}catch(error){URL.revokeObjectURL(url);reject(error);}};
+  img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('图片读取失败'));};img.src=url;
+});}
 function renderCollection(){
   const body=$('collectionBody');clear(body);
   const profile=playerProfiles.get(state.userId);
   if(!profile?.owned){body.append(el('p',{class:'empty',text:'收藏品资料正在加载，请稍候。'}));return;}
+  const source=profile.loadout?.avatarSource??'collectible';
+  const sourceSection=el('section',{class:'collection-group collection-avatar-sources'},[el('h4',{text:'头像来源'})]);
+  const sourceList=el('div',{class:'avatar-source-list'});
+  const sourceCard=(key,label,image,disabled=false)=>el('button',{class:`avatar-source-card${source===key?' is-active':''}`,type:'button',disabled,onclick:()=>chooseAvatar(key)},[
+    image?el('img',{src:image,alt:''}):el('span',{text:label.slice(0,2)}),el('strong',{text:label})]);
+  sourceList.append(sourceCard('codeforces','Codeforces 头像',profile.cfAvatar,!profile.cfHandle),
+    sourceCard('atcoder','AtCoder 头像',profile.atcoderAvatar,!profile.atcoderHandle));
+  const uploadInput=el('input',{type:'file',accept:'image/png,image/jpeg,image/webp',hidden:true,onchange:async event=>{try{const data=await resizedAvatar(event.target.files?.[0]);await chooseAvatar('custom',data);}catch(error){$('collectionStatus').textContent=error.message;}event.target.value='';}});
+  sourceList.append(el('label',{class:`avatar-source-card${source==='custom'?' is-active':''}`},[uploadInput,
+    profile.loadout?.customAvatar?el('img',{src:profile.loadout.customAvatar,alt:''}):el('span',{text:'+'}),el('strong',{text:'上传图片'})]));
+  sourceSection.append(sourceList);body.append(sourceSection);
   const equippedIds=new Set(Object.values(profile.loadout??{}));
   for(const [kind,label] of Object.entries(collectionKinds)){
     const items=(profile.catalog??profile.owned).filter(item=>item.kind===kind);if(!items.length)continue;
@@ -302,8 +339,8 @@ function renderCollection(){
       const equipped=equippedIds.has(item.id);
       const unlocked=item.unlocked!==false;
       const button=kind==='achievement'?null:el('button',{class:`btn ${equipped?'btn-primary':'btn-ghost'}`,type:'button',text:equipped?'使用中':unlocked?'装备':'未获得',disabled:equipped||!unlocked,
-        onclick:async()=>{button.disabled=true;$('collectionStatus').textContent='正在保存装扮…';try{const data=await postJson('/api/dx/collectibles/equip',{userId:state.userId,collectibleId:item.id});const current=playerProfiles.get(state.userId)??{};playerProfiles.set(state.userId,{...current,...data.profile});renderCollection();renderSummary(state.data);$('collectionStatus').textContent=`已装备：${item.name}`;}catch(error){button.disabled=false;$('collectionStatus').textContent=error.message;}}});
-      list.append(el('article',{class:`collection-item rarity-${item.rarity}${unlocked?'':' is-locked'}`},[el('div',{class:'collection-item-art','data-kind':kind},[el('span',{text:unlocked?item.name.slice(0,1):'?'})]),el('div',{class:'collection-item-copy'},[el('strong',{text:item.name}),el('span',{class:'collection-rarity',text:item.rarity.toUpperCase()}),el('p',{text:item.description}),el('small',{text:`获取：${item.acquisition}`})]),button]));
+        onclick:async()=>{button.disabled=true;$('collectionStatus').textContent='正在保存装扮…';try{const data=await postJson('/api/dx/collectibles/equip',{userId:state.userId,collectibleId:item.id});mergePlayerProfile(data);$('collectionStatus').textContent=`已装备：${item.name}`;}catch(error){button.disabled=false;$('collectionStatus').textContent=error.message;}}});
+      list.append(el('article',{class:`collection-item rarity-${item.rarity}${unlocked?'':' is-locked'}`},[el('div',{class:'collection-item-art','data-kind':kind},[item.image?el('img',{src:item.image,alt:''}):el('span',{text:unlocked?item.name.slice(0,1):'?'})]),el('div',{class:'collection-item-copy'},[el('strong',{text:item.name}),el('span',{class:'collection-rarity',text:item.rarity.toUpperCase()}),el('p',{text:item.description}),el('small',{text:`获取：${item.acquisition}`})]),button]));
     }
     section.append(list);body.append(section);
   }

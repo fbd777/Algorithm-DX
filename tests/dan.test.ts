@@ -1144,6 +1144,18 @@ test('CF 玩家资料使用缓存，并与当前账号绑定', async () => {
   } finally { s.db.close(); }
 });
 
+test('AtCoder 头像读取公开个人页并限制在官方图片域名', async (t) => {
+  const s=setup();
+  try {
+    s.repo.addAccount(s.user,'atcoder','fixture_atcoder');
+    s.repo.set('cf:profile:v2:fixture',{handle:'fixture',avatar:null},3600);
+    t.mock.method(HttpClient.prototype,'text',async()=>"<img class='avatar' src='//img.atcoder.jp/icons/custom.png' width='128'>");
+    const result=await handleApi({db:s.db,dbPath:':memory:',platforms:['codeforces','atcoder'],envFile:'unused',
+      openWrite:()=>s.db,syncJobs:{} as never},{method:'POST',pathname:'/api/dx/profile',params:new URLSearchParams(),body:{userId:s.user}});
+    assert.equal((result.body as {profile:{atcoderAvatar:string}}).profile.atcoderAvatar,'https://img.atcoder.jp/icons/custom.png');
+  } finally { s.db.close(); }
+});
+
 test('共享时间耗尽后隔天 AC 仍保存真实用时并允许继续', () => {
   const s = setup(), now = 1_000_000, pool = at(1000, 10, 1);
   try {

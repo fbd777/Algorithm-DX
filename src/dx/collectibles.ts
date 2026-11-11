@@ -2,8 +2,9 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { ProblemRating } from '../domain.ts';
 import { danProblemId } from './dan.ts';
 
-export type CollectibleKind = 'achievement'|'title'|'avatar_frame'|'profile_background'|'info_frame'|'b50_theme';
+export type CollectibleKind = 'achievement'|'title'|'avatar'|'avatar_frame'|'profile_background'|'info_frame'|'b50_theme';
 export type CollectibleRarity = 'starter'|'white'|'bronze'|'silver'|'gold'|'rainbow';
+export type AvatarSource = 'collectible'|'codeforces'|'atcoder'|'custom';
 
 export interface Collectible {
   id: string;
@@ -15,13 +16,17 @@ export interface Collectible {
   unlockedAt?: number;
   source?: Record<string, unknown>|null;
   unlocked?: boolean;
+  image?: string;
 }
 
 const STATIC: readonly Collectible[] = [
   { id:'title:newcomer',kind:'title',name:'初来乍到',rarity:'starter',description:'Algorithm DX 的第一枚称号。',acquisition:'创建玩家档案' },
+  { id:'avatar:lxns-11',kind:'avatar',name:'舞萌地图头像',rarity:'starter',description:'LXNS 收藏品素材中的预设头像。',acquisition:'创建玩家档案',image:'/assets/collectibles/lxns/icon-11.png' },
   { id:'avatar_frame:newcomer',kind:'avatar_frame',name:'新手头像框',rarity:'starter',description:'清爽的蓝白入门头像框。',acquisition:'创建玩家档案' },
   { id:'profile_background:newcomer',kind:'profile_background',name:'新手背景板',rarity:'starter',description:'默认 DX 玩家信息背景。',acquisition:'创建玩家档案' },
+  { id:'profile_background:lxns-frame-11',kind:'profile_background',name:'Re:MASTER 背景',rarity:'starter',description:'使用 LXNS frame 11 原图的玩家信息背景。',acquisition:'创建玩家档案',image:'/assets/collectibles/lxns/frame-11.png' },
   { id:'info_frame:newcomer',kind:'info_frame',name:'新手信息框',rarity:'starter',description:'默认玩家信息框。',acquisition:'创建玩家档案' },
+  { id:'info_frame:lxns-plate-11',kind:'info_frame',name:'街景姓名框',rarity:'starter',description:'使用 LXNS plate 11 原图的姓名框。',acquisition:'创建玩家档案',image:'/assets/collectibles/lxns/plate-11.png' },
   { id:'b50_theme:newcomer',kind:'b50_theme',name:'Prism 新手舞台',rarity:'starter',description:'默认 B50 页面与导出背景。',acquisition:'创建玩家档案' },
   { id:'achievement:first-ac',kind:'achievement',name:'FIRST CLEAR',rarity:'white',description:'完成第一道题。',acquisition:'任一平台至少 AC 1 道题' },
   { id:'title:first-ac',kind:'title',name:'第一步',rarity:'white',description:'从一次 AC 开始的旅程。',acquisition:'获得「FIRST CLEAR」成就' },
@@ -89,7 +94,7 @@ function rowCollectible(row:Record<string,unknown>):Collectible {
   return { id:String(row.collectible_id),kind:String(row.kind) as CollectibleKind,name:String(row.name),
     rarity:String(row.rarity) as CollectibleRarity,description:String(row.description),
     acquisition:known?.acquisition??(String(row.rarity)==='silver'?'该场每题第一次提交均为 AC':'该场全部评级题目 AC'),
-    unlockedAt:Number(row.unlocked_at),source:row.source_json?JSON.parse(String(row.source_json)):null };
+    unlockedAt:Number(row.unlocked_at),source:row.source_json?JSON.parse(String(row.source_json)):null,image:known?.image };
 }
 
 export function collectibleProfile(db:DatabaseSync,userId:number,cfPool:readonly ProblemRating[]=[]){
@@ -101,11 +106,13 @@ export function collectibleProfile(db:DatabaseSync,userId:number,cfPool:readonly
   const catalog=[...STATIC.map(item=>({...item,unlocked:ownedIds.has(item.id)})),
     ...owned.filter(item=>!byId.has(item.id)).map(item=>({...item,unlocked:true}))];
   const loadout=db.prepare('SELECT * FROM user_profile_loadouts WHERE user_id=?').get(userId) as Record<string,unknown>;
-  return { owned,catalog, loadout:{ titleId:String(loadout.title_id),avatarFrameId:String(loadout.avatar_frame_id),
-    profileBackgroundId:String(loadout.profile_background_id),infoFrameId:String(loadout.info_frame_id),b50ThemeId:String(loadout.b50_theme_id) } };
+  return { owned,catalog, loadout:{ titleId:String(loadout.title_id),avatarId:String(loadout.avatar_id),
+    avatarSource:String(loadout.avatar_source) as AvatarSource,customAvatar:loadout.custom_avatar_data?String(loadout.custom_avatar_data):null,
+    avatarFrameId:String(loadout.avatar_frame_id),profileBackgroundId:String(loadout.profile_background_id),
+    infoFrameId:String(loadout.info_frame_id),b50ThemeId:String(loadout.b50_theme_id) } };
 }
 
-const LOADOUT_FIELDS:Record<CollectibleKind,string|undefined>={achievement:undefined,title:'title_id',avatar_frame:'avatar_frame_id',
+const LOADOUT_FIELDS:Record<CollectibleKind,string|undefined>={achievement:undefined,title:'title_id',avatar:'avatar_id',avatar_frame:'avatar_frame_id',
   profile_background:'profile_background_id',info_frame:'info_frame_id',b50_theme:'b50_theme_id'};
 
 export function equipCollectible(db:DatabaseSync,userId:number,collectibleId:string){
@@ -114,5 +121,23 @@ export function equipCollectible(db:DatabaseSync,userId:number,collectibleId:str
   const field=LOADOUT_FIELDS[item.kind];if(!field)throw new Error('成就徽章不需要装备');
   db.prepare('INSERT OR IGNORE INTO user_profile_loadouts(user_id) VALUES(?)').run(userId);
   db.prepare(`UPDATE user_profile_loadouts SET ${field}=?,updated_at=unixepoch() WHERE user_id=?`).run(collectibleId,userId);
+  if(item.kind==='avatar')db.prepare("UPDATE user_profile_loadouts SET avatar_source='collectible' WHERE user_id=?").run(userId);
+  return collectibleProfile(db,userId);
+}
+
+export function setProfileAvatar(db:DatabaseSync,userId:number,source:AvatarSource,customAvatar?:string){
+  if(!['collectible','codeforces','atcoder','custom'].includes(source))throw new Error('头像来源无效');
+  if(!db.prepare('SELECT 1 FROM users WHERE id=?').get(userId))throw new Error('用户不存在');
+  if(source==='codeforces'&&!db.prepare("SELECT 1 FROM accounts WHERE user_id=? AND platform='codeforces' AND is_archived=0").get(userId))throw new Error('请先绑定 Codeforces 账号');
+  if(source==='atcoder'&&!db.prepare("SELECT 1 FROM accounts WHERE user_id=? AND platform='atcoder' AND is_archived=0").get(userId))throw new Error('请先绑定 AtCoder 账号');
+  let stored:string|null=null;
+  if(source==='custom'){
+    if(typeof customAvatar!=='string'||!/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(customAvatar))throw new Error('自定义头像必须是 PNG、JPEG 或 WebP 图片');
+    if(customAvatar.length>360_000)throw new Error('自定义头像太大，请压缩到 256 KB 以内');
+    stored=customAvatar;
+  }
+  db.prepare('INSERT OR IGNORE INTO user_profile_loadouts(user_id) VALUES(?)').run(userId);
+  db.prepare('UPDATE user_profile_loadouts SET avatar_source=?,custom_avatar_data=COALESCE(?,custom_avatar_data),updated_at=unixepoch() WHERE user_id=?')
+    .run(source,stored,userId);
   return collectibleProfile(db,userId);
 }

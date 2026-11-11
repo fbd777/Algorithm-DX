@@ -100,7 +100,7 @@ import {
   drawNextDanStage,
   type DanKind,
 } from '../dx/dan.ts';
-import { collectibleProfile, equipCollectible } from '../dx/collectibles.ts';
+import { collectibleProfile, equipCollectible, setProfileAvatar, type AvatarSource } from '../dx/collectibles.ts';
 import { CodeforcesSyncFetcher, cachedProblemRatings } from '../fetchers/codeforces-sync.ts';
 import { AtCoderFetcher, cachedAtCoderProblemRatings, cachedAtCoderProblemCatalog } from '../fetchers/atcoder.ts';
 import { Repository } from '../db/database.ts';
@@ -181,6 +181,7 @@ export const WRITE_ROUTES = new Set([
   '/api/dx/attempts/edit',
   '/api/dx/profile',
   '/api/dx/collectibles/equip',
+  '/api/dx/avatar',
   '/api/dan/start',
   '/api/dan/claim',
   '/api/dan/settle',
@@ -1031,29 +1032,50 @@ export async function handleApi(ctx: ApiContext, request: ApiRequest): Promise<A
         case '/api/dx/profile': {
           const userId = positiveInt(objectBody(body), 'userId'), db = ctx.openWrite();
           const collection=collectibleProfile(db,userId,cachedProblemRatings(new Repository(db))??[]);
-          const account = db.prepare("SELECT handle FROM accounts WHERE user_id=? AND platform='codeforces' AND is_archived=0").get(userId);
-          if (!account) return { status: 200, body: { profile: { handle:null,avatar:null,...collection } } };
-          const repo = new Repository(db), key = `cf:profile:v2:${String(account.handle).toLowerCase()}`;
-          const cached = repo.get(key);
-          if (cached) return { status: 200, body: { profile: { ...(cached as object),...collection } } };
-          let raw:Record<string,unknown>|null=null;
-          try {
-            const data = await new HttpClient(db).json(`https://codeforces.com/api/user.info?handles=${encodeURIComponent(String(account.handle))}`);
-            if(data?.status==='OK'&&data.result?.[0])raw=data.result[0];
-          } catch { /* Cosmetics and the local identity remain usable while CF profile is unavailable. */ }
-          let avatar: string | null = null;
-          try { if(typeof raw?.avatar!=='string'||!raw.avatar)throw new Error('No avatar'); const url = new URL(raw.avatar, 'https://codeforces.com');
-            if (url.protocol === 'https:' && (url.hostname === 'codeforces.org' || url.hostname.endsWith('.codeforces.org') || url.hostname === 'codeforces.com')) avatar = url.href;
-          } catch { /* Keep the handle visible if the avatar is unavailable. */ }
-          const identity = { handle: String(account.handle), avatar };
-          repo.set(key, identity, 21600);
-          return { status: 200, body: { profile:{...identity,...collection} } };
+          const accounts=db.prepare("SELECT platform,handle FROM accounts WHERE user_id=? AND platform IN ('codeforces','atcoder') AND is_archived=0").all(userId) as {platform:string;handle:string}[];
+          const cf=accounts.find(account=>account.platform==='codeforces'),atcoder=accounts.find(account=>account.platform==='atcoder');
+          const repo = new Repository(db);
+          let identity:{handle:string|null;avatar:string|null}={handle:cf?.handle??atcoder?.handle??null,avatar:null};
+          if(cf){
+            const key = `cf:profile:v2:${cf.handle.toLowerCase()}`;
+            const cached = repo.get<{handle:string;avatar:string|null}>(key);
+            if(cached)identity=cached;
+            else {
+              let raw:Record<string,unknown>|null=null;
+              try { const data = await new HttpClient(db).json(`https://codeforces.com/api/user.info?handles=${encodeURIComponent(cf.handle)}`);if(data?.status==='OK'&&data.result?.[0])raw=data.result[0]; }
+              catch { /* Cosmetics and local identity remain usable while CF is unavailable. */ }
+              let avatar: string | null = null;
+              try { if(typeof raw?.avatar!=='string'||!raw.avatar)throw new Error('No avatar'); const url = new URL(raw.avatar, 'https://codeforces.com');
+                if (url.protocol === 'https:' && (url.hostname === 'codeforces.org' || url.hostname.endsWith('.codeforces.org') || url.hostname === 'codeforces.com')) avatar = url.href;
+              } catch { /* Keep the handle visible if the avatar is unavailable. */ }
+              identity={handle:cf.handle,avatar};repo.set(key,identity,21600);
+            }
+          }
+          let atcoderAvatar:string|null=atcoder?'/assets/collectibles/atcoder-avatar.png':null;
+          if(atcoder){
+            const key=`atcoder:profile:v1:${atcoder.handle.toLowerCase()}`,cached=repo.get<{avatar:string}>(key);
+            if(cached?.avatar)atcoderAvatar=cached.avatar;
+            else try {
+              const html=await new HttpClient(db).text(`https://atcoder.jp/users/${encodeURIComponent(atcoder.handle)}`);
+              const source=html.match(/<img\b(?=[^>]*\bclass=['"][^'"]*\bavatar\b[^'"]*['"])[^>]*\bsrc=['"]([^'"]+)['"]/i)?.[1];
+              const url=source?new URL(source,'https://atcoder.jp'):null;
+              if(url?.protocol==='https:'&&url.hostname==='img.atcoder.jp'){atcoderAvatar=url.href;repo.set(key,{avatar:atcoderAvatar},21600);}
+            } catch { /* Keep the official default avatar when the AtCoder profile is unavailable. */ }
+          }
+          return { status: 200, body: { profile:{...identity,cfHandle:cf?.handle??null,cfAvatar:identity.avatar,
+            atcoderHandle:atcoder?.handle??null,atcoderAvatar,...collection} } };
         }
         case '/api/dx/collectibles/equip': {
           const input=objectBody(body),db=ctx.openWrite();
           try {
             return {status:200,body:{profile:equipCollectible(db,positiveInt(input,'userId'),text(input,'collectibleId',180))}};
           } catch(error) { throw new BadRequest(error instanceof Error?error.message:'无法装备这件收藏品'); }
+        }
+        case '/api/dx/avatar': {
+          const input=objectBody(body),db=ctx.openWrite();
+          try { return {status:200,body:{profile:setProfileAvatar(db,positiveInt(input,'userId'),text(input,'source',20) as AvatarSource,
+            input.avatar===undefined?undefined:text(input,'avatar',360_000))}}; }
+          catch(error) { throw new BadRequest(error instanceof Error?error.message:'无法保存头像'); }
         }
         case '/api/dan/start': {
           const input = objectBody(body), userId = positiveInt(input, 'userId');

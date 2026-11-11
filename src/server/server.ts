@@ -262,7 +262,8 @@ function main(): void {
     let body: unknown;
     if (method === 'POST') {
       try {
-        body = await readJsonBody(req, url.pathname === '/api/import/matiji' ? 11 * 1024 * 1024 : MAX_BODY_BYTES);
+        body = await readJsonBody(req, url.pathname === '/api/import/matiji' ? 11 * 1024 * 1024
+          : url.pathname === '/api/dx/avatar' ? 512 * 1024 : MAX_BODY_BYTES);
       } catch (error) {
         sendJson(res, 400, { error: error instanceof Error ? error.message : '请求体读取失败' });
         return;

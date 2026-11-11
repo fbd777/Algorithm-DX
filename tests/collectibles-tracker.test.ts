@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase, Repository } from '../src/db/database.ts';
 import { submission } from '../src/fetchers/common.ts';
-import { collectibleProfile, equipCollectible } from '../src/dx/collectibles.ts';
+import { collectibleProfile, equipCollectible, setProfileAvatar } from '../src/dx/collectibles.ts';
 import { contestTracker } from '../src/server/tracker.ts';
 import { createDanSession, drawNextDanStage } from '../src/dx/dan.ts';
 
@@ -25,11 +25,24 @@ test('collectibles unlock thresholds, persist equipment, and award auditable con
   const pool=[{contestId:100,index:'A',rating:800},{contestId:100,index:'B',rating:900},{contestId:101,index:'A',rating:800},{contestId:101,index:'B',rating:900}];
   const profile=collectibleProfile(s.db,s.user,pool),ids=new Set(profile.owned.map(item=>item.id));
   assert.ok(ids.has('title:newcomer'));assert.ok(ids.has('achievement:first-ac'));
+  assert.ok(ids.has('avatar:lxns-11'));assert.ok(ids.has('profile_background:lxns-frame-11'));assert.ok(ids.has('info_frame:lxns-plate-11'));
   assert.ok(ids.has('title:cf:100:white'));assert.ok(ids.has('title:cf:100:silver'));
   assert.ok(ids.has('title:cf:101:white'));assert.ok(!ids.has('title:cf:101:silver'));
   const equipped=equipCollectible(s.db,s.user,'title:cf:100:silver');
   assert.equal(equipped.loadout.titleId,'title:cf:100:silver');
+  const avatar=equipCollectible(s.db,s.user,'avatar:lxns-11');
+  assert.equal(avatar.loadout.avatarId,'avatar:lxns-11');assert.equal(avatar.loadout.avatarSource,'collectible');
   assert.equal(collectibleProfile(s.db,s.user,pool).loadout.titleId,'title:cf:100:silver');
+  s.db.close();
+});
+
+test('profile avatar supports bound platform identities and a compact custom image',()=>{
+  const s=fixture();s.repo.addAccount(s.user,'atcoder','tester_atcoder');
+  assert.equal(setProfileAvatar(s.db,s.user,'codeforces').loadout.avatarSource,'codeforces');
+  assert.equal(setProfileAvatar(s.db,s.user,'atcoder').loadout.avatarSource,'atcoder');
+  const image='data:image/png;base64,iVBORw0KGgo=';
+  const custom=setProfileAvatar(s.db,s.user,'custom',image);
+  assert.equal(custom.loadout.avatarSource,'custom');assert.equal(custom.loadout.customAvatar,image);
   s.db.close();
 });
 
